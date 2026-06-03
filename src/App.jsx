@@ -2784,6 +2784,55 @@ function App() {
         return [];
     }, [distTab, filteredLevelData, filteredConstantData, filteredDifficultyData, filteredUnitData]);
 
+    // --- Bulk Score Update Handlers ---
+    const handleBulkScoreChange = (newStatus) => {
+        if (filteredAndSortedRecords.length === 0) return;
+
+        const sanitizeStatus = (status) => {
+            return status === "none" ? null : status;
+        };
+
+        let newScores = [...scores];
+
+        filteredAndSortedRecords.forEach((item) => {
+            const songId = String(item.song.id);
+            const diff = item.diff;
+
+            const existIdx = newScores.findIndex((s) => String(s.id) === songId);
+            if (existIdx !== -1) {
+                newScores[existIdx] = {
+                    ...newScores[existIdx],
+                    [diff]: sanitizeStatus(newStatus),
+                };
+            } else {
+                newScores.push({
+                    id: songId,
+                    easy: diff === "easy" ? sanitizeStatus(newStatus) : null,
+                    normal: diff === "normal" ? sanitizeStatus(newStatus) : null,
+                    hard: diff === "hard" ? sanitizeStatus(newStatus) : null,
+                    expert: diff === "expert" ? sanitizeStatus(newStatus) : null,
+                    master: diff === "master" ? sanitizeStatus(newStatus) : null,
+                    append: diff === "append" ? sanitizeStatus(newStatus) : null,
+                });
+            }
+        });
+
+        updateScores(newScores);
+    };
+
+    const handleBulkScoreConfirm = (status) => {
+        const statusLabels = {
+            none: "NC (No Clear)",
+            clear: "C (Clear)",
+            full_combo: "FC (Full Combo)",
+            full_perfect: "AP (All Perfect)"
+        };
+        const msg = `현재 필터링된 곡 ${filteredAndSortedRecords.length}개의 성과를 일괄적으로 [${statusLabels[status]}] 상태로 변경하시겠습니까?`;
+        if (window.confirm(msg)) {
+            handleBulkScoreChange(status);
+        }
+    };
+
     return (
         <div className="app-wrapper">
             {/* HEADER SECTION */}
@@ -3965,6 +4014,47 @@ function App() {
                         </div>
                         )}
 
+                        {/* BULK ACTION BAR */}
+                        <div className="bulk-action-bar">
+                            <div>
+                                <span className="bulk-title">필터링된 곡:</span>
+                                <span className="bulk-count">
+                                    {filteredAndSortedRecords.length}개
+                                </span>
+                            </div>
+                            {filteredAndSortedRecords.length > 0 && (
+                                <div className="bulk-control-group">
+                                    <span className="bulk-label">일괄 성과 입력:</span>
+                                    <div className="bulk-buttons">
+                                        <button
+                                            className="bulk-btn btn-nc"
+                                            onClick={() => handleBulkScoreConfirm("none")}
+                                        >
+                                            NC
+                                        </button>
+                                        <button
+                                            className="bulk-btn btn-clear"
+                                            onClick={() => handleBulkScoreConfirm("clear")}
+                                        >
+                                            C
+                                        </button>
+                                        <button
+                                            className="bulk-btn btn-fc"
+                                            onClick={() => handleBulkScoreConfirm("full_combo")}
+                                        >
+                                            FC
+                                        </button>
+                                        <button
+                                            className="bulk-btn btn-ap"
+                                            onClick={() => handleBulkScoreConfirm("full_perfect")}
+                                        >
+                                            AP
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         {/* RECORD DATA LIST CONTAINER */}
                         <div className="record-list-container" style={{ marginTop: "1.5rem" }}>
                             <div
@@ -4019,7 +4109,7 @@ function App() {
 
                                                 {/* Jacket */}
                                                 <div className="record-jacket-col">
-                                                    <JacketImage songId={item.song.id} size={42} />
+                                                    <JacketImage songId={item.song.id} size={50} />
                                                 </div>
 
                                                 {/* Title / Composer */}
@@ -4033,10 +4123,6 @@ function App() {
                                                         <span className={`diff-badge diff-${item.diff} mini`}>
                                                             {diffNames[item.diff].substring(0, 3)} {item.level}
                                                         </span>
-                                                        <span className="meta-constant">
-                                                            C: {item.fcConstant.toFixed(1)}
-                                                            {!item.hasFcConstant && "?"}
-                                                        </span>
                                                         <span
                                                             className="meta-rating"
                                                             style={{
@@ -4047,6 +4133,14 @@ function App() {
                                                             }}
                                                         >
                                                             R: {item.rating > 0 ? Math.round(item.rating) : "-"}
+                                                        </span>
+                                                        <span className="meta-constant">
+                                                            C(FC): {item.fcConstant.toFixed(1)}
+                                                            {!item.hasFcConstant && "?"}
+                                                        </span>
+                                                        <span className="meta-constant">
+                                                            C(AP): {item.apConstant.toFixed(1)}
+                                                            {!item.hasApConstant && "?"}
                                                         </span>
                                                     </div>
                                                 </div>
