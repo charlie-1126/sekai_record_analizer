@@ -30,6 +30,7 @@ import {
     ChevronUp,
     X,
     Settings,
+    Lock,
 } from "lucide-react";
 import "./App.css";
 
@@ -82,6 +83,18 @@ function App() {
     const [authPassword, setAuthPassword] = useState("");
     const [authError, setAuthError] = useState("");
 
+    // --- Admin States ---
+    const [adminUsers, setAdminUsers] = useState([]);
+    const [adminLoading, setAdminLoading] = useState(false);
+    const [adminError, setAdminError] = useState("");
+
+    // --- Password Change States ---
+    const [changeCurrentPassword, setChangeCurrentPassword] = useState("");
+    const [changeNewPassword, setChangeNewPassword] = useState("");
+    const [changeConfirmPassword, setChangeConfirmPassword] = useState("");
+    const [changePasswordMessage, setChangePasswordMessage] = useState("");
+    const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+
     // --- Friends & Settings States ---
     const [friendsList, setFriendsList] = useState([]);
     const [friendInputId, setFriendInputId] = useState("");
@@ -100,6 +113,7 @@ function App() {
     const [settingsMessage, setSettingsMessage] = useState("");
 
     // --- Compare Tab States ---
+    const [compareIncludeClear, setCompareIncludeClear] = useState(true);
     const [compareTargetId, setCompareTargetId] = useState("");
     const [compareData, setCompareData] = useState(null);
     const [compareError, setCompareError] = useState("");
@@ -1300,6 +1314,126 @@ function App() {
         }
     };
 
+    // --- Admin Actions ---
+    const fetchAdminUsers = async () => {
+        if (!currentUser || !currentUser.token) return;
+        setAdminLoading(true);
+        setAdminError("");
+        try {
+            const res = await fetch("/api/admin/users", {
+                headers: {
+                    "Authorization": `Bearer ${currentUser.token}`
+                }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setAdminUsers(data.users || []);
+            } else {
+                setAdminError(data.error || "회원 목록을 불러오는데 실패했습니다.");
+            }
+        } catch (err) {
+            console.error(err);
+            setAdminError("서버와의 통신 오류가 발생했습니다.");
+        } finally {
+            setAdminLoading(false);
+        }
+    };
+
+    const deleteAdminUser = async (username, nickname) => {
+        if (!currentUser || !currentUser.token) return;
+        if (!window.confirm(`정말 ${nickname}님(${username})의 회원 정보를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+
+        try {
+            const res = await fetch(`/api/admin/users/${username}`, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${currentUser.token}`
+                }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert("회원이 성공적으로 삭제되었습니다.");
+                fetchAdminUsers();
+            } else {
+                alert(data.error || "회원 삭제에 실패했습니다.");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("서버 통신 오류가 발생했습니다.");
+        }
+    };
+
+    const resetAdminUserPassword = async (username, nickname) => {
+        if (!currentUser || !currentUser.token) return;
+        if (!window.confirm(`정말 ${nickname}님(${username})의 비밀번호를 "password"로 초기화하시겠습니까?`)) return;
+
+        try {
+            const res = await fetch(`/api/admin/users/${username}/reset-password`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${currentUser.token}`
+                }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert("비밀번호가 성공적으로 초기화되었습니다.");
+            } else {
+                alert(data.error || "비밀번호 초기화에 실패했습니다.");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("서버 통신 오류가 발생했습니다.");
+        }
+    };
+
+    const handleChangePasswordSubmit = async (e) => {
+        e.preventDefault();
+        if (!currentUser || !currentUser.token) return;
+        if (!changeCurrentPassword || !changeNewPassword || !changeConfirmPassword) {
+            setChangePasswordMessage("⚠ 모든 빈칸을 입력해주세요.");
+            return;
+        }
+        if (changeNewPassword !== changeConfirmPassword) {
+            setChangePasswordMessage("⚠ 새 비밀번호와 확인이 일치하지 않습니다.");
+            return;
+        }
+
+        setChangePasswordMessage("");
+        try {
+            const res = await fetch("/api/auth/change-password", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${currentUser.token}`
+                },
+                body: JSON.stringify({
+                    currentPassword: changeCurrentPassword,
+                    newPassword: changeNewPassword
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert("비밀번호가 성공적으로 변경되었습니다.");
+                setChangeCurrentPassword("");
+                setChangeNewPassword("");
+                setChangeConfirmPassword("");
+                setChangePasswordMessage("");
+                setShowChangePasswordModal(false);
+            } else {
+                setChangePasswordMessage(`⚠ ${data.error || "비밀번호 변경 실패"}`);
+            }
+        } catch (err) {
+            console.error(err);
+            setChangePasswordMessage("⚠ 서버 통신 오류가 발생했습니다.");
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === "admin") {
+            fetchAdminUsers();
+        }
+    }, [activeTab]);
+
     const resetAuthForm = () => {
         setAuthUsername("");
         setAuthNickname("");
@@ -1755,10 +1889,13 @@ function App() {
         // 4. Compare Result Filter (win / lose / draw)
         if (compareResultFilter !== "all") {
             list = list.filter((item) => {
-                const gap = parseFloat((item.ratingA - item.ratingB).toFixed(1));
-                if (compareResultFilter === "win") return gap > 0;
-                if (compareResultFilter === "lose") return gap < 0;
-                if (compareResultFilter === "draw") return gap === 0;
+                const tierMap = { full_perfect: 3, full_combo: 2, clear: compareIncludeClear ? 1 : 0, none: 0 };
+                const tierA = tierMap[item.statA] || 0;
+                const tierB = tierMap[item.statB] || 0;
+                const tierDiff = tierA - tierB;
+                if (compareResultFilter === "win") return tierDiff > 0;
+                if (compareResultFilter === "lose") return tierDiff < 0;
+                if (compareResultFilter === "draw") return tierDiff === 0;
                 return true;
             });
         }
@@ -1770,7 +1907,7 @@ function App() {
                 valA = a.level;
                 valB = b.level;
             } else if (compareSortBy === "gap") {
-                const tierMap = { full_perfect: 3, full_combo: 2, clear: 1, none: 0 };
+                const tierMap = { full_perfect: 3, full_combo: 2, clear: compareIncludeClear ? 1 : 0, none: 0 };
                 const tierDiffA = (tierMap[a.statA] || 0) - (tierMap[a.statB] || 0);
                 const tierDiffB = (tierMap[b.statA] || 0) - (tierMap[b.statB] || 0);
 
@@ -1810,6 +1947,7 @@ function App() {
         compareSortBy,
         compareSortOrder,
         settingsTitleLang,
+        compareIncludeClear,
     ]);
 
     // --- Helper to calculate Ratings on the fly for imports ---
@@ -2920,6 +3058,22 @@ function App() {
                             </div>
                         </div>
 
+                        {currentUser && currentUser.username.toLowerCase() === "admin" && (
+                            <button
+                                className={`btn btn-outline ${activeTab === "admin" ? "active" : ""}`}
+                                onClick={() => setActiveTab("admin")}
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "0.25rem",
+                                    borderColor: "var(--color-pink)",
+                                    color: "var(--color-pink)",
+                                }}
+                            >
+                                <Users size={16} /> 회원 관리
+                            </button>
+                        )}
+
                         <button
                             className="btn btn-outline"
                             style={{
@@ -3157,6 +3311,19 @@ function App() {
                                     }}
                                 >
                                     <Settings size={18} /> 환경 설정
+                                </button>
+                            )}
+
+                            {currentUser && currentUser.username.toLowerCase() === "admin" && (
+                                <button
+                                    className={`drawer-menu-item ${activeTab === "admin" ? "active" : ""}`}
+                                    onClick={() => {
+                                        setActiveTab("admin");
+                                        setIsMobileMenuOpen(false);
+                                    }}
+                                    style={{ color: "var(--color-pink)" }}
+                                >
+                                    <Users size={18} /> 회원 관리
                                 </button>
                             )}
                         </div>
@@ -3526,6 +3693,98 @@ function App() {
                                     {isRegisterMode ? "로그인하기" : "회원가입하기"}
                                 </span>
                             </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* PASSWORD CHANGE MODAL */}
+            {showChangePasswordModal && (
+                <div className="modal-backdrop" onClick={() => setShowChangePasswordModal(false)}>
+                    <div
+                        className="glass-panel modal-content"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ maxWidth: "400px", width: "100%", padding: "2rem", position: "relative" }}
+                    >
+                        {/* Close button */}
+                        <button
+                            className="btn-close"
+                            style={{ position: "absolute", top: "1.25rem", right: "1.25rem", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
+                            onClick={() => setShowChangePasswordModal(false)}
+                            aria-label="닫기"
+                        >
+                            <X size={20} />
+                        </button>
+
+                        <h3
+                            style={{
+                                fontSize: "1.5rem",
+                                marginBottom: "1.5rem",
+                                background: "linear-gradient(135deg, var(--color-cyan) 0%, var(--color-pink) 100%)",
+                                WebkitBackgroundClip: "text",
+                                WebkitTextFillColor: "transparent",
+                                textAlign: "center",
+                            }}
+                        >
+                            비밀번호 변경
+                        </h3>
+
+                        <form
+                            onSubmit={handleChangePasswordSubmit}
+                            style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}
+                        >
+                            <div className="filter-group" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                                <label className="filter-label">현재 비밀번호</label>
+                                <input
+                                    type="password"
+                                    className="form-control"
+                                    placeholder="현재 비밀번호"
+                                    value={changeCurrentPassword}
+                                    onChange={(e) => setChangeCurrentPassword(e.target.value)}
+                                    style={{ width: "100%" }}
+                                />
+                            </div>
+
+                            <div className="filter-group" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                                <label className="filter-label">새 비밀번호</label>
+                                <input
+                                    type="password"
+                                    className="form-control"
+                                    placeholder="새 비밀번호"
+                                    value={changeNewPassword}
+                                    onChange={(e) => setChangeNewPassword(e.target.value)}
+                                    style={{ width: "100%" }}
+                                />
+                            </div>
+
+                            <div className="filter-group" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                                <label className="filter-label">새 비밀번호 확인</label>
+                                <input
+                                    type="password"
+                                    className="form-control"
+                                    placeholder="새 비밀번호 확인"
+                                    value={changeConfirmPassword}
+                                    onChange={(e) => setChangeConfirmPassword(e.target.value)}
+                                    style={{ width: "100%" }}
+                                />
+                            </div>
+
+                            {changePasswordMessage && (
+                                <div
+                                    style={{
+                                        color: changePasswordMessage.startsWith("⚠") ? "var(--color-danger)" : "var(--color-success)",
+                                        fontSize: "0.85rem",
+                                        fontWeight: "700",
+                                        textAlign: "center",
+                                    }}
+                                >
+                                    {changePasswordMessage}
+                                </div>
+                            )}
+
+                            <button type="submit" className="btn btn-primary animate-glow" style={{ width: "100%" }}>
+                                비밀번호 수정
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -5757,18 +6016,35 @@ function App() {
                                                 alignItems: "center",
                                                 justifyContent: "space-between",
                                                 gap: "0.5rem",
+                                                flexWrap: "wrap",
                                             }}
                                         >
                                             <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                                 <Sparkles size={18} style={{ color: "var(--color-cyan)" }} /> 상세 비교
                                             </span>
-                                            <button
-                                                className="btn btn-outline btn-sm"
-                                                onClick={() => setIsCompareFilterExpanded(!isCompareFilterExpanded)}
-                                                style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.85rem", padding: "0.25rem 0.5rem" }}
-                                            >
-                                                <Filter size={12} /> {isCompareFilterExpanded ? "필터 접기" : "필터 펼치기"}
-                                            </button>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+                                                <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", cursor: "pointer", fontSize: "0.8rem", color: "var(--text-secondary)", userSelect: "none", fontWeight: "normal" }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={compareIncludeClear}
+                                                        onChange={(e) => setCompareIncludeClear(e.target.checked)}
+                                                        style={{
+                                                            width: "14px",
+                                                            height: "14px",
+                                                            accentColor: "var(--color-cyan)",
+                                                            cursor: "pointer",
+                                                        }}
+                                                     />
+                                                     클리어를 성과로 인정
+                                                </label>
+                                                <button
+                                                    className="btn btn-outline btn-sm"
+                                                    onClick={() => setIsCompareFilterExpanded(!isCompareFilterExpanded)}
+                                                    style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.85rem", padding: "0.25rem 0.5rem" }}
+                                                >
+                                                    <Filter size={12} /> {isCompareFilterExpanded ? "필터 접기" : "필터 펼치기"}
+                                                </button>
+                                            </div>
                                         </h3>
 
                                         {/* FILTER PANEL FOR DETAILED COMPARISON */}
@@ -5967,7 +6243,7 @@ function App() {
                                                     const tierMap = {
                                                         full_perfect: 3,
                                                         full_combo: 2,
-                                                        clear: 1,
+                                                        clear: compareIncludeClear ? 1 : 0,
                                                         none: 0,
                                                     };
                                                     const tierA = tierMap[statA] || 0;
@@ -6288,14 +6564,46 @@ function App() {
                                     </div>
                                 )}
 
+                                {/* Password change section */}
+                                <div
+                                    style={{
+                                        marginTop: "1.25rem",
+                                        borderTop: "1px solid var(--border-color)",
+                                        paddingTop: "1.25rem"
+                                    }}
+                                >
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline"
+                                        style={{
+                                            width: "100%",
+                                            padding: "0.75rem",
+                                            borderColor: "var(--color-cyan)",
+                                            color: "var(--color-cyan)",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            gap: "0.5rem"
+                                        }}
+                                        onClick={() => {
+                                            setChangeCurrentPassword("");
+                                            setChangeNewPassword("");
+                                            setChangeConfirmPassword("");
+                                            setChangePasswordMessage("");
+                                            setShowChangePasswordModal(true);
+                                        }}
+                                    >
+                                        <Lock size={16} /> 비밀번호 변경
+                                    </button>
+                                </div>
+
                                 {/* Logout Area */}
                                 <div
                                     style={{
                                         display: "flex",
                                         gap: "1rem",
-                                        marginTop: "1rem",
-                                        borderTop: "1px solid var(--border-color)",
-                                        paddingTop: "1.5rem",
+                                        marginTop: "0.75rem",
+                                        paddingTop: "0",
                                     }}
                                 >
                                     <button
@@ -6310,6 +6618,116 @@ function App() {
                                     >
                                         <LogOut size={16} /> 로그아웃
                                     </button>
+                                </div>
+                            </div>
+                        )}
+                    </section>
+                )}
+
+                {/* ======================================================== */}
+                {/* ADMIN TAB */}
+                {/* ======================================================== */}
+                {activeTab === "admin" && currentUser && currentUser.username.toLowerCase() === "admin" && (
+                    <section className="glass-panel" style={{ padding: "2.5rem" }}>
+                        <div className="section-title-bar" style={{ marginBottom: "2rem" }}>
+                            <h2 className="section-title">
+                                <Users size={22} style={{ color: "var(--color-pink)", marginRight: "0.5rem" }} /> 회원 관리
+                            </h2>
+                            <button className="btn btn-outline btn-sm" onClick={fetchAdminUsers}>
+                                새로고침
+                            </button>
+                        </div>
+
+                        {adminLoading ? (
+                            <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+                                회원 데이터를 로딩하는 중입니다...
+                            </div>
+                        ) : adminError ? (
+                            <div style={{ textAlign: "center", padding: "3rem" }}>
+                                <p style={{ color: "var(--color-danger)", marginBottom: "1rem" }}>{adminError}</p>
+                                <button className="btn btn-outline" onClick={fetchAdminUsers}>다시 시도</button>
+                            </div>
+                        ) : (
+                            <div className="record-list-container" style={{ marginTop: "1rem" }}>
+                                <div style={{ overflowX: "auto" }}>
+                                    <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: "1rem" }}>
+                                                <th style={{ padding: "1rem 0.5rem", color: "var(--text-secondary)", fontWeight: "600" }}>#</th>
+                                                <th style={{ padding: "1rem 0.5rem", color: "var(--text-secondary)", fontWeight: "600" }}>아이디</th>
+                                                <th style={{ padding: "1rem 0.5rem", color: "var(--text-secondary)", fontWeight: "600" }}>닉네임</th>
+                                                <th style={{ padding: "1rem 0.5rem", color: "var(--text-secondary)", fontWeight: "600" }}>가입 일자</th>
+                                                <th style={{ padding: "1rem 0.5rem", color: "var(--text-secondary)", fontWeight: "600", textAlign: "center" }}>관리</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {adminUsers.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="5" style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>
+                                                        가입된 일반 회원이 없습니다.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                adminUsers.map((user, idx) => {
+                                                    const formattedDate = user.created_at
+                                                        ? new Date(user.created_at).toLocaleString("ko-KR", {
+                                                              year: "numeric",
+                                                              month: "2-digit",
+                                                              day: "2-digit",
+                                                              hour: "2-digit",
+                                                              minute: "2-digit",
+                                                          })
+                                                        : "-";
+                                                    const isAdmin = user.username.toLowerCase() === "admin";
+
+                                                    return (
+                                                        <tr key={user.username} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                                                            <td style={{ padding: "0.75rem 0.5rem" }}>{idx + 1}</td>
+                                                            <td style={{ padding: "0.75rem 0.5rem", fontWeight: "600" }}>{user.username}</td>
+                                                            <td style={{ padding: "0.75rem 0.5rem" }}>{user.nickname}</td>
+                                                            <td style={{ padding: "0.75rem 0.5rem", color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                                                                {formattedDate}
+                                                            </td>
+                                                            <td style={{ padding: "0.75rem 0.5rem", textAlign: "center" }}>
+                                                                {isAdmin ? (
+                                                                    <span style={{ fontSize: "0.85rem", color: "var(--color-pink)", fontWeight: "700" }}>
+                                                                        최고 관리자
+                                                                    </span>
+                                                                ) : (
+                                                                    <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
+                                                                        <button
+                                                                            className="btn btn-outline btn-sm"
+                                                                            style={{
+                                                                                borderColor: "rgba(139, 92, 246, 0.4)",
+                                                                                color: "var(--color-purple)",
+                                                                                padding: "0.2rem 0.5rem",
+                                                                                fontSize: "0.8rem",
+                                                                            }}
+                                                                            onClick={() => resetAdminUserPassword(user.username, user.nickname)}
+                                                                        >
+                                                                            비번 초기화
+                                                                        </button>
+                                                                        <button
+                                                                            className="btn btn-outline btn-sm"
+                                                                            style={{
+                                                                                borderColor: "rgba(239, 68, 68, 0.4)",
+                                                                                color: "var(--color-danger)",
+                                                                                padding: "0.2rem 0.5rem",
+                                                                                fontSize: "0.8rem",
+                                                                            }}
+                                                                            onClick={() => deleteAdminUser(user.username, user.nickname)}
+                                                                        >
+                                                                            회원 삭제
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         )}
@@ -6742,12 +7160,6 @@ function App() {
                     </section>
                 )}
             </main>
-
-            <footer className="app-footer">
-                <div className="container">
-                    <p>© 2026 PJSK Sekai Score Analyzer. All rights reserved.</p>
-                </div>
-            </footer>
         </div>
     );
 }

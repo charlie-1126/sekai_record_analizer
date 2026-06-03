@@ -301,6 +301,130 @@ app.get('/api/auth/me', async (req, res) => {
   }
 });
 
+// --- Admin APIs ---
+const adminAuth = async (req, res, next) => {
+  let token = req.headers.authorization;
+  if (token && token.startsWith('Bearer ')) {
+    token = token.slice(7);
+  } else {
+    token = req.query.token;
+  }
+
+  if (!token) {
+    return res.status(401).json({ error: '인증 토큰이 없습니다.' });
+  }
+
+  try {
+    const user = await dbQuery.get('SELECT * FROM users WHERE token = ?', [token]);
+    if (!user) {
+      return res.status(401).json({ error: '유효하지 않은 토큰입니다.' });
+    }
+
+    if (user.username.toLowerCase() !== 'admin') {
+      return res.status(403).json({ error: '관리자 권한이 없습니다.' });
+    }
+
+    req.adminUser = user;
+    next();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '서버 에러가 발생했습니다.' });
+  }
+};
+
+app.get('/api/admin/users', adminAuth, async (req, res) => {
+  try {
+    const users = await dbQuery.all('SELECT username, nickname, created_at FROM users');
+    res.json({ users });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '회원 목록을 가져오지 못했습니다.' });
+  }
+});
+
+app.delete('/api/admin/users/:username', adminAuth, async (req, res) => {
+  const targetUsername = req.params.username;
+
+  if (targetUsername.toLowerCase() === 'admin') {
+    return res.status(400).json({ error: '관리자 자신은 삭제할 수 없습니다.' });
+  }
+
+  try {
+    const result = await dbQuery.run('DELETE FROM users WHERE LOWER(username) = LOWER(?)', [targetUsername]);
+    if (result.changes === 0) {
+      return res.status(404).json({ error: '존재하지 않는 회원입니다.' });
+    }
+    res.json({ success: true, message: '회원이 정상적으로 삭제되었습니다.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '회원 삭제 중 에러가 발생했습니다.' });
+  }
+});
+
+// Admin reset password API
+app.post('/api/admin/users/:username/reset-password', adminAuth, async (req, res) => {
+  const targetUsername = req.params.username;
+
+  if (targetUsername.toLowerCase() === 'admin') {
+    return res.status(400).json({ error: '최고 관리자의 비밀번호는 초기화할 수 없습니다.' });
+  }
+
+  try {
+    const { salt, hash } = hashPassword('password');
+    const result = await dbQuery.run(
+      'UPDATE users SET password_salt = ?, password_hash = ? WHERE LOWER(username) = LOWER(?)',
+      [salt, hash, targetUsername]
+    );
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: '존재하지 않는 회원입니다.' });
+    }
+
+    res.json({ success: true, message: '비밀번호가 "password"로 초기화되었습니다.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '비밀번호 초기화 중 에러가 발생했습니다.' });
+  }
+});
+
+// User change password API
+app.post('/api/auth/change-password', async (req, res) => {
+  let token = req.headers.authorization;
+  if (token && token.startsWith('Bearer ')) {
+    token = token.slice(7);
+  } else {
+    token = req.query.token;
+  }
+
+  if (!token) {
+    return res.status(401).json({ error: '인증 토큰이 없습니다.' });
+  }
+
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: '현재 비밀번호와 새 비밀번호를 모두 입력해주세요.' });
+  }
+
+  try {
+    const user = await dbQuery.get('SELECT * FROM users WHERE token = ?', [token]);
+    if (!user) {
+      return res.status(401).json({ error: '유효하지 않은 토큰입니다.' });
+    }
+
+    if (!verifyPassword(currentPassword, user.password_salt, user.password_hash)) {
+      return res.status(400).json({ error: '현재 비밀번호가 일치하지 않습니다.' });
+    }
+
+    const { salt, hash } = hashPassword(newPassword);
+    await dbQuery.run('UPDATE users SET password_salt = ?, password_hash = ? WHERE token = ?', [salt, hash, token]);
+
+    res.json({ success: true, message: '비밀번호가 정상적으로 변경되었습니다.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '비밀번호 변경 중 에러가 발생했습니다.' });
+  }
+});
+
 // --- Dynamic Config Parsing ---
 let CONFIG = {
   songsApiUrl: 'https://api.rilaksekai.com/api/songs',
