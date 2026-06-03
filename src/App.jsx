@@ -120,6 +120,13 @@ function App() {
     const [compareSortBy, setCompareSortBy] = useState("level"); // "level", "gap", "title", "ratingA", "ratingB"
     const [compareSortOrder, setCompareSortOrder] = useState("desc"); // "asc", "desc"
 
+    // --- Collapsible Filter States ---
+    const [isRecordFilterExpanded, setIsRecordFilterExpanded] = useState(true);
+    const [isConstFilterExpanded, setIsConstFilterExpanded] = useState(true);
+    const [isTourFilterExpanded, setIsTourFilterExpanded] = useState(true);
+    const [isCompareFilterExpanded, setIsCompareFilterExpanded] = useState(true);
+    const [isDistFilterExpanded, setIsDistFilterExpanded] = useState(true);
+
     // --- Record Table States ---
     const [recordSearch, setRecordSearch] = useState("");
     const [recordDiffFilters, setRecordDiffFilters] = useState([
@@ -738,7 +745,8 @@ function App() {
             <div style={{ position: "relative", width: "100%", overflow: "visible", marginBottom: "1rem" }}>
                 {renderGraphControls()}
 
-                <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", overflow: "visible" }}>
+                <div className="chart-scroll-container trend-chart-container" style={{ position: "relative" }}>
+                    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", overflow: "visible" }}>
                     <defs>
                         <linearGradient id="totalLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                             <stop offset="0%" stopColor="#fbbf24" />
@@ -1013,6 +1021,7 @@ function App() {
                         </div>
                     </div>
                 )}
+                </div>
             </div>
         );
     };
@@ -2806,12 +2815,6 @@ function App() {
                             </button>
                             <div className="nav-dropdown-menu">
                                 <button
-                                    className={`nav-dropdown-item ${activeTab === "distributions" ? "active" : ""}`}
-                                    onClick={() => setActiveTab("distributions")}
-                                >
-                                    <BarChart3 size={14} /> 분포
-                                </button>
-                                <button
                                     className={`nav-dropdown-item ${activeTab === "tour" ? "active" : ""}`}
                                     onClick={() => setActiveTab("tour")}
                                 >
@@ -2831,6 +2834,12 @@ function App() {
                                     }}
                                 >
                                     <Users size={14} /> 기록 비교
+                                </button>
+                                <button
+                                    className={`nav-dropdown-item ${activeTab === "distributions" ? "active" : ""}`}
+                                    onClick={() => setActiveTab("distributions")}
+                                >
+                                    <BarChart3 size={14} /> 분포
                                 </button>
                             </div>
                         </div>
@@ -3023,15 +3032,6 @@ function App() {
                                 </button>
                                 <div className={`drawer-accordion-content ${openMobileAccordions.tools ? "open" : ""}`}>
                                     <button
-                                        className={`drawer-sub-item ${activeTab === "distributions" ? "active" : ""}`}
-                                        onClick={() => {
-                                            setActiveTab("distributions");
-                                            setIsMobileMenuOpen(false);
-                                        }}
-                                    >
-                                        분포
-                                    </button>
-                                    <button
                                         className={`drawer-sub-item ${activeTab === "tour" ? "active" : ""}`}
                                         onClick={() => {
                                             setActiveTab("tour");
@@ -3058,6 +3058,15 @@ function App() {
                                         }}
                                     >
                                         기록 비교
+                                    </button>
+                                    <button
+                                        className={`drawer-sub-item ${activeTab === "distributions" ? "active" : ""}`}
+                                        onClick={() => {
+                                            setActiveTab("distributions");
+                                            setIsMobileMenuOpen(false);
+                                        }}
+                                    >
+                                        분포
                                     </button>
                                 </div>
                             </div>
@@ -3711,15 +3720,23 @@ function App() {
                 {activeTab === "records" && (
                     <section className="glass-panel" style={{ padding: "2rem" }}>
                         <div className="section-title-bar">
-                            <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
                                 <h2 className="section-title">
                                     <ClipboardList size={22} style={{ color: "var(--color-cyan)" }} /> 기록
                                 </h2>
+                                <button
+                                    className="btn btn-outline btn-sm"
+                                    onClick={() => setIsRecordFilterExpanded(!isRecordFilterExpanded)}
+                                    style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.85rem", padding: "0.35rem 0.6rem" }}
+                                >
+                                    <Filter size={14} /> {isRecordFilterExpanded ? "필터 접기" : "필터 펼치기"}
+                                </button>
                             </div>
                         </div>
 
                         {/* EXPANDED FILTER & SORT SECTION */}
-                        <div className="table-filters-expanded">
+                        {isRecordFilterExpanded && (
+                            <div className="table-filters-expanded">
                             {/* Row 1: Search, Constants, Levels & Sorting */}
                             <div className="filters-row records-filters-grid">
                                 <div className="filter-group">
@@ -3919,6 +3936,7 @@ function App() {
                                 </div>
                             </div>
                         </div>
+                        )}
 
                         {/* RECORD DATA LIST CONTAINER */}
                         <div className="record-list-container" style={{ marginTop: "1.5rem" }}>
@@ -4069,15 +4087,23 @@ function App() {
                 {activeTab === "constants" && (
                     <section className="glass-panel" style={{ padding: "2rem" }}>
                         <div className="section-title-bar">
-                            <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
                                 <h2 className="section-title">
                                     <Layers size={22} style={{ color: "var(--color-cyan)" }} /> 상수표
                                 </h2>
+                                <button
+                                    className="btn btn-outline btn-sm"
+                                    onClick={() => setIsConstFilterExpanded(!isConstFilterExpanded)}
+                                    style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.85rem", padding: "0.35rem 0.6rem" }}
+                                >
+                                    <Filter size={14} /> {isConstFilterExpanded ? "필터 접기" : "필터 펼치기"}
+                                </button>
                             </div>
                         </div>
 
                         {/* EXPANDED FILTER SECTION (체크박스 및 입력창 개편) */}
-                        <div className="table-filters-expanded">
+                        {isConstFilterExpanded && (
+                            <div className="table-filters-expanded">
                             {/* Row 1: Search, Constants & Levels inputs */}
                             <div className="filters-row constants-filters-grid">
                                 <div className="filter-group">
@@ -4241,6 +4267,7 @@ function App() {
                                 </div>
                             </div>
                         </div>
+                        )}
 
                         {/* CONSTANT SECTION GROUP GRID (상수별 바둑판 격자 렌더링) */}
                         <div className="constant-group-container">
@@ -4331,14 +4358,25 @@ function App() {
                         <div className="tour-layout">
                             <aside className="glass-panel tour-selection">
                                 <h3
+                                    onClick={() => setIsTourFilterExpanded(!isTourFilterExpanded)}
                                     style={{
                                         fontSize: "1rem",
                                         borderBottom: "1px solid var(--border-color)",
                                         paddingBottom: "0.5rem",
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        cursor: "pointer",
                                     }}
                                 >
-                                    순회 타겟
+                                    <span>순회 타겟</span>
+                                    <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: "500" }}>
+                                        {isTourFilterExpanded ? "접기" : "펼치기"}
+                                    </span>
                                 </h3>
+
+                                {isTourFilterExpanded && (
+                                    <>
 
                                 <div className="filter-group">
                                     <label className="filter-label">난이도</label>
@@ -4503,6 +4541,8 @@ function App() {
                                         </span>
                                     </div>
                                 </div>
+                                </>
+                                )}
                             </aside>
 
                             <div className="tour-lists">
@@ -5447,7 +5487,7 @@ function App() {
                                                         fontSize: "0.9rem",
                                                     }}
                                                 >
-                                                    <span>● ALL PERFECT (AP)</span>
+                                                    <span>● AP</span>
                                                     <span
                                                         style={{
                                                             color: "var(--color-ap)",
@@ -5494,7 +5534,7 @@ function App() {
                                                         fontSize: "0.9rem",
                                                     }}
                                                 >
-                                                    <span>● FULL COMBO (FC)</span>
+                                                    <span>● FC</span>
                                                     <span
                                                         style={{
                                                             color: "var(--color-fc)",
@@ -5541,7 +5581,7 @@ function App() {
                                                         fontSize: "0.9rem",
                                                     }}
                                                 >
-                                                    <span>● CLEAR (C)</span>
+                                                    <span>● C</span>
                                                     <span
                                                         style={{
                                                             color: "var(--color-clear)",
@@ -5592,14 +5632,25 @@ function App() {
                                                 marginBottom: "1.25rem",
                                                 display: "flex",
                                                 alignItems: "center",
+                                                justifyContent: "space-between",
                                                 gap: "0.5rem",
                                             }}
                                         >
-                                            <Sparkles size={18} style={{ color: "var(--color-cyan)" }} /> 상세 비교
+                                            <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                                <Sparkles size={18} style={{ color: "var(--color-cyan)" }} /> 상세 비교
+                                            </span>
+                                            <button
+                                                className="btn btn-outline btn-sm"
+                                                onClick={() => setIsCompareFilterExpanded(!isCompareFilterExpanded)}
+                                                style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.85rem", padding: "0.25rem 0.5rem" }}
+                                            >
+                                                <Filter size={12} /> {isCompareFilterExpanded ? "필터 접기" : "필터 펼치기"}
+                                            </button>
                                         </h3>
 
                                         {/* FILTER PANEL FOR DETAILED COMPARISON */}
-                                        <div
+                                        {isCompareFilterExpanded && (
+                                            <div
                                             className="glass-panel"
                                             style={{
                                                 padding: "1rem",
@@ -5762,6 +5813,7 @@ function App() {
                                                 </div>
                                             </div>
                                         </div>
+                                        )}
 
                                         {filteredCompareList.length === 0 ? (
                                             <div
@@ -6090,7 +6142,7 @@ function App() {
                                             padding: "0.75rem",
                                         }}
                                     >
-                                        곡 정보 강제 동기화 (Constants 갱신)
+                                        곡 정보 동기화
                                     </button>
                                 </div>
 
@@ -6147,10 +6199,17 @@ function App() {
                 {activeTab === "distributions" && (
                     <section className="glass-panel" style={{ padding: "2rem" }}>
                         <div className="section-title-bar">
-                            <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
                                 <h2 className="section-title">
                                     <BarChart3 size={22} style={{ color: "var(--color-cyan)" }} /> 분포
                                 </h2>
+                                <button
+                                    className="btn btn-outline btn-sm"
+                                    onClick={() => setIsDistFilterExpanded(!isDistFilterExpanded)}
+                                    style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.85rem", padding: "0.35rem 0.6rem" }}
+                                >
+                                    <Filter size={14} /> {isDistFilterExpanded ? "필터 접기" : "필터 펼치기"}
+                                </button>
                             </div>
                         </div>
 
@@ -6183,7 +6242,8 @@ function App() {
                         </div>
 
                         {/* DETAILED FILTER PANELS */}
-                        <div className="table-filters-expanded" style={{ marginBottom: "2rem" }}>
+                        {isDistFilterExpanded && (
+                            <div className="table-filters-expanded" style={{ marginBottom: "2rem" }}>
                             {/* Row 1: Level range, Constant range, Display type */}
                             <div className="filters-row distributions-filters-grid">
                                 <div className="filter-group">
@@ -6294,6 +6354,7 @@ function App() {
                                 </div>
                             </div>
                         </div>
+                        )}
 
                         {/* STATS OVERVIEW CARDS */}
                         {statsOverview.total > 0 ? (
@@ -6511,7 +6572,7 @@ function App() {
                                             background: "var(--color-ap)",
                                         }}
                                     ></span>
-                                    ALL PERFECT (AP)
+                                    AP
                                 </span>
                                 <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                     <span
@@ -6522,7 +6583,7 @@ function App() {
                                             background: "var(--color-fc)",
                                         }}
                                     ></span>
-                                    FULL COMBO (FC)
+                                    FC
                                 </span>
                                 <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                     <span
@@ -6533,7 +6594,7 @@ function App() {
                                             background: "var(--color-clear)",
                                         }}
                                     ></span>
-                                    CLEAR (C)
+                                    C
                                 </span>
                                 <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                     <span
@@ -6544,7 +6605,7 @@ function App() {
                                             background: "rgba(255, 255, 255, 0.08)",
                                         }}
                                     ></span>
-                                    NC / 미클리어
+                                    NC
                                 </span>
                             </div>
                         </div>
@@ -6618,13 +6679,14 @@ const DistributionChart = ({ data, displayType, distTab }) => {
 
     return (
         <div style={{ position: "relative", width: "100%" }}>
-            <svg
-                ref={svgRef}
-                viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                width="100%"
-                height="100%"
-                style={{ overflow: "visible" }}
-            >
+            <div className="chart-scroll-container dist-chart-container" style={{ position: "relative" }}>
+                <svg
+                    ref={svgRef}
+                    viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                    width="100%"
+                    height="100%"
+                    style={{ overflow: "visible" }}
+                >
                 <defs>
                     <linearGradient id="apGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#38bdf8" />
@@ -6862,7 +6924,7 @@ const DistributionChart = ({ data, displayType, distTab }) => {
                             marginBottom: "0.25rem",
                         }}
                     >
-                        <span>● AP (ALL PERFECT)</span>
+                        <span>● AP</span>
                         <span>
                             {hovered.item.ap}개 (
                             {hovered.item.total > 0 ? Math.round((hovered.item.ap / hovered.item.total) * 100) : 0}%)
@@ -6877,7 +6939,7 @@ const DistributionChart = ({ data, displayType, distTab }) => {
                             marginBottom: "0.25rem",
                         }}
                     >
-                        <span>● FC (FULL COMBO)</span>
+                        <span>● FC</span>
                         <span>
                             {hovered.item.fc}개 (
                             {hovered.item.total > 0 ? Math.round((hovered.item.fc / hovered.item.total) * 100) : 0}%)
@@ -6892,7 +6954,7 @@ const DistributionChart = ({ data, displayType, distTab }) => {
                             marginBottom: "0.25rem",
                         }}
                     >
-                        <span>● CLEAR (C)</span>
+                        <span>● C</span>
                         <span>
                             {hovered.item.clear}개 (
                             {hovered.item.total > 0 ? Math.round((hovered.item.clear / hovered.item.total) * 100) : 0}%)
@@ -6906,7 +6968,7 @@ const DistributionChart = ({ data, displayType, distTab }) => {
                             color: "var(--text-muted)",
                         }}
                     >
-                        <span>● NC / 미클리어</span>
+                        <span>● NC</span>
                         <span>
                             {hovered.item.unplayed}개 (
                             {hovered.item.total > 0
@@ -6917,6 +6979,7 @@ const DistributionChart = ({ data, displayType, distTab }) => {
                     </div>
                 </div>
             )}
+            </div>
         </div>
     );
 };

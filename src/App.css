@@ -252,8 +252,8 @@
 
 .b39-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+    gap: 1rem;
     max-height: calc(100vh - 350px);
     min-height: 500px;
     overflow-y: auto;
@@ -263,16 +263,16 @@
 
 @media (max-width: 900px) {
     .b39-list {
-        grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-        gap: 1.25rem;
+        grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+        gap: 0.75rem;
     }
 }
 
 @media (max-width: 480px) {
     .b39-list {
-        grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
-        gap: 0.85rem;
-        padding: 0.25rem;
+        grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+        gap: 0.5rem;
+        padding: 0.15rem;
     }
 }
 
@@ -324,15 +324,15 @@
 /* Rank Badge absolute styling */
 .b39-rank {
     position: absolute;
-    top: 0.75rem;
-    left: 0.75rem;
+    top: 0.5rem;
+    left: 0.5rem;
     z-index: 10;
     background: rgba(6, 9, 19, 0.8);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    padding: 0.25rem 0.75rem;
+    padding: 0.15rem 0.5rem;
     border-radius: 30px;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     font-weight: 800;
     color: var(--color-cyan);
     border: 1px solid rgba(0, 242, 254, 0.35);
@@ -372,14 +372,14 @@
 .b39-card-body {
     display: flex;
     flex-direction: column;
-    padding: 1rem;
-    gap: 0.6rem;
+    padding: 0.75rem;
+    gap: 0.4rem;
     flex-grow: 1;
 }
 
 .b39-title {
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
@@ -391,22 +391,22 @@
 .b39-meta-row {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
     flex-wrap: wrap;
 }
 
 .b39-meta-row .diff-badge {
-    font-size: 0.7rem;
-    padding: 0.15rem 0.45rem;
-    border-radius: 6px;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
     font-weight: 700;
     text-transform: uppercase;
 }
 
 .b39-meta-row .status-badge {
-    font-size: 0.7rem;
-    padding: 0.15rem 0.45rem;
-    border-radius: 6px;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
     font-weight: 800;
 }
 
@@ -415,24 +415,43 @@
     justify-content: space-between;
     align-items: center;
     margin-top: auto; /* Push to the bottom */
-    padding-top: 0.5rem;
+    padding-top: 0.4rem;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .b39-constant {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
     font-weight: 500;
 }
 
 .b39-rating-value {
-    font-size: 1.15rem;
+    font-size: 1rem;
     font-weight: 800;
     color: var(--color-cyan);
 }
 
 .b39-item.append-item .b39-rating-value {
     color: var(--color-append);
+}
+
+/* Mobile Scrollable Chart Wrapper */
+.chart-scroll-container {
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .chart-scroll-container {
+        overflow-x: auto;
+        padding-bottom: 0.75rem;
+        -webkit-overflow-scrolling: touch;
+    }
+    .trend-chart-container svg {
+        min-width: 550px;
+    }
+    .dist-chart-container svg {
+        min-width: 850px;
+    }
 }
 
 /* Constant Table Styling */
