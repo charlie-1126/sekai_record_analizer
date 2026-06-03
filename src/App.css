@@ -228,6 +228,7 @@
     display: flex;
     flex-direction: column;
     gap: 2rem;
+    padding: 2rem;
 }
 
 .section-title-bar {
@@ -1903,8 +1904,30 @@ input[type="number"] {
     }
     .distribution-summary-cards .glass-panel {
         padding: 0.75rem 0.5rem !important;
+        gap: 0.2rem !important;
         align-items: center !important;
         text-align: center !important;
+    }
+
+    /* Dashboard Responsive Layout & Overflows */
+    .dashboard-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1.25rem !important;
+        width: 100% !important;
+    }
+    .main-content {
+        padding: 1rem !important;
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+    .stats-sidebar {
+        gap: 1rem !important;
+        width: 100% !important;
+    }
+    .chart-scroll-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 }
 
@@ -1923,4 +1946,18 @@ input[type="number"] {
     .rating-value {
         font-size: 2.6rem !important;
     }
+}
+
+/* General & PC layout for difficulty buttons in detailed comparison */
+.compare-diff-group {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.4rem !important;
+    width: 100% !important;
+    margin-top: 0.25rem;
+}
+.compare-diff-group button {
+    width: 100% !important;
+    text-align: center !important;
+    padding: 0.35rem 0.25rem !important;
 }

@@ -979,48 +979,75 @@ function App() {
                 </svg>
 
                 {/* Graph tooltip */}
-                {hoveredPoint && (
-                    <div
-                        style={{
-                            position: "absolute",
-                            left: `${(hoveredPoint.x / width) * 100}%`,
-                            top: `${((showTotalLine ? hoveredPoint.yTotal : showNormalLine ? hoveredPoint.yNormal : hoveredPoint.yAppend) / height) * 100 - 15}%`,
-                            transform: "translate(-50%, -100%)",
-                            background: "rgba(17, 24, 39, 0.95)",
-                            border: "1px solid var(--border-color)",
-                            padding: "0.5rem 0.75rem",
-                            borderRadius: "8px",
-                            fontSize: "0.75rem",
-                            color: "var(--text-primary)",
-                            boxShadow: "0 8px 16px rgba(0, 0, 0, 0.4)",
-                            pointerEvents: "none",
-                            zIndex: 100,
-                            whiteSpace: "nowrap",
-                            textAlign: "center",
-                        }}
-                    >
-                        <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginBottom: "0.2rem" }}>
-                            {hoveredPoint.date}
+                {hoveredPoint && (() => {
+                    const xPercent = (hoveredPoint.x / width) * 100;
+                    let tooltipLeftPercent = xPercent;
+                    let tooltipTransformX = "-50%";
+
+                    if (xPercent < 15) {
+                        tooltipLeftPercent = 5;
+                        tooltipTransformX = "0%";
+                    } else if (xPercent > 85) {
+                        tooltipLeftPercent = 95;
+                        tooltipTransformX = "-100%";
+                    }
+
+                    const activeY = showTotalLine ? hoveredPoint.yTotal : showNormalLine ? hoveredPoint.yNormal : hoveredPoint.yAppend;
+                    const yPercent = (activeY / height) * 100;
+                    const isUpperHalf = yPercent < 50;
+
+                    let tooltipTopPercent = yPercent;
+                    let tooltipTransformY = "-100%";
+                    let yOffsetPercent = -8;
+
+                    if (isUpperHalf) {
+                        tooltipTransformY = "0%";
+                        yOffsetPercent = 8;
+                    }
+
+                    return (
+                        <div
+                            style={{
+                                position: "absolute",
+                                left: `${tooltipLeftPercent}%`,
+                                top: `${tooltipTopPercent + yOffsetPercent}%`,
+                                transform: `translate(${tooltipTransformX}, ${tooltipTransformY})`,
+                                background: "rgba(17, 24, 39, 0.95)",
+                                border: "1px solid var(--border-color)",
+                                padding: "0.5rem 0.75rem",
+                                borderRadius: "8px",
+                                fontSize: "0.75rem",
+                                color: "var(--text-primary)",
+                                boxShadow: "0 8px 16px rgba(0, 0, 0, 0.4)",
+                                pointerEvents: "none",
+                                zIndex: 100,
+                                whiteSpace: "nowrap",
+                                textAlign: "center",
+                            }}
+                        >
+                            <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginBottom: "0.2rem" }}>
+                                {hoveredPoint.date}
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", textAlign: "left" }}>
+                                {showTotalLine && (
+                                    <div style={{ fontWeight: "800", color: "#fbbf24" }}>
+                                        Total R: {Math.round(hoveredPoint.total)}
+                                    </div>
+                                )}
+                                {showNormalLine && (
+                                    <div style={{ fontSize: "0.7rem", color: "#22d3ee", fontWeight: "700" }}>
+                                        Player R: {Math.round(hoveredPoint.normal)}
+                                    </div>
+                                )}
+                                {showAppendLine && (
+                                    <div style={{ fontSize: "0.7rem", color: "#f472b6", fontWeight: "700" }}>
+                                        Append R: {Math.round(hoveredPoint.append)}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", textAlign: "left" }}>
-                            {showTotalLine && (
-                                <div style={{ fontWeight: "800", color: "#fbbf24" }}>
-                                    Total R: {Math.round(hoveredPoint.total)}
-                                </div>
-                            )}
-                            {showNormalLine && (
-                                <div style={{ fontSize: "0.7rem", color: "#22d3ee", fontWeight: "700" }}>
-                                    Player R: {Math.round(hoveredPoint.normal)}
-                                </div>
-                            )}
-                            {showAppendLine && (
-                                <div style={{ fontSize: "0.7rem", color: "#f472b6", fontWeight: "700" }}>
-                                    Append R: {Math.round(hoveredPoint.append)}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
+                    );
+                })()}
                 </div>
             </div>
         );
@@ -3466,7 +3493,7 @@ function App() {
                             {/* 일반 셐포스 B39 */}
                             <div className="glass-panel profile-card" style={{ marginBottom: "0.25rem" }}>
                                 <div className="rating-title">
-                                    {currentUser ? `${currentUser.nickname}의 ` : ""}Player R
+                                    Player R
                                 </div>
                                 <div className="rating-value">{playerRating}</div>
                             </div>
@@ -3531,7 +3558,7 @@ function App() {
                         </aside>
 
                         {/* Right B39 / B15 List Panel */}
-                        <section className="glass-panel main-content" style={{ padding: "2rem" }}>
+                        <section className="glass-panel main-content">
                             {/* 레이팅 상승 추세 그래프 */}
                             <div
                                 className="glass-panel"
@@ -4310,8 +4337,10 @@ function App() {
                                                     {/* Neon Status tag directly under jacket */}
                                                     <div className={`jacket-status-overlay ${chart.statusClass}`}>
                                                         {chart.statusClass === "unplayed"
-                                                            ? "unplay"
-                                                            : chart.statusClass}
+                                                            ? "NC"
+                                                            : chart.statusClass === "clear"
+                                                              ? "C"
+                                                              : chart.statusClass.toUpperCase()}
                                                     </div>
 
                                                     {/* Hover detail tooltip */}
@@ -6453,18 +6482,21 @@ function App() {
                                     >
                                         AP
                                     </span>
-                                    <span style={{ fontSize: "1.4rem", fontWeight: "800", color: "var(--color-ap)" }}>
-                                        {statsOverview.ap}개{" "}
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", marginTop: "0.1rem" }}>
+                                        <span style={{ fontSize: "1.4rem", fontWeight: "800", color: "var(--color-ap)", lineHeight: "1" }}>
+                                            {statsOverview.ap}개
+                                        </span>
                                         <span
                                             style={{
-                                                fontSize: "0.9rem",
-                                                fontWeight: "500",
+                                                fontSize: "0.85rem",
+                                                fontWeight: "600",
                                                 color: "var(--text-muted)",
+                                                lineHeight: "1",
                                             }}
                                         >
-                                            ({Math.round((statsOverview.ap / statsOverview.total) * 100)}%)
+                                            ({statsOverview.total > 0 ? Math.round((statsOverview.ap / statsOverview.total) * 100) : 0}%)
                                         </span>
-                                    </span>
+                                    </div>
                                 </div>
                                 {/* 5. FC 수 */}
                                 <div
@@ -6486,18 +6518,21 @@ function App() {
                                     >
                                         FC
                                     </span>
-                                    <span style={{ fontSize: "1.4rem", fontWeight: "800", color: "var(--color-fc)" }}>
-                                        {statsOverview.fc}개{" "}
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", marginTop: "0.1rem" }}>
+                                        <span style={{ fontSize: "1.4rem", fontWeight: "800", color: "var(--color-fc)", lineHeight: "1" }}>
+                                            {statsOverview.fc}개
+                                        </span>
                                         <span
                                             style={{
-                                                fontSize: "0.9rem",
-                                                fontWeight: "500",
+                                                fontSize: "0.85rem",
+                                                fontWeight: "600",
                                                 color: "var(--text-muted)",
+                                                lineHeight: "1",
                                             }}
                                         >
-                                            ({Math.round((statsOverview.fc / statsOverview.total) * 100)}%)
+                                            ({statsOverview.total > 0 ? Math.round((statsOverview.fc / statsOverview.total) * 100) : 0}%)
                                         </span>
-                                    </span>
+                                    </div>
                                 </div>
                                 {/* 6. C 수 */}
                                 <div
@@ -6519,20 +6554,21 @@ function App() {
                                     >
                                         C
                                     </span>
-                                    <span
-                                        style={{ fontSize: "1.4rem", fontWeight: "800", color: "var(--color-clear)" }}
-                                    >
-                                        {statsOverview.clr}개{" "}
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", marginTop: "0.1rem" }}>
+                                        <span style={{ fontSize: "1.4rem", fontWeight: "800", color: "var(--color-clear)", lineHeight: "1" }}>
+                                            {statsOverview.clr}개
+                                        </span>
                                         <span
                                             style={{
-                                                fontSize: "0.9rem",
-                                                fontWeight: "500",
+                                                fontSize: "0.85rem",
+                                                fontWeight: "600",
                                                 color: "var(--text-muted)",
+                                                lineHeight: "1",
                                             }}
                                         >
-                                            ({Math.round((statsOverview.clr / statsOverview.total) * 100)}%)
+                                            ({statsOverview.total > 0 ? Math.round((statsOverview.clr / statsOverview.total) * 100) : 0}%)
                                         </span>
-                                    </span>
+                                    </div>
                                 </div>
                             </div>
                         ) : null}
@@ -6626,7 +6662,8 @@ export default App;
 
 const DistributionChart = ({ data, displayType, distTab }) => {
     const svgRef = useRef(null);
-    const [hovered, setHovered] = useState(null); // { x, y, item, index }
+    const containerRef = useRef(null);
+    const [hovered, setHovered] = useState(null); // { x, y, item, index, placement }
 
     if (!data || data.length === 0) {
         return (
@@ -6657,28 +6694,44 @@ const DistributionChart = ({ data, displayType, distTab }) => {
 
     // Mouse interaction helper
     const handleMouseMove = (e, item, index) => {
-        if (!svgRef.current) return;
-        const rect = svgRef.current.getBoundingClientRect();
+        if (!svgRef.current || !containerRef.current) return;
 
         // Calculate absolute position on screen
         const clientX = e.clientX;
         const clientY = e.clientY;
 
-        // Calculate position relative to container
-        const parentRect = svgRef.current.parentElement.getBoundingClientRect();
-        const tooltipX = clientX - parentRect.left + 15;
-        const tooltipY = clientY - parentRect.top - 10;
+        // Calculate position relative to outermost container
+        const containerRect = containerRef.current.getBoundingClientRect();
+        
+        const tooltipWidth = 220;
+        const tooltipHeight = 185;
+        
+        let placement = "top";
+        let tooltipX = clientX - containerRect.left + 15;
+        
+        // Prevent overflowing screen width
+        if (clientX + tooltipWidth + 20 > window.innerWidth) {
+            tooltipX = clientX - containerRect.left - tooltipWidth - 15;
+        }
+
+        let tooltipY = clientY - containerRect.top - 10;
+        // Prevent overflowing top screen height
+        if (clientY - tooltipHeight - 10 < 0) {
+            tooltipY = clientY - containerRect.top + 15;
+            placement = "bottom";
+        }
 
         setHovered({
             x: tooltipX,
             y: tooltipY,
+            placement,
             item,
             index,
         });
     };
 
     return (
-        <div style={{ position: "relative", width: "100%" }}>
+        <div ref={containerRef} style={{ position: "relative", width: "100%" }}>
             <div className="chart-scroll-container dist-chart-container" style={{ position: "relative" }}>
                 <svg
                     ref={svgRef}
@@ -6870,6 +6923,7 @@ const DistributionChart = ({ data, displayType, distTab }) => {
                     strokeWidth="1.5"
                 />
             </svg>
+            </div>
 
             {/* TOOLTIP */}
             {hovered && (
@@ -6887,7 +6941,7 @@ const DistributionChart = ({ data, displayType, distTab }) => {
                         border: "1px solid rgba(255,255,255,0.15)",
                         background: "rgba(10, 15, 30, 0.95)",
                         borderRadius: "12px",
-                        transform: "translateY(-100%)",
+                        transform: hovered.placement === "bottom" ? "none" : "translateY(-100%)",
                         transition: "left 0.1s ease, top 0.1s ease",
                     }}
                 >
@@ -6919,67 +6973,75 @@ const DistributionChart = ({ data, displayType, distTab }) => {
                         style={{
                             display: "flex",
                             justifyContent: "space-between",
+                            alignItems: "center",
                             fontSize: "0.85rem",
                             color: "var(--color-ap)",
-                            marginBottom: "0.25rem",
+                            marginBottom: "0.3rem",
                         }}
                     >
                         <span>● AP</span>
-                        <span>
-                            {hovered.item.ap}개 (
-                            {hovered.item.total > 0 ? Math.round((hovered.item.ap / hovered.item.total) * 100) : 0}%)
-                        </span>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1.1 }}>
+                            <span style={{ fontWeight: "700" }}>{hovered.item.ap}개</span>
+                            <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>
+                                {hovered.item.total > 0 ? Math.round((hovered.item.ap / hovered.item.total) * 100) : 0}%
+                            </span>
+                        </div>
                     </div>
                     <div
                         style={{
                             display: "flex",
                             justifyContent: "space-between",
+                            alignItems: "center",
                             fontSize: "0.85rem",
                             color: "var(--color-fc)",
-                            marginBottom: "0.25rem",
+                            marginBottom: "0.3rem",
                         }}
                     >
                         <span>● FC</span>
-                        <span>
-                            {hovered.item.fc}개 (
-                            {hovered.item.total > 0 ? Math.round((hovered.item.fc / hovered.item.total) * 100) : 0}%)
-                        </span>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1.1 }}>
+                            <span style={{ fontWeight: "700" }}>{hovered.item.fc}개</span>
+                            <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>
+                                {hovered.item.total > 0 ? Math.round((hovered.item.fc / hovered.item.total) * 100) : 0}%
+                            </span>
+                        </div>
                     </div>
                     <div
                         style={{
                             display: "flex",
                             justifyContent: "space-between",
+                            alignItems: "center",
                             fontSize: "0.85rem",
                             color: "var(--color-clear)",
-                            marginBottom: "0.25rem",
+                            marginBottom: "0.3rem",
                         }}
                     >
                         <span>● C</span>
-                        <span>
-                            {hovered.item.clear}개 (
-                            {hovered.item.total > 0 ? Math.round((hovered.item.clear / hovered.item.total) * 100) : 0}%)
-                        </span>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1.1 }}>
+                            <span style={{ fontWeight: "700" }}>{hovered.item.clear}개</span>
+                            <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>
+                                {hovered.item.total > 0 ? Math.round((hovered.item.clear / hovered.item.total) * 100) : 0}%
+                            </span>
+                        </div>
                     </div>
                     <div
                         style={{
                             display: "flex",
                             justifyContent: "space-between",
+                            alignItems: "center",
                             fontSize: "0.85rem",
                             color: "var(--text-muted)",
                         }}
                     >
                         <span>● NC</span>
-                        <span>
-                            {hovered.item.unplayed}개 (
-                            {hovered.item.total > 0
-                                ? Math.round((hovered.item.unplayed / hovered.item.total) * 100)
-                                : 0}
-                            %)
-                        </span>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1.1 }}>
+                            <span style={{ fontWeight: "700" }}>{hovered.item.unplayed}개</span>
+                            <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>
+                                {hovered.item.total > 0 ? Math.round((hovered.item.unplayed / hovered.item.total) * 100) : 0}%
+                            </span>
+                        </div>
                     </div>
                 </div>
             )}
-            </div>
         </div>
     );
 };
