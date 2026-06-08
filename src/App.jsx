@@ -5369,7 +5369,9 @@ function App() {
                                                               flexDirection: "row",
                                                               gap: "0.75rem",
                                                               alignItems: "center",
+                                                              cursor: "pointer",
                                                           }}
+                                                          onClick={() => handleJacketClick(song, diff, currentStatus)}
                                                       >
                                                           <JacketImage songId={song.id} size={42} />
                                                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -5454,14 +5456,16 @@ function App() {
                                             return (
                                                 <div
                                                     key={`${song.id}-${diff}`}
-                                                    className="glass-panel tour-song-card"
+                                                    className="glass-panel tour-song-card hover-lift"
                                                     style={{
                                                         opacity: 0.6,
                                                         display: "flex",
                                                         flexDirection: "row",
                                                         gap: "0.75rem",
                                                         alignItems: "center",
+                                                        cursor: "pointer",
                                                     }}
+                                                    onClick={() => handleJacketClick(song, diff, currentStatus)}
                                                 >
                                                     <JacketImage songId={song.id} size={42} />
                                                     <div style={{ flex: 1, minWidth: 0 }}>
