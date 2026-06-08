@@ -31,6 +31,7 @@ import {
     X,
     Settings,
     Lock,
+    Trophy,
 } from "lucide-react";
 import "./App.css";
 
@@ -71,9 +72,22 @@ function App() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [openMobileAccordions, setOpenMobileAccordions] = useState({ records: false, tools: false });
 
+    // --- Auto Login State ---
+    const [autoLogin, setAutoLogin] = useState(true);
+
+    // --- Jacket Click Popup State ---
+    const [selectedJacketSong, setSelectedJacketSong] = useState(null);
+
+    // --- Sekforce Ranking States ---
+    const [rankings, setRankings] = useState([]);
+    const [isRankingsLoading, setIsRankingsLoading] = useState(false);
+    const [rankingsSearch, setRankingsSearch] = useState("");
+    const [rankingsSortBy, setRankingsSortBy] = useState("total"); // total, normal, append, ap, fc
+    const [rankingsSortOrder, setRankingsSortOrder] = useState("desc"); // desc, asc
+
     // --- Auth States ---
     const [currentUser, setCurrentUser] = useState(() => {
-        const saved = localStorage.getItem("pjsk_auth");
+        const saved = localStorage.getItem("pjsk_auth") || sessionStorage.getItem("pjsk_auth");
         return saved ? JSON.parse(saved) : null;
     });
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -208,12 +222,8 @@ function App() {
         updateScores(newScores);
     };
 
-    const handleJacketClick = (songId, diff, currentStatus) => {
-        const statusCycle = ["none", "clear", "full_combo", "full_perfect"];
-        const currentIndex = statusCycle.indexOf(currentStatus);
-        const nextIndex = (currentIndex + 1) % statusCycle.length;
-        const nextStatus = statusCycle[nextIndex];
-        handleScoreChange(songId, diff, nextStatus);
+    const handleJacketClick = (song, diff, currentStatus) => {
+        setSelectedJacketSong({ song, diff, status: currentStatus });
     };
 
     // --- Constant Table States (리뉴얼) ---
@@ -354,7 +364,11 @@ function App() {
                         rating_history: data.rating_history,
                     };
                     setCurrentUser(updatedUser);
-                    localStorage.setItem("pjsk_auth", JSON.stringify(updatedUser));
+                    if (localStorage.getItem("pjsk_auth")) {
+                        localStorage.setItem("pjsk_auth", JSON.stringify(updatedUser));
+                    } else {
+                        sessionStorage.setItem("pjsk_auth", JSON.stringify(updatedUser));
+                    }
                 }
             }
         } catch (e) {
@@ -365,7 +379,7 @@ function App() {
     // --- Auto Login Session Recovery & Initialization ---
     useEffect(() => {
         const initAuth = async () => {
-            const saved = localStorage.getItem("pjsk_auth");
+            const saved = localStorage.getItem("pjsk_auth") || sessionStorage.getItem("pjsk_auth");
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
@@ -391,6 +405,7 @@ function App() {
                             // Invalid token
                             setCurrentUser(null);
                             localStorage.removeItem("pjsk_auth");
+                            sessionStorage.removeItem("pjsk_auth");
                             localStorage.removeItem("pjsk_user_scores");
                             setScores([]);
                         }
@@ -441,6 +456,29 @@ function App() {
             setFriendsList([]);
         }
     }, [currentUser]);
+
+    useEffect(() => {
+        if (activeTab === "ranking") {
+            const fetchRankings = async () => {
+                setIsRankingsLoading(true);
+                try {
+                    const res = await fetch("/api/rankings");
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.success) {
+                            // Filter out admin user
+                            setRankings(data.rankings.filter(user => user.username.toLowerCase() !== "admin"));
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch rankings:", e);
+                } finally {
+                    setIsRankingsLoading(false);
+                }
+            };
+            fetchRankings();
+        }
+    }, [activeTab]);
 
     const updateScores = (newScores) => {
         setScores(newScores);
@@ -1287,7 +1325,11 @@ function App() {
                     rating_history: data.user.rating_history || {},
                 };
                 setCurrentUser(userObj);
-                localStorage.setItem("pjsk_auth", JSON.stringify(userObj));
+                if (autoLogin) {
+                    localStorage.setItem("pjsk_auth", JSON.stringify(userObj));
+                } else {
+                    sessionStorage.setItem("pjsk_auth", JSON.stringify(userObj));
+                }
 
                 const localRec = localStorage.getItem("pjsk_user_scores");
                 if (localRec) {
@@ -1309,6 +1351,7 @@ function App() {
         if (window.confirm("로그아웃 하시겠습니까?")) {
             setCurrentUser(null);
             localStorage.removeItem("pjsk_auth");
+            sessionStorage.removeItem("pjsk_auth");
             localStorage.removeItem("pjsk_user_scores");
             setScores([]);
         }
@@ -1889,7 +1932,9 @@ function App() {
         // 4. Compare Result Filter (win / lose / draw)
         if (compareResultFilter !== "all") {
             list = list.filter((item) => {
-                const tierMap = { full_perfect: 3, full_combo: 2, clear: compareIncludeClear ? 1 : 0, none: 0 };
+                const tierMap = compareIncludeClear
+                    ? { full_perfect: 3, full_combo: 2, clear: 1, none: 0 }
+                    : { full_perfect: 2, full_combo: 1, clear: 0, none: 0 };
                 const tierA = tierMap[item.statA] || 0;
                 const tierB = tierMap[item.statB] || 0;
                 const tierDiff = tierA - tierB;
@@ -1907,7 +1952,9 @@ function App() {
                 valA = a.level;
                 valB = b.level;
             } else if (compareSortBy === "gap") {
-                const tierMap = { full_perfect: 3, full_combo: 2, clear: compareIncludeClear ? 1 : 0, none: 0 };
+                const tierMap = compareIncludeClear
+                    ? { full_perfect: 3, full_combo: 2, clear: 1, none: 0 }
+                    : { full_perfect: 2, full_combo: 1, clear: 0, none: 0 };
                 const tierDiffA = (tierMap[a.statA] || 0) - (tierMap[a.statB] || 0);
                 const tierDiffB = (tierMap[b.statA] || 0) - (tierMap[b.statB] || 0);
 
@@ -1949,6 +1996,69 @@ function App() {
         settingsTitleLang,
         compareIncludeClear,
     ]);
+
+    const filteredCounts = useMemo(() => {
+        let apA = 0, fcA = 0, clrA = 0;
+        let apB = 0, fcB = 0, clrB = 0;
+        filteredCompareList.forEach((item) => {
+            if (item.statA === "full_perfect") apA++;
+            else if (item.statA === "full_combo") fcA++;
+            else if (item.statA === "clear") clrA++;
+
+            if (item.statB === "full_perfect") apB++;
+            else if (item.statB === "full_combo") fcB++;
+            else if (item.statB === "clear") clrB++;
+        });
+        return { apA, fcA, clrA, apB, fcB, clrB };
+    }, [filteredCompareList]);
+
+    const sortedAndFilteredRankings = useMemo(() => {
+        let list = [...rankings];
+        
+        // Sort dynamically
+        list.sort((a, b) => {
+            let valA = 0, valB = 0;
+            if (rankingsSortBy === "total") {
+                valA = a.totalRating || 0;
+                valB = b.totalRating || 0;
+            } else if (rankingsSortBy === "normal") {
+                valA = a.normalRating || 0;
+                valB = b.normalRating || 0;
+            } else if (rankingsSortBy === "append") {
+                valA = a.appendRating || 0;
+                valB = b.appendRating || 0;
+            } else if (rankingsSortBy === "ap") {
+                valA = a.apCount || 0;
+                valB = b.apCount || 0;
+            } else if (rankingsSortBy === "fc") {
+                valA = a.fcCount || 0;
+                valB = b.fcCount || 0;
+            } else if (rankingsSortBy === "clear") {
+                valA = a.clearCount || 0;
+                valB = b.clearCount || 0;
+            }
+
+            if (rankingsSortOrder === "desc") {
+                return valB - valA;
+            } else {
+                return valA - valB;
+            }
+        });
+
+        // Assign absolute rank based on sorted order
+        const rankedList = list.map((user, idx) => ({
+            ...user,
+            absoluteRank: idx + 1
+        }));
+
+        // Filter by nickname search query after sorting
+        if (rankingsSearch.trim()) {
+            const query = rankingsSearch.toLowerCase().trim();
+            return rankedList.filter((r) => r.nickname && r.nickname.toLowerCase().includes(query));
+        }
+
+        return rankedList;
+    }, [rankings, rankingsSearch, rankingsSortBy, rankingsSortOrder]);
 
     // --- Helper to calculate Ratings on the fly for imports ---
     const calculateTempRatings = (newScoresList) => {
@@ -3058,6 +3168,13 @@ function App() {
                             </div>
                         </div>
 
+                        <button
+                            className={`btn btn-outline ${activeTab === "ranking" ? "active" : ""}`}
+                            onClick={() => setActiveTab("ranking")}
+                        >
+                            <Trophy size={16} /> 랭킹
+                        </button>
+
                         {currentUser && currentUser.username.toLowerCase() === "admin" && (
                             <button
                                 className={`btn btn-outline ${activeTab === "admin" ? "active" : ""}`}
@@ -3300,6 +3417,16 @@ function App() {
                                     </button>
                                 </div>
                             </div>
+
+                            <button
+                                className={`drawer-menu-item ${activeTab === "ranking" ? "active" : ""}`}
+                                onClick={() => {
+                                    setActiveTab("ranking");
+                                    setIsMobileMenuOpen(false);
+                                }}
+                            >
+                                <Trophy size={18} /> 랭킹
+                            </button>
 
                             {currentUser && (
                                 <button
@@ -3590,6 +3717,92 @@ function App() {
                 </div>
             )}
 
+            {/* JACKET DETAILS / SCORE ADJUSTMENT MODAL */}
+            {selectedJacketSong && (
+                <div className="modal-backdrop" onClick={() => setSelectedJacketSong(null)}>
+                    <div
+                        className="glass-panel modal-content"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ maxWidth: "450px", width: "100%", padding: "2rem" }}
+                    >
+                        <div style={{ display: "flex", gap: "1.5rem", marginBottom: "1.5rem", alignItems: "center" }}>
+                            <JacketImage
+                                songId={selectedJacketSong.song.id}
+                                size={120}
+                                style={{ borderRadius: "8px", boxShadow: "0 4px 15px rgba(0,0,0,0.3)" }}
+                            />
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", minWidth: 0, flex: 1 }}>
+                                <div
+                                    style={{
+                                        fontSize: "1.15rem",
+                                        fontWeight: "700",
+                                        color: "var(--text-primary)",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap"
+                                    }}
+                                    title={getSongTitle(selectedJacketSong.song)}
+                                >
+                                    {getSongTitle(selectedJacketSong.song)}
+                                </div>
+                                <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    작곡: {selectedJacketSong.song.composer || "-"}
+                                </div>
+                                <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                                    난이도: <span className={`diff-badge diff-${selectedJacketSong.diff}`} style={{ display: "inline-block", padding: "0.1rem 0.4rem", borderRadius: "4px", fontWeight: "700", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                                        {selectedJacketSong.diff.toUpperCase()}
+                                    </span>
+                                </div>
+                                <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                                    기본 레벨: <strong>{selectedJacketSong.song.levels[selectedJacketSong.diff] || "-"}</strong>
+                                </div>
+                                <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                                    상수: <strong>{getConstant(selectedJacketSong.song, selectedJacketSong.diff, selectedJacketSong.status).toFixed(1)}</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                            <label className="filter-label" style={{ fontWeight: "700" }}>성과 설정</label>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem" }}>
+                                {[
+                                    { value: "none", label: "미플레이 (NC)", color: "var(--text-muted)", bg: "rgba(255,255,255,0.05)", border: "var(--border-color)" },
+                                    { value: "clear", label: "클리어 (C)", color: "var(--color-clear)", bg: "rgba(251, 191, 36, 0.1)", border: "rgba(251, 191, 36, 0.3)" },
+                                    { value: "full_combo", label: "풀콤보 (FC)", color: "var(--color-fc)", bg: "rgba(192, 132, 252, 0.1)", border: "rgba(192, 132, 252, 0.3)" },
+                                    { value: "full_perfect", label: "퍼펙트 (AP)", color: "var(--color-ap)", bg: "rgba(56, 189, 248, 0.1)", border: "rgba(56, 189, 248, 0.3)" }
+                                ].map((opt) => {
+                                    const isActive = selectedJacketSong.status === opt.value;
+                                    return (
+                                        <button
+                                            key={opt.value}
+                                            className="btn"
+                                            style={{
+                                                padding: "0.6rem 0.5rem",
+                                                fontSize: "0.85rem",
+                                                background: isActive ? opt.color : opt.bg,
+                                                color: isActive ? "#060913" : opt.color,
+                                                border: `1px solid ${isActive ? opt.color : opt.border}`,
+                                                fontWeight: "700",
+                                                boxShadow: isActive ? `0 0 10px ${opt.color}40` : "none",
+                                            }}
+                                            onClick={() => {
+                                                handleScoreChange(selectedJacketSong.song.id, selectedJacketSong.diff, opt.value);
+                                                setSelectedJacketSong({
+                                                    ...selectedJacketSong,
+                                                    status: opt.value
+                                                });
+                                            }}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* AUTH MODAL */}
             {showAuthModal && (
                 <div className="modal-backdrop" onClick={() => setShowAuthModal(false)}>
@@ -3658,6 +3871,29 @@ function App() {
                                     placeholder="비밀번호를 입력하세요"
                                 />
                             </div>
+
+                            {!isRegisterMode && (
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "-0.5rem", marginBottom: "0.25rem" }}>
+                                    <input
+                                        type="checkbox"
+                                        id="auto-login"
+                                        checked={autoLogin}
+                                        onChange={(e) => setAutoLogin(e.target.checked)}
+                                        style={{ cursor: "pointer", height: "16px", width: "16px" }}
+                                    />
+                                    <label
+                                        htmlFor="auto-login"
+                                        style={{
+                                            fontSize: "0.85rem",
+                                            cursor: "pointer",
+                                            color: "var(--text-secondary)",
+                                            userSelect: "none"
+                                        }}
+                                    >
+                                        자동 로그인
+                                    </label>
+                                </div>
+                            )}
 
                             {authError && (
                                 <div
@@ -4047,6 +4283,159 @@ function App() {
                             </div>
                         </section>
                     </div>
+                )}
+
+                {/* ======================================================== */}
+                {/* 1-2. SEKFORCE RANKING TAB */}
+                {/* ======================================================== */}
+                {activeTab === "ranking" && (
+                    <section className="glass-panel" style={{ padding: "2rem" }}>
+                        <div className="section-title-bar">
+                            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                                <h2 className="section-title" style={{ margin: 0 }}>
+                                    <Trophy size={22} style={{ color: "var(--color-cyan)" }} /> 랭킹
+                                </h2>
+                            </div>
+                        </div>
+
+                        {/* Search & Sort Filters */}
+                        <div className="table-filters-expanded" style={{ display: "block", marginBottom: "1.5rem" }}>
+                            <div className="filters-row constants-filters-grid" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr auto", gap: "1rem" }}>
+                                <div className="filter-group">
+                                    <label className="filter-label">닉네임 검색</label>
+                                    <div style={{ position: "relative" }}>
+                                        <Search
+                                            size={16}
+                                            style={{
+                                                position: "absolute",
+                                                left: "12px",
+                                                top: "50%",
+                                                transform: "translateY(-50%)",
+                                                color: "var(--text-muted)",
+                                            }}
+                                        />
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="검색할 유저 닉네임을 입력하세요..."
+                                            style={{ paddingLeft: "2.5rem", width: "100%" }}
+                                            value={rankingsSearch}
+                                            onChange={(e) => setRankingsSearch(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="filter-group">
+                                    <label className="filter-label">정렬 기준</label>
+                                    <select
+                                        className="form-control"
+                                        style={{ width: "100%", cursor: "pointer" }}
+                                        value={rankingsSortBy}
+                                        onChange={(e) => setRankingsSortBy(e.target.value)}
+                                    >
+                                        <option value="total">Total R</option>
+                                        <option value="normal">Player R</option>
+                                        <option value="append">Append R</option>
+                                        <option value="ap">AP 수</option>
+                                        <option value="fc">FC 수</option>
+                                        <option value="clear">C 수</option>
+                                    </select>
+                                </div>
+
+                                <div className="filter-group" style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline"
+                                        style={{ height: "42px", padding: "0 1rem" }}
+                                        onClick={() => setRankingsSortOrder(rankingsSortOrder === "desc" ? "asc" : "desc")}
+                                    >
+                                        {rankingsSortOrder === "desc" ? "내림차순 ↓" : "올림차순 ↑"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Ranking Table List */}
+                        {isRankingsLoading ? (
+                            <div style={{ textAlign: "center", padding: "3rem 0", color: "var(--text-muted)" }}>
+                                랭킹 데이터를 로딩하고 있습니다...
+                            </div>
+                        ) : sortedAndFilteredRankings.length === 0 ? (
+                            <div style={{ textAlign: "center", padding: "3rem 0", color: "var(--text-muted)" }}>
+                                조건에 부합하는 랭킹 정보가 없습니다.
+                            </div>
+                        ) : (
+                            <div style={{ overflowX: "auto" }}>
+                                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "600px", textAlign: "left" }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: "2px solid var(--border-color)", color: "var(--text-secondary)", fontSize: "0.85rem", fontWeight: "700" }}>
+                                            <th style={{ padding: "1rem" }}>순위</th>
+                                            <th style={{ padding: "1rem" }}>닉네임</th>
+                                            <th style={{ padding: "1rem", textAlign: "right" }}>Total R</th>
+                                            <th style={{ padding: "1rem", textAlign: "right" }}>Player R</th>
+                                            <th style={{ padding: "1rem", textAlign: "right" }}>Append R</th>
+                                            <th style={{ padding: "1rem", textAlign: "center" }}>AP</th>
+                                            <th style={{ padding: "1rem", textAlign: "center" }}>FC</th>
+                                            <th style={{ padding: "1rem", textAlign: "center" }}>C</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {sortedAndFilteredRankings.map((user, idx) => {
+                                            const isMe = currentUser && currentUser.username.toLowerCase() === user.username.toLowerCase();
+                                            return (
+                                                <tr
+                                                    key={user.username}
+                                                    style={{
+                                                        borderBottom: "1px solid var(--border-color)",
+                                                        background: isMe ? "rgba(0, 242, 254, 0.05)" : "transparent",
+                                                        transition: "var(--transition-smooth)",
+                                                        fontWeight: isMe ? "700" : "normal",
+                                                    }}
+                                                    className="hover-lift"
+                                                >
+                                                    <td style={{ padding: "1rem" }}>
+                                                        {user.absoluteRank === 1 ? (
+                                                            <span style={{ fontSize: "1.2rem", filter: "drop-shadow(0 0 5px rgba(255,215,0,0.5))" }}>🥇</span>
+                                                        ) : user.absoluteRank === 2 ? (
+                                                            <span style={{ fontSize: "1.2rem", filter: "drop-shadow(0 0 5px rgba(192,192,192,0.5))" }}>🥈</span>
+                                                        ) : user.absoluteRank === 3 ? (
+                                                            <span style={{ fontSize: "1.2rem", filter: "drop-shadow(0 0 5px rgba(205,127,50,0.5))" }}>🥉</span>
+                                                        ) : (
+                                                            `#${user.absoluteRank}`
+                                                        )}
+                                                    </td>
+                                                    <td style={{ padding: "1rem" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                                            {isMe && <span className="diff-badge diff-easy" style={{ fontSize: "0.65rem", padding: "0.05rem 0.25rem", borderRadius: "4px" }}>ME</span>}
+                                                            <span style={{ color: isMe ? "var(--color-cyan)" : "var(--text-primary)" }}>{user.nickname}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: "1rem", textAlign: "right", fontWeight: "800", color: "var(--text-primary)" }}>
+                                                        {Math.round(user.totalRating)}
+                                                    </td>
+                                                    <td style={{ padding: "1rem", textAlign: "right", color: "var(--color-cyan)", fontWeight: "700" }}>
+                                                        {Math.round(user.normalRating)}
+                                                    </td>
+                                                    <td style={{ padding: "1rem", textAlign: "right", color: "var(--color-append)", fontWeight: "700" }}>
+                                                        {Math.round(user.appendRating)}
+                                                    </td>
+                                                    <td style={{ padding: "1rem", textAlign: "center", color: "var(--color-ap)", fontWeight: "700" }}>
+                                                        {user.apCount}
+                                                    </td>
+                                                    <td style={{ padding: "1rem", textAlign: "center", color: "var(--color-fc)", fontWeight: "700" }}>
+                                                        {user.fcCount}
+                                                    </td>
+                                                    <td style={{ padding: "1rem", textAlign: "center", color: "var(--color-clear)", fontWeight: "700" }}>
+                                                        {user.clearCount}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </section>
                 )}
 
                 {/* ======================================================== */}
@@ -4668,7 +5057,7 @@ function App() {
                                                     key={`${chart.song.id}-${chart.diff}`}
                                                     className="jacket-chart-card"
                                                     onClick={() =>
-                                                        handleJacketClick(chart.song.id, chart.diff, chart.status)
+                                                        handleJacketClick(chart.song, chart.diff, chart.status)
                                                     }
                                                 >
                                                     {/* Jacket wrapper with difficulty border */}
@@ -5825,183 +6214,87 @@ function App() {
                                         </div>
 
                                         {/* Achievements counts comparison */}
-                                        <div className="glass-panel" style={{ padding: "1.5rem" }}>
+                                        <div className="glass-panel" style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
                                             <h4
                                                 style={{
                                                     color: "var(--text-secondary)",
-                                                    marginBottom: "1rem",
+                                                    margin: 0,
                                                     fontSize: "0.9rem",
-                                                    textAlign: "center",
+                                                    fontWeight: "700",
+                                                    borderBottom: "1px solid var(--border-color)",
+                                                    paddingBottom: "0.5rem",
+                                                    display: "flex",
+                                                    justifyContent: "space-between",
+                                                    alignItems: "center"
                                                 }}
                                             >
-                                                성과
+                                                <span>성과 개수 비교</span>
+                                                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: "500" }}>
+                                                    필터링 결과: {filteredCompareList.length}개 곡 기준
+                                                </span>
                                             </h4>
-                                            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                                                <div
-                                                    style={{
-                                                        display: "grid",
-                                                        gridTemplateColumns: "1fr 60px 60px 60px",
-                                                        gap: "0.5rem",
-                                                        fontSize: "0.85rem",
-                                                        fontWeight: "700",
-                                                        borderBottom: "1px solid var(--border-color)",
-                                                        paddingBottom: "0.5rem",
-                                                    }}
-                                                >
-                                                    <span>성과 종류</span>
-                                                    <span style={{ color: "var(--color-cyan)", textAlign: "right" }}>
-                                                        나
-                                                    </span>
-                                                    <span style={{ color: "var(--color-pink)", textAlign: "right" }}>
-                                                        상대방
-                                                    </span>
-                                                    <span
-                                                        style={{ color: "var(--text-secondary)", textAlign: "right" }}
-                                                    >
-                                                        차이
-                                                    </span>
-                                                </div>
-                                                <div
-                                                    style={{
-                                                        display: "grid",
-                                                        gridTemplateColumns: "1fr 60px 60px 60px",
-                                                        gap: "0.5rem",
-                                                        fontSize: "0.9rem",
-                                                    }}
-                                                >
-                                                    <span>● AP</span>
-                                                    <span
-                                                        style={{
-                                                            color: "var(--color-ap)",
-                                                            textAlign: "right",
-                                                            fontWeight: "700",
-                                                        }}
-                                                    >
-                                                        {compareResults.resA.ap}
-                                                    </span>
-                                                    <span
-                                                        style={{
-                                                            color: "var(--color-ap)",
-                                                            textAlign: "right",
-                                                            fontWeight: "700",
-                                                        }}
-                                                    >
-                                                        {compareResults.resB.ap}
-                                                    </span>
-                                                    {(() => {
-                                                        const diff = compareResults.resA.ap - compareResults.resB.ap;
-                                                        return (
-                                                            <span
-                                                                style={{
-                                                                    color:
-                                                                        diff > 0
-                                                                            ? "var(--color-cyan)"
-                                                                            : diff < 0
-                                                                              ? "var(--color-pink)"
-                                                                              : "var(--text-muted)",
-                                                                    textAlign: "right",
-                                                                    fontWeight: "700",
-                                                                }}
-                                                            >
-                                                                {diff > 0 ? `+${diff}` : diff}
-                                                            </span>
-                                                        );
-                                                    })()}
-                                                </div>
-                                                <div
-                                                    style={{
-                                                        display: "grid",
-                                                        gridTemplateColumns: "1fr 60px 60px 60px",
-                                                        gap: "0.5rem",
-                                                        fontSize: "0.9rem",
-                                                    }}
-                                                >
-                                                    <span>● FC</span>
-                                                    <span
-                                                        style={{
-                                                            color: "var(--color-fc)",
-                                                            textAlign: "right",
-                                                            fontWeight: "700",
-                                                        }}
-                                                    >
-                                                        {compareResults.resA.fc}
-                                                    </span>
-                                                    <span
-                                                        style={{
-                                                            color: "var(--color-fc)",
-                                                            textAlign: "right",
-                                                            fontWeight: "700",
-                                                        }}
-                                                    >
-                                                        {compareResults.resB.fc}
-                                                    </span>
-                                                    {(() => {
-                                                        const diff = compareResults.resA.fc - compareResults.resB.fc;
-                                                        return (
-                                                            <span
-                                                                style={{
-                                                                    color:
-                                                                        diff > 0
-                                                                            ? "var(--color-cyan)"
-                                                                            : diff < 0
-                                                                              ? "var(--color-pink)"
-                                                                              : "var(--text-muted)",
-                                                                    textAlign: "right",
-                                                                    fontWeight: "700",
-                                                                }}
-                                                            >
-                                                                {diff > 0 ? `+${diff}` : diff}
-                                                            </span>
-                                                        );
-                                                    })()}
-                                                </div>
-                                                <div
-                                                    style={{
-                                                        display: "grid",
-                                                        gridTemplateColumns: "1fr 60px 60px 60px",
-                                                        gap: "0.5rem",
-                                                        fontSize: "0.9rem",
-                                                    }}
-                                                >
-                                                    <span>● C</span>
-                                                    <span
-                                                        style={{
-                                                            color: "var(--color-clear)",
-                                                            textAlign: "right",
-                                                            fontWeight: "700",
-                                                        }}
-                                                    >
-                                                        {compareResults.resA.clr}
-                                                    </span>
-                                                    <span
-                                                        style={{
-                                                            color: "var(--color-clear)",
-                                                            textAlign: "right",
-                                                            fontWeight: "700",
-                                                        }}
-                                                    >
-                                                        {compareResults.resB.clr}
-                                                    </span>
-                                                    {(() => {
-                                                        const diff = compareResults.resA.clr - compareResults.resB.clr;
-                                                        return (
-                                                            <span
-                                                                style={{
-                                                                    color:
-                                                                        diff > 0
-                                                                            ? "var(--color-cyan)"
-                                                                            : diff < 0
-                                                                              ? "var(--color-pink)"
-                                                                              : "var(--text-muted)",
-                                                                    textAlign: "right",
-                                                                    fontWeight: "700",
-                                                                }}
-                                                            >
-                                                                {diff > 0 ? `+${diff}` : diff}
-                                                            </span>
-                                                        );
-                                                    })()}
-                                                </div>
+                                            
+                                            <div style={{ overflowX: "auto" }}>
+                                                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", textAlign: "center" }}>
+                                                    <thead>
+                                                        <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-secondary)", fontWeight: "700" }}>
+                                                            <th style={{ padding: "0.5rem", textAlign: "left" }}>성과</th>
+                                                            <th style={{ padding: "0.5rem", color: "var(--color-cyan)", textAlign: "right" }}>{compareData.userA.nickname}</th>
+                                                            <th style={{ padding: "0.5rem", color: "var(--color-pink)", textAlign: "right" }}>{compareData.userB.nickname}</th>
+                                                            <th style={{ padding: "0.5rem", textAlign: "right" }}>차이</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {/* AP Row */}
+                                                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                                                            <td style={{ padding: "0.6rem 0.5rem", textAlign: "left", fontWeight: "700", color: "var(--color-ap)" }}>AP</td>
+                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right", color: "var(--color-cyan)" }}>{filteredCounts.apA}</td>
+                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right", color: "var(--color-pink)" }}>{filteredCounts.apB}</td>
+                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right" }}>
+                                                                {(() => {
+                                                                    const diff = filteredCounts.apA - filteredCounts.apB;
+                                                                    return (
+                                                                        <span style={{ color: diff > 0 ? "var(--color-cyan)" : diff < 0 ? "var(--color-pink)" : "var(--text-muted)" }}>
+                                                                            {diff > 0 ? `+${diff}` : diff}
+                                                                        </span>
+                                                                    );
+                                                                })()}
+                                                            </td>
+                                                        </tr>
+                                                        {/* FC Row */}
+                                                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                                                            <td style={{ padding: "0.6rem 0.5rem", textAlign: "left", fontWeight: "700", color: "var(--color-fc)" }}>FC</td>
+                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right", color: "var(--color-cyan)" }}>{filteredCounts.fcA}</td>
+                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right", color: "var(--color-pink)" }}>{filteredCounts.fcB}</td>
+                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right" }}>
+                                                                {(() => {
+                                                                    const diff = filteredCounts.fcA - filteredCounts.fcB;
+                                                                    return (
+                                                                        <span style={{ color: diff > 0 ? "var(--color-cyan)" : diff < 0 ? "var(--color-pink)" : "var(--text-muted)" }}>
+                                                                            {diff > 0 ? `+${diff}` : diff}
+                                                                        </span>
+                                                                    );
+                                                                })()}
+                                                            </td>
+                                                        </tr>
+                                                        {/* C Row */}
+                                                        <tr>
+                                                            <td style={{ padding: "0.6rem 0.5rem", textAlign: "left", fontWeight: "700", color: "var(--color-clear)" }}>C</td>
+                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right", color: "var(--color-cyan)" }}>{filteredCounts.clrA}</td>
+                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right", color: "var(--color-pink)" }}>{filteredCounts.clrB}</td>
+                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right" }}>
+                                                                {(() => {
+                                                                    const diff = filteredCounts.clrA - filteredCounts.clrB;
+                                                                    return (
+                                                                        <span style={{ color: diff > 0 ? "var(--color-cyan)" : diff < 0 ? "var(--color-pink)" : "var(--text-muted)" }}>
+                                                                            {diff > 0 ? `+${diff}` : diff}
+                                                                        </span>
+                                                                    );
+                                                                })()}
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
                                             </div>
                                         </div>
                                     </div>
@@ -6240,7 +6533,10 @@ function App() {
                                                         none: "-",
                                                     };
 
-                                                    const tierMap = {
+                                                    const tierMap = compareIncludeClear
+                                                        ? { full_perfect: 3, full_combo: 2, clear: 1, none: 0 }
+                                                        : { full_perfect: 2, full_combo: 1, clear: 0, none: 0 };
+                                                    const _unused = {
                                                         full_perfect: 3,
                                                         full_combo: 2,
                                                         clear: compareIncludeClear ? 1 : 0,

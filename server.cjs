@@ -922,6 +922,74 @@ app.post('/api/user/settings', async (req, res) => {
   }
 });
 
+// 7. Global Rankings API
+app.get('/api/rankings', async (req, res) => {
+  try {
+    const rows = await dbQuery.all("SELECT username, nickname, rating_history, scores, created_at FROM users WHERE LOWER(username) != 'admin'");
+    const rankings = rows.map(row => {
+      let normalRating = 0;
+      let appendRating = 0;
+      let totalRating = 0;
+
+      try {
+        const history = JSON.parse(row.rating_history || '{}');
+        const dates = Object.keys(history).sort();
+        if (dates.length > 0) {
+          const lastEntry = history[dates[dates.length - 1]];
+          if (typeof lastEntry === 'object' && lastEntry !== null) {
+            normalRating = lastEntry.normal || 0;
+            appendRating = lastEntry.append || 0;
+            totalRating = normalRating + appendRating;
+          } else if (typeof lastEntry === 'number') {
+            normalRating = lastEntry;
+            appendRating = 0;
+            totalRating = lastEntry;
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing rating history for user', row.username, e);
+      }
+
+      let apCount = 0;
+      let fcCount = 0;
+      let clearCount = 0;
+      try {
+        const scores = JSON.parse(row.scores || '[]');
+        scores.forEach(s => {
+          ['easy', 'normal', 'hard', 'expert', 'master', 'append'].forEach(d => {
+            if (s[d] === 'full_perfect') apCount++;
+            else if (s[d] === 'full_combo') fcCount++;
+            else if (s[d] === 'clear') clearCount++;
+          });
+        });
+      } catch (e) {
+        console.error('Error parsing scores for user', row.username, e);
+      }
+
+      return {
+        username: row.username,
+        nickname: row.nickname,
+        normalRating,
+        appendRating,
+        totalRating,
+        apCount,
+        fcCount,
+        clearCount,
+        createdAt: row.created_at
+      };
+    });
+
+    res.json({
+      success: true,
+      rankings
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '서버 에러가 발생했습니다.' });
+  }
+});
+
+
 app.get('*', (req, res) => {
   const indexHTML = path.join(__dirname, 'dist', 'index.html');
   if (fs.existsSync(indexHTML)) {

@@ -152,9 +152,16 @@
     }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
     .dashboard-grid {
         grid-template-columns: 1fr;
+    }
+    .b39-list,
+    .constant-group-container,
+    .tour-grid {
+        max-height: none !important;
+        overflow-y: visible !important;
+        min-height: auto !important;
     }
 }
 
@@ -921,7 +928,7 @@
     margin-top: 1.5rem;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
     .calc-container-layout {
         grid-template-columns: 1fr;
         gap: 1.5rem;
@@ -1613,7 +1620,7 @@ input[type="number"] {
     margin-bottom: 2rem;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
     .distribution-summary-cards {
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     }
@@ -1736,12 +1743,19 @@ input[type="number"] {
 }
 
 /* Mobile & Tablet Breaks */
-@media (max-width: 1100px) {
+@media (max-width: 1250px) {
     .desktop-nav {
         display: none; /* Hide desktop nav bar */
     }
     .mobile-menu-toggle {
         display: inline-flex; /* Show hamburger toggle */
+    }
+}
+
+@media (max-width: 1350px) and (min-width: 1251px) {
+    .desktop-nav .btn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.8rem;
     }
 }
 
