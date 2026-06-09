@@ -882,6 +882,10 @@ function App() {
             maxTime = todayUTCMs; // Show up to today (Seoul date)
         }
 
+        if (maxTime <= minTime) {
+            minTime = maxTime - 24 * 60 * 60 * 1000;
+        }
+
         const timeRange = maxTime - minTime || 1;
 
         // 2. Filter data in range and construct step boundaries (prepend / append virtual points)
@@ -932,6 +936,31 @@ function App() {
                     normal: latest.normal,
                     append: latest.append,
                     total: latest.total,
+                    isVirtual: true,
+                });
+            }
+        }
+
+        // If activeDataList still has only 1 point, prepend/append virtual points at minTime/maxTime
+        // to ensure a line can be drawn.
+        if (activeDataList.length === 1) {
+            const p = activeDataList[0];
+            const pTime = new Date(p.date + "T00:00:00Z").getTime();
+            if (pTime > minTime) {
+                activeDataList.unshift({
+                    date: formatDate(minTime),
+                    normal: p.normal,
+                    append: p.append,
+                    total: p.total,
+                    isVirtual: true,
+                });
+            }
+            if (pTime < maxTime) {
+                activeDataList.push({
+                    date: formatDate(maxTime),
+                    normal: p.normal,
+                    append: p.append,
+                    total: p.total,
                     isVirtual: true,
                 });
             }
