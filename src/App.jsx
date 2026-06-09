@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import defaultScores from "./sekai_scores.json";
 import {
     Music,
@@ -63,10 +64,42 @@ const getRelativePercentages = (valA, valB) => {
 };
 
 function App() {
+    // --- Routing Hooks ---
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const getActiveTab = () => {
+        const path = location.pathname;
+        if (path.startsWith("/dashboard")) return "dashboard";
+        if (path.startsWith("/records")) return "records";
+        if (path.startsWith("/constants")) return "constants";
+        if (path.startsWith("/tour")) return "tour";
+        if (path.startsWith("/calculator")) return "calculator";
+        if (path.startsWith("/compare")) return "compare";
+        if (path.startsWith("/distributions")) return "distributions";
+        if (path.startsWith("/ranking")) return "ranking";
+        if (path.startsWith("/settings")) return "settings";
+        if (path.startsWith("/admin")) return "admin";
+        return "dashboard"; // fallback
+    };
+    const activeTab = getActiveTab();
+
+    const setActiveTab = (tab) => {
+        navigate("/" + tab);
+    };
+
+    const matchDashboard = location.pathname.match(/^\/dashboard(?:\/([^/]+))?\/?$/);
+    const routeUsername = matchDashboard ? matchDashboard[1] : undefined;
+
+    // --- Viewed User States ---
+    const [viewedUser, setViewedUser] = useState(null);
+    const [viewedScores, setViewedScores] = useState(null);
+    const [isViewedDashboardLoading, setIsViewedDashboardLoading] = useState(false);
+    const [viewedDashboardError, setViewedDashboardError] = useState("");
+
     // --- Core States ---
     const [songs, setSongs] = useState([]);
     const [scores, setScores] = useState([]);
-    const [activeTab, setActiveTab] = useState("dashboard");
     const [dashboardSubTab, setDashboardSubTab] = useState("b39"); // b39 or b15 (append)
     const [isLoadingSongs, setIsLoadingSongs] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -90,6 +123,9 @@ function App() {
         const saved = localStorage.getItem("pjsk_auth") || sessionStorage.getItem("pjsk_auth");
         return saved ? JSON.parse(saved) : null;
     });
+
+    const effectiveScores = (activeTab === "dashboard" && viewedScores) ? viewedScores : scores;
+    const effectiveUser = (activeTab === "dashboard" && viewedUser) ? viewedUser : currentUser;
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [isRegisterMode, setIsRegisterMode] = useState(false);
     const [authUsername, setAuthUsername] = useState("");
@@ -133,7 +169,9 @@ function App() {
     const [compareError, setCompareError] = useState("");
     const [isComparing, setIsComparing] = useState(false);
     const [compareRatingType, setCompareRatingType] = useState("player"); // "player", "append", "total"
+    const [compareSearchInput, setCompareSearchInput] = useState("");
     const [compareSearch, setCompareSearch] = useState("");
+    const [compareVisibleCount, setCompareVisibleCount] = useState(50);
     const [compareDiffFilters, setCompareDiffFilters] = useState([
         "easy",
         "normal",
@@ -156,7 +194,9 @@ function App() {
     const [isDistFilterExpanded, setIsDistFilterExpanded] = useState(true);
 
     // --- Record Table States ---
+    const [recordSearchInput, setRecordSearchInput] = useState("");
     const [recordSearch, setRecordSearch] = useState("");
+    const [recordVisibleCount, setRecordVisibleCount] = useState(50);
     const [recordDiffFilters, setRecordDiffFilters] = useState([
         "easy",
         "normal",
@@ -227,7 +267,9 @@ function App() {
     };
 
     // --- Constant Table States (리뉴얼) ---
+    const [constSearchInput, setConstSearchInput] = useState("");
     const [constSearch, setConstSearch] = useState("");
+    const [constVisibleCount, setConstVisibleCount] = useState(15);
     // Checkboxes for multiple selections
     const [constDiffFilters, setConstDiffFilters] = useState(["master"]); // Easy, Normal, Hard, Expert, Master, Append 복합
     const [constPlayFilters, setConstPlayFilters] = useState(["unplayed", "played", "fc", "ap"]); // 복합
@@ -243,6 +285,8 @@ function App() {
     const [tourMinLevel, setTourMinLevel] = useState(30);
     const [tourMaxLevel, setTourMaxLevel] = useState(30);
     const [tourGoal, setTourGoal] = useState("fc");
+    const [tourRemainingVisibleCount, setTourRemainingVisibleCount] = useState(30);
+    const [tourCompletedVisibleCount, setTourCompletedVisibleCount] = useState(30);
 
     // --- Calculator States ---
     const [calcSongSearch, setCalcSongSearch] = useState("");
@@ -457,6 +501,186 @@ function App() {
         }
     }, [currentUser]);
 
+    // Redirect / to /dashboard
+    useEffect(() => {
+        if (location.pathname === "/" || location.pathname === "") {
+            navigate("/dashboard", { replace: true });
+        }
+    }, [location.pathname, navigate]);
+
+    // Fetch viewed user details for other people's dashboard
+    useEffect(() => {
+        if (routeUsername) {
+            if (currentUser && currentUser.username.toLowerCase() === routeUsername.toLowerCase()) {
+                setViewedUser(null);
+                setViewedScores(null);
+                setViewedDashboardError("");
+                return;
+            }
+
+            const fetchViewedUserData = async () => {
+                setIsViewedDashboardLoading(true);
+                setViewedDashboardError("");
+                try {
+                    const res = await fetch(`/api/scores/user/${routeUsername}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setViewedUser({
+                            username: data.username,
+                            nickname: data.nickname,
+                            rating_history: data.rating_history || {}
+                        });
+                        setViewedScores(data.scores || []);
+                    } else if (res.status === 404) {
+                        setViewedDashboardError("해당 유저를 찾을 수 없습니다.");
+                    } else {
+                        setViewedDashboardError("유저 정보를 불러오는 중 에러가 발생했습니다.");
+                    }
+                } catch (err) {
+                    console.error("Error fetching viewed user data:", err);
+                    setViewedDashboardError("서버와의 통신에 실패했습니다.");
+                } finally {
+                    setIsViewedDashboardLoading(false);
+                }
+            };
+            fetchViewedUserData();
+        } else {
+            setViewedUser(null);
+            setViewedScores(null);
+            setViewedDashboardError("");
+        }
+    }, [routeUsername, currentUser]);
+
+    // Debounce search input for Records Tab
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setRecordSearch(recordSearchInput);
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [recordSearchInput]);
+
+    // Debounce search input for Constants Tab
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setConstSearch(constSearchInput);
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [constSearchInput]);
+
+    // Debounce search input for Compare Tab
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setCompareSearch(compareSearchInput);
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [compareSearchInput]);
+
+    // Reset pagination on filter changes
+    useEffect(() => {
+        setRecordVisibleCount(50);
+    }, [
+        recordSearch,
+        recordDiffFilters,
+        recordPlayFilters,
+        recordMinFcConstInput,
+        recordMaxFcConstInput,
+        recordMinApConstInput,
+        recordMaxApConstInput,
+        recordMinLevel,
+        recordMaxLevel,
+        recordSortBy,
+        recordSortOrder,
+    ]);
+
+    useEffect(() => {
+        setConstVisibleCount(15);
+    }, [
+        constSearch,
+        constDiffFilters,
+        constPlayFilters,
+        constMinLevelInput,
+        constMaxLevelInput,
+        constMinLevel,
+        constMaxLevel,
+        constType,
+    ]);
+
+    useEffect(() => {
+        setCompareVisibleCount(50);
+    }, [
+        compareSearch,
+        compareDiffFilters,
+        compareResultFilter,
+        compareMinLevel,
+        compareMaxLevel,
+        compareSortBy,
+        compareSortOrder,
+        compareTargetId,
+        compareIncludeClear,
+        compareRatingType,
+    ]);
+
+    useEffect(() => {
+        setTourRemainingVisibleCount(30);
+        setTourCompletedVisibleCount(30);
+    }, [tourDiffs, tourMinLevel, tourMaxLevel, tourGoal]);
+
+    // --- Intersection Observers for Virtual/Infinite Scrolling ---
+    const recordObserver = useRef(null);
+    const recordSentinelRef = useCallback((node) => {
+        if (recordObserver.current) recordObserver.current.disconnect();
+        recordObserver.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                setRecordVisibleCount((prev) => prev + 50);
+            }
+        }, { rootMargin: "200px" });
+        if (node) recordObserver.current.observe(node);
+    }, []);
+
+    const constObserver = useRef(null);
+    const constSentinelRef = useCallback((node) => {
+        if (constObserver.current) constObserver.current.disconnect();
+        constObserver.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                setConstVisibleCount((prev) => prev + 15);
+            }
+        }, { rootMargin: "200px" });
+        if (node) constObserver.current.observe(node);
+    }, []);
+
+    const compareObserver = useRef(null);
+    const compareSentinelRef = useCallback((node) => {
+        if (compareObserver.current) compareObserver.current.disconnect();
+        compareObserver.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                setCompareVisibleCount((prev) => prev + 50);
+            }
+        }, { rootMargin: "200px" });
+        if (node) compareObserver.current.observe(node);
+    }, []);
+
+    const tourRemainingObserver = useRef(null);
+    const tourRemainingSentinelRef = useCallback((node) => {
+        if (tourRemainingObserver.current) tourRemainingObserver.current.disconnect();
+        tourRemainingObserver.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                setTourRemainingVisibleCount((prev) => prev + 30);
+            }
+        }, { rootMargin: "200px" });
+        if (node) tourRemainingObserver.current.observe(node);
+    }, []);
+
+    const tourCompletedObserver = useRef(null);
+    const tourCompletedSentinelRef = useCallback((node) => {
+        if (tourCompletedObserver.current) tourCompletedObserver.current.disconnect();
+        tourCompletedObserver.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                setTourCompletedVisibleCount((prev) => prev + 30);
+            }
+        }, { rootMargin: "200px" });
+        if (node) tourCompletedObserver.current.observe(node);
+    }, []);
+
     useEffect(() => {
         if (activeTab === "ranking") {
             const fetchRankings = async () => {
@@ -504,8 +728,8 @@ function App() {
 
     // --- Rating Trend Graph Renderer ---
     const dailyRatingHistoryData = useMemo(() => {
-        if (!currentUser || !currentUser.rating_history) return [];
-        const history = currentUser.rating_history;
+        if (!effectiveUser || !effectiveUser.rating_history) return [];
+        const history = effectiveUser.rating_history;
         const sortedDates = Object.keys(history).sort();
         if (sortedDates.length === 0) return [];
 
@@ -552,10 +776,10 @@ function App() {
         }
 
         return data.filter((d) => d.total > 0);
-    }, [currentUser]);
+    }, [effectiveUser]);
 
     const renderRatingGraph = () => {
-        if (!currentUser) {
+        if (!effectiveUser) {
             return (
                 <div
                     style={{
@@ -1536,7 +1760,7 @@ function App() {
     // --- Score mapping helper ---
     const userScoresMap = useMemo(() => {
         const map = new Map();
-        scores.forEach((s) => {
+        effectiveScores.forEach((s) => {
             if (s && s.id) {
                 map.set(String(s.id), {
                     easy: s.easy,
@@ -1549,7 +1773,7 @@ function App() {
             }
         });
         return map;
-    }, [scores]);
+    }, [effectiveScores]);
 
     // --- Jacket Image Component ---
     const JacketImage = ({ songId, size = 50, className = "", style = {} }) => {
@@ -1772,7 +1996,7 @@ function App() {
         let fcCount = 0;
         let clearCount = 0;
 
-        scores.forEach((s) => {
+        effectiveScores.forEach((s) => {
             const diffs = ["easy", "normal", "hard", "expert", "master", "append"];
             diffs.forEach((d) => {
                 if (s[d]) {
@@ -1785,7 +2009,7 @@ function App() {
         });
 
         return { totalPlayed, apCount, fcCount, clearCount };
-    }, [scores]);
+    }, [effectiveScores]);
 
     // --- Compare Page Computations ---
     const compareResults = useMemo(() => {
@@ -1996,6 +2220,10 @@ function App() {
         settingsTitleLang,
         compareIncludeClear,
     ]);
+
+    const visibleCompareList = useMemo(() => {
+        return filteredCompareList.slice(0, compareVisibleCount);
+    }, [filteredCompareList, compareVisibleCount]);
 
     const filteredCounts = useMemo(() => {
         let apA = 0, fcA = 0, clrA = 0;
@@ -2439,7 +2667,11 @@ function App() {
         recordSortOrder,
     ]);
 
-    // --- Grouping By Constants Logic for Constants Tab (リニュー얼) ---
+    const visibleRecords = useMemo(() => {
+        return filteredAndSortedRecords.slice(0, recordVisibleCount);
+    }, [filteredAndSortedRecords, recordVisibleCount]);
+
+    // --- Grouping By Constants Logic for Constants Tab (리뉴얼) ---
     const groupedConstants = useMemo(() => {
         const minConstVal = constMinLevelInput === "" ? 0.0 : parseFloat(constMinLevelInput);
         const maxConstVal = constMaxLevelInput === "" ? 100.0 : parseFloat(constMaxLevelInput);
@@ -2531,6 +2763,10 @@ function App() {
         constMaxLevel,
         constType,
     ]);
+
+    const visibleConstants = useMemo(() => {
+        return groupedConstants.slice(0, constVisibleCount);
+    }, [groupedConstants, constVisibleCount]);
 
     // --- Tour Guide Calculations ---
     const tourAvailableLevels = useMemo(() => {
@@ -4031,9 +4267,47 @@ function App() {
                 {/* 1. DASHBOARD TAB */}
                 {/* ======================================================== */}
                 {activeTab === "dashboard" && (
-                    <div className="dashboard-grid">
-                        {/* Left Stats Sidebar */}
-                        <aside className="stats-sidebar">
+                    isViewedDashboardLoading ? (
+                        <div style={{ textAlign: "center", padding: "5rem 0", color: "var(--text-muted)" }}>
+                            <div className="loading-spinner" style={{ display: "inline-block", width: "40px", height: "40px", border: "4px solid rgba(255,255,255,0.1)", borderRadius: "50%", borderTopColor: "var(--color-cyan)", animation: "spin 1s linear infinite", marginBottom: "1rem" }}></div>
+                            <style>{`
+                                @keyframes spin {
+                                    to { transform: rotate(360deg); }
+                                }
+                            `}</style>
+                            <div style={{ fontWeight: "700" }}>유저 대시보드 정보를 불러오는 중입니다...</div>
+                        </div>
+                    ) : viewedDashboardError ? (
+                        <div className="glass-panel" style={{ textAlign: "center", padding: "4rem 2rem", margin: "2rem auto", maxWidth: "500px", border: "1px solid rgba(220,53,69,0.2)" }}>
+                            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>⚠️</div>
+                            <h3 style={{ fontSize: "1.2rem", marginBottom: "1.5rem", fontWeight: "700", color: "var(--color-danger)" }}>{viewedDashboardError}</h3>
+                            <button className="btn btn-primary animate-glow" onClick={() => navigate("/dashboard")}>
+                                내 대시보드로 돌아가기
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="dashboard-grid">
+                            {/* Left Stats Sidebar */}
+                            <aside className="stats-sidebar">
+                                {/* Profile Header Card */}
+                                <div className="glass-panel" style={{ padding: "1.25rem", display: "flex", flexDirection: "column", gap: "0.25rem", border: viewedUser ? "1px solid rgba(0, 242, 254, 0.3)" : "1px solid var(--border-color)", background: viewedUser ? "rgba(0, 242, 254, 0.03)" : "", marginBottom: "0.5rem" }}>
+
+                                    <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+                                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{effectiveUser ? effectiveUser.nickname : "Guest"}</span>
+                                        {viewedUser && (
+                                            <button
+                                                className="btn btn-outline"
+                                                style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem", borderColor: "var(--border-color)", flexShrink: 0 }}
+                                                onClick={() => navigate("/dashboard")}
+                                            >
+                                                내 정보 보기
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                                        @{effectiveUser ? effectiveUser.username : "guest"}
+                                    </div>
+                                </div>
                             {/* 일반 셐포스 B39 */}
                             <div className="glass-panel profile-card" style={{ marginBottom: "0.25rem" }}>
                                 <div className="rating-title">
@@ -4283,7 +4557,7 @@ function App() {
                             </div>
                         </section>
                     </div>
-                )}
+                ))}
 
                 {/* ======================================================== */}
                 {/* 1-2. SEKFORCE RANKING TAB */}
@@ -4390,8 +4664,11 @@ function App() {
                                                         background: isMe ? "rgba(0, 242, 254, 0.05)" : "transparent",
                                                         transition: "var(--transition-smooth)",
                                                         fontWeight: isMe ? "700" : "normal",
+                                                        cursor: "pointer",
                                                     }}
                                                     className="hover-lift"
+                                                    onClick={() => navigate(`/dashboard/${user.username}`)}
+                                                    title={`${user.nickname}님의 대시보드 보기`}
                                                 >
                                                     <td style={{ padding: "1rem" }}>
                                                         {user.absoluteRank === 1 ? (
@@ -4481,8 +4758,8 @@ function App() {
                                             className="form-control"
                                             placeholder="제목, 작곡가, 초성 검색..."
                                             style={{ paddingLeft: "2.5rem", width: "100%" }}
-                                            value={recordSearch}
-                                            onChange={(e) => setRecordSearch(e.target.value)}
+                                            value={recordSearchInput}
+                                            onChange={(e) => setRecordSearchInput(e.target.value)}
                                         />
                                     </div>
                                 </div>
@@ -4737,7 +5014,7 @@ function App() {
                                         조건에 매칭되는 플레이 기록이 없습니다.
                                     </div>
                                 ) : (
-                                    filteredAndSortedRecords.map((item, index) => {
+                                    visibleRecords.map((item, index) => {
                                         const diffNames = {
                                             easy: "EASY",
                                             normal: "NORMAL",
@@ -4845,6 +5122,12 @@ function App() {
                                         );
                                     })
                                 )}
+                                {/* Sentinel for IntersectionObserver */}
+                                {filteredAndSortedRecords.length > recordVisibleCount && (
+                                    <div ref={recordSentinelRef} style={{ height: "45px", display: "flex", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", fontSize: "0.85rem", margin: "1rem 0" }}>
+                                        <span>기록을 불러오는 중...</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </section>
@@ -4893,8 +5176,8 @@ function App() {
                                             className="form-control"
                                             placeholder="제목, 작곡가, 초성 검색..."
                                             style={{ paddingLeft: "2.5rem", width: "100%" }}
-                                            value={constSearch}
-                                            onChange={(e) => setConstSearch(e.target.value)}
+                                            value={constSearchInput}
+                                            onChange={(e) => setConstSearchInput(e.target.value)}
                                         />
                                     </div>
                                 </div>
@@ -5045,7 +5328,7 @@ function App() {
                                     검색 및 필터 조건에 합치하는 곡 상수 조합이 없습니다.
                                 </div>
                             ) : (
-                                groupedConstants.map((group) => (
+                                visibleConstants.map((group) => (
                                     <div key={group.constantValue} className="constant-group-section">
                                         {/* Constant group title */}
                                         <div className="constant-group-header">{group.constantValue.toFixed(1)}</div>
@@ -5108,6 +5391,12 @@ function App() {
                                         </div>
                                     </div>
                                 ))
+                            )}
+                            {/* Sentinel for IntersectionObserver */}
+                            {groupedConstants.length > constVisibleCount && (
+                                <div ref={constSentinelRef} style={{ height: "45px", display: "flex", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", fontSize: "0.85rem", margin: "1.5rem 0" }}>
+                                    <span>상수표를 불러오는 중...</span>
+                                </div>
                             )}
                         </div>
                     </section>
@@ -5338,7 +5627,7 @@ function App() {
                                     <div className="tour-grid">
                                         {tourStats.remainingList.length === 0
                                             ? null
-                                            : tourStats.remainingList.map(({ song, diff, level, status }) => {
+                                            : tourStats.remainingList.slice(0, tourRemainingVisibleCount).map(({ song, diff, level, status }) => {
                                                   const diffColors = {
                                                       easy: "diff-easy",
                                                       normal: "diff-normal",
@@ -5409,6 +5698,12 @@ function App() {
                                                       </div>
                                                   );
                                               })}
+                                        {/* Sentinel for IntersectionObserver */}
+                                        {tourStats.remainingList.length > tourRemainingVisibleCount && (
+                                            <div ref={tourRemainingSentinelRef} style={{ gridColumn: "1 / -1", height: "45px", display: "flex", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", fontSize: "0.85rem", margin: "1rem 0" }}>
+                                                <span>미완료 곡을 불러오는 중...</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -5431,7 +5726,7 @@ function App() {
                                     </h3>
 
                                     <div className="tour-grid">
-                                        {tourStats.completedList.map(({ song, diff, level, status }) => {
+                                        {tourStats.completedList.slice(0, tourCompletedVisibleCount).map(({ song, diff, level, status }) => {
                                             const diffColors = {
                                                 easy: "diff-easy",
                                                 normal: "diff-normal",
@@ -5501,6 +5796,12 @@ function App() {
                                                 </div>
                                             );
                                         })}
+                                        {/* Sentinel for IntersectionObserver */}
+                                        {tourStats.completedList.length > tourCompletedVisibleCount && (
+                                            <div ref={tourCompletedSentinelRef} style={{ gridColumn: "1 / -1", height: "45px", display: "flex", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", fontSize: "0.85rem", margin: "1rem 0" }}>
+                                                <span>완료 곡을 불러오는 중...</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -5889,7 +6190,23 @@ function App() {
                                                             whiteSpace: "nowrap",
                                                             overflow: "hidden",
                                                             textOverflow: "ellipsis",
+                                                            display: "inline-block",
+                                                            cursor: "pointer",
+                                                            transition: "color 0.2s",
                                                         }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigate(`/dashboard/${friend.username}`);
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.target.style.textDecoration = "underline";
+                                                            e.target.style.color = "var(--color-cyan)";
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.target.style.textDecoration = "none";
+                                                            e.target.style.color = "";
+                                                        }}
+                                                        title={`${friend.nickname}님의 대시보드 보기`}
                                                     >
                                                         {friend.nickname}
                                                     </div>
@@ -5924,21 +6241,49 @@ function App() {
                                                         </span>
                                                     </div>
                                                 </div>
-                                                <button
-                                                    className="btn btn-outline"
-                                                    style={{
-                                                        padding: "0.25rem",
-                                                        borderColor: "rgba(220,53,69,0.3)",
-                                                        color: "var(--color-danger)",
-                                                    }}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleRemoveFriend(friend.username);
-                                                    }}
-                                                    title="친구 삭제"
-                                                >
-                                                    <XCircle size={14} />
-                                                </button>
+                                                <div style={{ display: "flex", gap: "0.3rem", alignItems: "center" }}>
+                                                    <button
+                                                        className="btn btn-outline animate-glow"
+                                                        style={{
+                                                            padding: "0.25rem",
+                                                            borderColor: "rgba(0, 242, 254, 0.3)",
+                                                            color: "var(--color-cyan)",
+                                                            background: "rgba(0, 242, 254, 0.02)",
+                                                            display: "flex",
+                                                            alignItems: "center",
+                                                            justifyContent: "center",
+                                                            width: "28px",
+                                                            height: "28px",
+                                                        }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigate(`/dashboard/${friend.username}`);
+                                                        }}
+                                                        title={`${friend.nickname}님의 대시보드 보기`}
+                                                    >
+                                                        <TrendingUp size={14} />
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-outline"
+                                                        style={{
+                                                            padding: "0.25rem",
+                                                            borderColor: "rgba(220,53,69,0.3)",
+                                                            color: "var(--color-danger)",
+                                                            display: "flex",
+                                                            alignItems: "center",
+                                                            justifyContent: "center",
+                                                            width: "28px",
+                                                            height: "28px",
+                                                        }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleRemoveFriend(friend.username);
+                                                        }}
+                                                        title="친구 삭제"
+                                                    >
+                                                        <XCircle size={14} />
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -6382,8 +6727,8 @@ function App() {
                                                             width: "100%",
                                                             paddingRight: "0.5rem",
                                                         }}
-                                                        value={compareSearch}
-                                                        onChange={(e) => setCompareSearch(e.target.value)}
+                                                        value={compareSearchInput}
+                                                        onChange={(e) => setCompareSearchInput(e.target.value)}
                                                     />
                                                 </div>
                                             </div>
@@ -6522,7 +6867,7 @@ function App() {
                                                 조건에 일치하는 비교 결과가 없습니다.
                                             </div>
                                         ) : (
-                                            filteredCompareList.map(
+                                            visibleCompareList.map(
                                                 ({ song, diff, level, statA, statB, ratingA, ratingB }) => {
                                                     const statusLabels = {
                                                         full_perfect: "status-ap",
@@ -6696,6 +7041,12 @@ function App() {
                                             )
                                         )}
                                     </div>
+                                    {/* Sentinel for IntersectionObserver */}
+                                    {filteredCompareList.length > compareVisibleCount && (
+                                        <div ref={compareSentinelRef} style={{ height: "45px", display: "flex", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", fontSize: "0.85rem", margin: "1rem 0" }}>
+                                            <span>비교 결과를 불러오는 중...</span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </section>

@@ -654,14 +654,15 @@ app.get('/api/jackets/:songId', async (req, res) => {
 app.get('/api/scores/user/:username', async (req, res) => {
   const { username } = req.params;
   try {
-    const user = await dbQuery.get('SELECT username, nickname, scores FROM users WHERE LOWER(username) = LOWER(?)', [username]);
+    const user = await dbQuery.get('SELECT username, nickname, scores, rating_history FROM users WHERE LOWER(username) = LOWER(?)', [username]);
     if (!user) {
       return res.status(404).json({ error: '해당 유저를 찾을 수 없습니다.' });
     }
     res.json({
       username: user.username,
       nickname: user.nickname,
-      scores: JSON.parse(user.scores || '[]')
+      scores: JSON.parse(user.scores || '[]'),
+      rating_history: JSON.parse(user.rating_history || '{}')
     });
   } catch (err) {
     console.error(err);
