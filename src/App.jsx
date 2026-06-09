@@ -124,8 +124,8 @@ function App() {
         return saved ? JSON.parse(saved) : null;
     });
 
-    const effectiveScores = (activeTab === "dashboard" && viewedScores) ? viewedScores : scores;
-    const effectiveUser = (activeTab === "dashboard" && viewedUser) ? viewedUser : currentUser;
+    const effectiveScores = activeTab === "dashboard" && viewedScores ? viewedScores : scores;
+    const effectiveUser = activeTab === "dashboard" && viewedUser ? viewedUser : currentUser;
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [isRegisterMode, setIsRegisterMode] = useState(false);
     const [authUsername, setAuthUsername] = useState("");
@@ -528,7 +528,7 @@ function App() {
                         setViewedUser({
                             username: data.username,
                             nickname: data.nickname,
-                            rating_history: data.rating_history || {}
+                            rating_history: data.rating_history || {},
                         });
                         setViewedScores(data.scores || []);
                     } else if (res.status === 404) {
@@ -629,55 +629,70 @@ function App() {
     const recordObserver = useRef(null);
     const recordSentinelRef = useCallback((node) => {
         if (recordObserver.current) recordObserver.current.disconnect();
-        recordObserver.current = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                setRecordVisibleCount((prev) => prev + 50);
-            }
-        }, { rootMargin: "200px" });
+        recordObserver.current = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    setRecordVisibleCount((prev) => prev + 50);
+                }
+            },
+            { rootMargin: "200px" },
+        );
         if (node) recordObserver.current.observe(node);
     }, []);
 
     const constObserver = useRef(null);
     const constSentinelRef = useCallback((node) => {
         if (constObserver.current) constObserver.current.disconnect();
-        constObserver.current = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                setConstVisibleCount((prev) => prev + 15);
-            }
-        }, { rootMargin: "200px" });
+        constObserver.current = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    setConstVisibleCount((prev) => prev + 15);
+                }
+            },
+            { rootMargin: "200px" },
+        );
         if (node) constObserver.current.observe(node);
     }, []);
 
     const compareObserver = useRef(null);
     const compareSentinelRef = useCallback((node) => {
         if (compareObserver.current) compareObserver.current.disconnect();
-        compareObserver.current = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                setCompareVisibleCount((prev) => prev + 50);
-            }
-        }, { rootMargin: "200px" });
+        compareObserver.current = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    setCompareVisibleCount((prev) => prev + 50);
+                }
+            },
+            { rootMargin: "200px" },
+        );
         if (node) compareObserver.current.observe(node);
     }, []);
 
     const tourRemainingObserver = useRef(null);
     const tourRemainingSentinelRef = useCallback((node) => {
         if (tourRemainingObserver.current) tourRemainingObserver.current.disconnect();
-        tourRemainingObserver.current = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                setTourRemainingVisibleCount((prev) => prev + 30);
-            }
-        }, { rootMargin: "200px" });
+        tourRemainingObserver.current = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    setTourRemainingVisibleCount((prev) => prev + 30);
+                }
+            },
+            { rootMargin: "200px" },
+        );
         if (node) tourRemainingObserver.current.observe(node);
     }, []);
 
     const tourCompletedObserver = useRef(null);
     const tourCompletedSentinelRef = useCallback((node) => {
         if (tourCompletedObserver.current) tourCompletedObserver.current.disconnect();
-        tourCompletedObserver.current = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                setTourCompletedVisibleCount((prev) => prev + 30);
-            }
-        }, { rootMargin: "200px" });
+        tourCompletedObserver.current = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    setTourCompletedVisibleCount((prev) => prev + 30);
+                }
+            },
+            { rootMargin: "200px" },
+        );
         if (node) tourCompletedObserver.current.observe(node);
     }, []);
 
@@ -691,7 +706,7 @@ function App() {
                         const data = await res.json();
                         if (data.success) {
                             // Filter out admin user
-                            setRankings(data.rankings.filter(user => user.username.toLowerCase() !== "admin"));
+                            setRankings(data.rankings.filter((user) => user.username.toLowerCase() !== "admin"));
                         }
                     }
                 } catch (e) {
@@ -1022,308 +1037,341 @@ function App() {
                 {renderGraphControls()}
 
                 <div className="chart-scroll-container trend-chart-container" style={{ position: "relative" }}>
-                    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", overflow: "visible" }}>
-                    <defs>
-                        <linearGradient id="totalLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="#fbbf24" />
-                            <stop offset="100%" stopColor="#f59e0b" />
-                        </linearGradient>
-                        <linearGradient id="normalLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="#22d3ee" />
-                            <stop offset="100%" stopColor="#06b6d4" />
-                        </linearGradient>
-                        <linearGradient id="appendLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="#f472b6" />
-                            <stop offset="100%" stopColor="#ec4899" />
-                        </linearGradient>
-                        <linearGradient id="areaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.1" />
-                            <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.0" />
-                        </linearGradient>
-                    </defs>
+                    <svg
+                        viewBox={`0 0 ${width} ${height}`}
+                        style={{ width: "100%", height: "auto", overflow: "visible" }}
+                    >
+                        <defs>
+                            <linearGradient id="totalLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#fbbf24" />
+                                <stop offset="100%" stopColor="#f59e0b" />
+                            </linearGradient>
+                            <linearGradient id="normalLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#22d3ee" />
+                                <stop offset="100%" stopColor="#06b6d4" />
+                            </linearGradient>
+                            <linearGradient id="appendLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#f472b6" />
+                                <stop offset="100%" stopColor="#ec4899" />
+                            </linearGradient>
+                            <linearGradient id="areaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.1" />
+                                <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.0" />
+                            </linearGradient>
+                        </defs>
 
-                    {/* Legend with click triggers */}
-                    <g transform={`translate(${paddingX}, 12)`} fontSize="9" fontWeight="700">
-                        <g
-                            style={{ cursor: "pointer", opacity: showTotalLine ? 1 : 0.4, transition: "opacity 0.2s" }}
-                            onClick={() => setShowTotalLine(!showTotalLine)}
-                        >
-                            <circle cx="5" cy="5" r="4" fill="#fbbf24" />
-                            <text x="15" y="8" fill="var(--text-primary)">
-                                Total R
-                            </text>
-                        </g>
-
-                        <g
-                            style={{ cursor: "pointer", opacity: showNormalLine ? 1 : 0.4, transition: "opacity 0.2s" }}
-                            onClick={() => setShowNormalLine(!showNormalLine)}
-                        >
-                            <circle cx="85" cy="5" r="4" fill="#22d3ee" />
-                            <text x="95" y="8" fill="var(--text-primary)">
-                                Player R
-                            </text>
-                        </g>
-
-                        <g
-                            style={{ cursor: "pointer", opacity: showAppendLine ? 1 : 0.4, transition: "opacity 0.2s" }}
-                            onClick={() => setShowAppendLine(!showAppendLine)}
-                        >
-                            <circle cx="165" cy="5" r="4" fill="#f472b6" />
-                            <text x="175" y="8" fill="var(--text-primary)">
-                                Append R
-                            </text>
-                        </g>
-                    </g>
-
-                    {/* Y-Axis Horizontal Grid lines */}
-                    <line
-                        x1={paddingX}
-                        y1={paddingY}
-                        x2={width - paddingX}
-                        y2={paddingY}
-                        stroke="rgba(255,255,255,0.03)"
-                        strokeDasharray="4 4"
-                    />
-                    <line
-                        x1={paddingX}
-                        y1={(height - paddingY * 2) / 2 + paddingY}
-                        x2={width - paddingX}
-                        y2={(height - paddingY * 2) / 2 + paddingY}
-                        stroke="rgba(255,255,255,0.03)"
-                        strokeDasharray="4 4"
-                    />
-                    <line
-                        x1={paddingX}
-                        y1={height - paddingY}
-                        x2={width - paddingX}
-                        y2={height - paddingY}
-                        stroke="rgba(255,255,255,0.08)"
-                    />
-
-                    {/* Time-axis Grid Ticks & Labels */}
-                    {labelTicks.map((tick, index) => (
-                        <g key={index}>
-                            {index > 0 && index < tickCount && (
-                                <line
-                                    x1={tick.x}
-                                    y1={paddingY}
-                                    x2={tick.x}
-                                    y2={height - paddingY}
-                                    stroke="rgba(255, 255, 255, 0.02)"
-                                    strokeDasharray="2 2"
-                                />
-                            )}
-                            <text
-                                x={tick.x}
-                                y={height - 8}
-                                fill="var(--text-muted)"
-                                fontSize="9"
-                                textAnchor="middle"
-                                fontWeight="600"
+                        {/* Legend with click triggers */}
+                        <g transform={`translate(${paddingX}, 12)`} fontSize="9" fontWeight="700">
+                            <g
+                                style={{
+                                    cursor: "pointer",
+                                    opacity: showTotalLine ? 1 : 0.4,
+                                    transition: "opacity 0.2s",
+                                }}
+                                onClick={() => setShowTotalLine(!showTotalLine)}
                             >
-                                {tick.label}
-                            </text>
+                                <circle cx="5" cy="5" r="4" fill="#fbbf24" />
+                                <text x="15" y="8" fill="var(--text-primary)">
+                                    Total R
+                                </text>
+                            </g>
+
+                            <g
+                                style={{
+                                    cursor: "pointer",
+                                    opacity: showNormalLine ? 1 : 0.4,
+                                    transition: "opacity 0.2s",
+                                }}
+                                onClick={() => setShowNormalLine(!showNormalLine)}
+                            >
+                                <circle cx="85" cy="5" r="4" fill="#22d3ee" />
+                                <text x="95" y="8" fill="var(--text-primary)">
+                                    Player R
+                                </text>
+                            </g>
+
+                            <g
+                                style={{
+                                    cursor: "pointer",
+                                    opacity: showAppendLine ? 1 : 0.4,
+                                    transition: "opacity 0.2s",
+                                }}
+                                onClick={() => setShowAppendLine(!showAppendLine)}
+                            >
+                                <circle cx="165" cy="5" r="4" fill="#f472b6" />
+                                <text x="175" y="8" fill="var(--text-primary)">
+                                    Append R
+                                </text>
+                            </g>
                         </g>
-                    ))}
 
-                    {/* Area & Lines */}
-                    {showTotalLine && areaPathTotal && <path d={areaPathTotal} fill="url(#areaGrad)" />}
-                    {showAppendLine && linePathAppend && (
-                        <path
-                            d={linePathAppend}
-                            fill="none"
-                            stroke="url(#appendLineGrad)"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                        {/* Y-Axis Horizontal Grid lines */}
+                        <line
+                            x1={paddingX}
+                            y1={paddingY}
+                            x2={width - paddingX}
+                            y2={paddingY}
+                            stroke="rgba(255,255,255,0.03)"
+                            strokeDasharray="4 4"
                         />
-                    )}
-                    {showNormalLine && linePathNormal && (
-                        <path
-                            d={linePathNormal}
-                            fill="none"
-                            stroke="url(#normalLineGrad)"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                        <line
+                            x1={paddingX}
+                            y1={(height - paddingY * 2) / 2 + paddingY}
+                            x2={width - paddingX}
+                            y2={(height - paddingY * 2) / 2 + paddingY}
+                            stroke="rgba(255,255,255,0.03)"
+                            strokeDasharray="4 4"
                         />
-                    )}
-                    {showTotalLine && linePathTotal && (
-                        <path
-                            d={linePathTotal}
-                            fill="none"
-                            stroke="url(#totalLineGrad)"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                        <line
+                            x1={paddingX}
+                            y1={height - paddingY}
+                            x2={width - paddingX}
+                            y2={height - paddingY}
+                            stroke="rgba(255,255,255,0.08)"
                         />
-                    )}
 
-                    {/* Dynamic Hover Highlights */}
-                    {hoveredPoint && (
-                        <g>
-                            {/* Vertical hover guide line */}
-                            <line
-                                x1={hoveredPoint.x}
-                                y1={paddingY}
-                                x2={hoveredPoint.x}
-                                y2={height - paddingY}
-                                stroke="rgba(255, 255, 255, 0.15)"
-                                strokeWidth="1.5"
-                                strokeDasharray="3 3"
+                        {/* Time-axis Grid Ticks & Labels */}
+                        {labelTicks.map((tick, index) => (
+                            <g key={index}>
+                                {index > 0 && index < tickCount && (
+                                    <line
+                                        x1={tick.x}
+                                        y1={paddingY}
+                                        x2={tick.x}
+                                        y2={height - paddingY}
+                                        stroke="rgba(255, 255, 255, 0.02)"
+                                        strokeDasharray="2 2"
+                                    />
+                                )}
+                                <text
+                                    x={tick.x}
+                                    y={height - 8}
+                                    fill="var(--text-muted)"
+                                    fontSize="9"
+                                    textAnchor="middle"
+                                    fontWeight="600"
+                                >
+                                    {tick.label}
+                                </text>
+                            </g>
+                        ))}
+
+                        {/* Area & Lines */}
+                        {showTotalLine && areaPathTotal && <path d={areaPathTotal} fill="url(#areaGrad)" />}
+                        {showAppendLine && linePathAppend && (
+                            <path
+                                d={linePathAppend}
+                                fill="none"
+                                stroke="url(#appendLineGrad)"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
                             />
-                            {/* Highlighted dots on hovered point values */}
-                            {showAppendLine && hoveredPoint.append > 0 && (
-                                <circle
-                                    cx={hoveredPoint.x}
-                                    cy={hoveredPoint.yAppend}
-                                    r="5"
-                                    fill="#111827"
-                                    stroke="#f472b6"
-                                    strokeWidth="2.5"
+                        )}
+                        {showNormalLine && linePathNormal && (
+                            <path
+                                d={linePathNormal}
+                                fill="none"
+                                stroke="url(#normalLineGrad)"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        )}
+                        {showTotalLine && linePathTotal && (
+                            <path
+                                d={linePathTotal}
+                                fill="none"
+                                stroke="url(#totalLineGrad)"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        )}
+
+                        {/* Dynamic Hover Highlights */}
+                        {hoveredPoint && (
+                            <g>
+                                {/* Vertical hover guide line */}
+                                <line
+                                    x1={hoveredPoint.x}
+                                    y1={paddingY}
+                                    x2={hoveredPoint.x}
+                                    y2={height - paddingY}
+                                    stroke="rgba(255, 255, 255, 0.15)"
+                                    strokeWidth="1.5"
+                                    strokeDasharray="3 3"
                                 />
-                            )}
-                            {showNormalLine && (
-                                <circle
-                                    cx={hoveredPoint.x}
-                                    cy={hoveredPoint.yNormal}
-                                    r="5"
-                                    fill="#111827"
-                                    stroke="#22d3ee"
-                                    strokeWidth="2.5"
-                                />
-                            )}
-                            {showTotalLine && (
-                                <circle
-                                    cx={hoveredPoint.x}
-                                    cy={hoveredPoint.yTotal}
-                                    r="5.5"
-                                    fill="#111827"
-                                    stroke="#fbbf24"
-                                    strokeWidth="2.5"
-                                />
-                            )}
-                        </g>
-                    )}
-
-                    {/* Invisible vertical hover column bars */}
-                    {points.map((p, i) => (
-                        <rect
-                            key={i}
-                            x={p.x - 12}
-                            y={paddingY}
-                            width="24"
-                            height={height - paddingY * 2}
-                            fill="transparent"
-                            style={{ cursor: "pointer" }}
-                            onMouseEnter={() => setHoveredPoint(p)}
-                            onMouseLeave={() => setHoveredPoint(null)}
-                        />
-                    ))}
-
-                    {/* Y-axis labels */}
-                    <text
-                        x={paddingX - 8}
-                        y={paddingY + 3}
-                        fill="var(--text-muted)"
-                        fontSize="9"
-                        textAnchor="end"
-                        fontWeight="600"
-                    >
-                        {Math.round(yMax)}
-                    </text>
-                    <text
-                        x={paddingX - 8}
-                        y={(height - paddingY * 2) / 2 + paddingY + 3}
-                        fill="var(--text-muted)"
-                        fontSize="9"
-                        textAnchor="end"
-                        fontWeight="600"
-                    >
-                        {Math.round((yMax + yMin) / 2)}
-                    </text>
-                    <text
-                        x={paddingX - 8}
-                        y={height - paddingY + 3}
-                        fill="var(--text-muted)"
-                        fontSize="9"
-                        textAnchor="end"
-                        fontWeight="600"
-                    >
-                        {Math.round(yMin)}
-                    </text>
-                </svg>
-
-                {/* Graph tooltip */}
-                {hoveredPoint && (() => {
-                    const xPercent = (hoveredPoint.x / width) * 100;
-                    let tooltipLeftPercent = xPercent;
-                    let tooltipTransformX = "-50%";
-
-                    if (xPercent < 15) {
-                        tooltipLeftPercent = 5;
-                        tooltipTransformX = "0%";
-                    } else if (xPercent > 85) {
-                        tooltipLeftPercent = 95;
-                        tooltipTransformX = "-100%";
-                    }
-
-                    const activeY = showTotalLine ? hoveredPoint.yTotal : showNormalLine ? hoveredPoint.yNormal : hoveredPoint.yAppend;
-                    const yPercent = (activeY / height) * 100;
-                    const isUpperHalf = yPercent < 50;
-
-                    let tooltipTopPercent = yPercent;
-                    let tooltipTransformY = "-100%";
-                    let yOffsetPercent = -8;
-
-                    if (isUpperHalf) {
-                        tooltipTransformY = "0%";
-                        yOffsetPercent = 8;
-                    }
-
-                    return (
-                        <div
-                            style={{
-                                position: "absolute",
-                                left: `${tooltipLeftPercent}%`,
-                                top: `${tooltipTopPercent + yOffsetPercent}%`,
-                                transform: `translate(${tooltipTransformX}, ${tooltipTransformY})`,
-                                background: "rgba(17, 24, 39, 0.95)",
-                                border: "1px solid var(--border-color)",
-                                padding: "0.5rem 0.75rem",
-                                borderRadius: "8px",
-                                fontSize: "0.75rem",
-                                color: "var(--text-primary)",
-                                boxShadow: "0 8px 16px rgba(0, 0, 0, 0.4)",
-                                pointerEvents: "none",
-                                zIndex: 100,
-                                whiteSpace: "nowrap",
-                                textAlign: "center",
-                            }}
-                        >
-                            <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginBottom: "0.2rem" }}>
-                                {hoveredPoint.date}
-                            </div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", textAlign: "left" }}>
-                                {showTotalLine && (
-                                    <div style={{ fontWeight: "800", color: "#fbbf24" }}>
-                                        Total R: {Math.round(hoveredPoint.total)}
-                                    </div>
+                                {/* Highlighted dots on hovered point values */}
+                                {showAppendLine && hoveredPoint.append > 0 && (
+                                    <circle
+                                        cx={hoveredPoint.x}
+                                        cy={hoveredPoint.yAppend}
+                                        r="5"
+                                        fill="#111827"
+                                        stroke="#f472b6"
+                                        strokeWidth="2.5"
+                                    />
                                 )}
                                 {showNormalLine && (
-                                    <div style={{ fontSize: "0.7rem", color: "#22d3ee", fontWeight: "700" }}>
-                                        Player R: {Math.round(hoveredPoint.normal)}
-                                    </div>
+                                    <circle
+                                        cx={hoveredPoint.x}
+                                        cy={hoveredPoint.yNormal}
+                                        r="5"
+                                        fill="#111827"
+                                        stroke="#22d3ee"
+                                        strokeWidth="2.5"
+                                    />
                                 )}
-                                {showAppendLine && (
-                                    <div style={{ fontSize: "0.7rem", color: "#f472b6", fontWeight: "700" }}>
-                                        Append R: {Math.round(hoveredPoint.append)}
-                                    </div>
+                                {showTotalLine && (
+                                    <circle
+                                        cx={hoveredPoint.x}
+                                        cy={hoveredPoint.yTotal}
+                                        r="5.5"
+                                        fill="#111827"
+                                        stroke="#fbbf24"
+                                        strokeWidth="2.5"
+                                    />
                                 )}
-                            </div>
-                        </div>
-                    );
-                })()}
+                            </g>
+                        )}
+
+                        {/* Invisible vertical hover column bars */}
+                        {points.map((p, i) => (
+                            <rect
+                                key={i}
+                                x={p.x - 12}
+                                y={paddingY}
+                                width="24"
+                                height={height - paddingY * 2}
+                                fill="transparent"
+                                style={{ cursor: "pointer" }}
+                                onMouseEnter={() => setHoveredPoint(p)}
+                                onMouseLeave={() => setHoveredPoint(null)}
+                            />
+                        ))}
+
+                        {/* Y-axis labels */}
+                        <text
+                            x={paddingX - 8}
+                            y={paddingY + 3}
+                            fill="var(--text-muted)"
+                            fontSize="9"
+                            textAnchor="end"
+                            fontWeight="600"
+                        >
+                            {Math.round(yMax)}
+                        </text>
+                        <text
+                            x={paddingX - 8}
+                            y={(height - paddingY * 2) / 2 + paddingY + 3}
+                            fill="var(--text-muted)"
+                            fontSize="9"
+                            textAnchor="end"
+                            fontWeight="600"
+                        >
+                            {Math.round((yMax + yMin) / 2)}
+                        </text>
+                        <text
+                            x={paddingX - 8}
+                            y={height - paddingY + 3}
+                            fill="var(--text-muted)"
+                            fontSize="9"
+                            textAnchor="end"
+                            fontWeight="600"
+                        >
+                            {Math.round(yMin)}
+                        </text>
+                    </svg>
+
+                    {/* Graph tooltip */}
+                    {hoveredPoint &&
+                        (() => {
+                            const xPercent = (hoveredPoint.x / width) * 100;
+                            let tooltipLeftPercent = xPercent;
+                            let tooltipTransformX = "-50%";
+
+                            if (xPercent < 15) {
+                                tooltipLeftPercent = 5;
+                                tooltipTransformX = "0%";
+                            } else if (xPercent > 85) {
+                                tooltipLeftPercent = 95;
+                                tooltipTransformX = "-100%";
+                            }
+
+                            const activeY = showTotalLine
+                                ? hoveredPoint.yTotal
+                                : showNormalLine
+                                  ? hoveredPoint.yNormal
+                                  : hoveredPoint.yAppend;
+                            const yPercent = (activeY / height) * 100;
+                            const isUpperHalf = yPercent < 50;
+
+                            let tooltipTopPercent = yPercent;
+                            let tooltipTransformY = "-100%";
+                            let yOffsetPercent = -8;
+
+                            if (isUpperHalf) {
+                                tooltipTransformY = "0%";
+                                yOffsetPercent = 8;
+                            }
+
+                            return (
+                                <div
+                                    style={{
+                                        position: "absolute",
+                                        left: `${tooltipLeftPercent}%`,
+                                        top: `${tooltipTopPercent + yOffsetPercent}%`,
+                                        transform: `translate(${tooltipTransformX}, ${tooltipTransformY})`,
+                                        background: "rgba(17, 24, 39, 0.95)",
+                                        border: "1px solid var(--border-color)",
+                                        padding: "0.5rem 0.75rem",
+                                        borderRadius: "8px",
+                                        fontSize: "0.75rem",
+                                        color: "var(--text-primary)",
+                                        boxShadow: "0 8px 16px rgba(0, 0, 0, 0.4)",
+                                        pointerEvents: "none",
+                                        zIndex: 100,
+                                        whiteSpace: "nowrap",
+                                        textAlign: "center",
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            fontSize: "0.65rem",
+                                            color: "var(--text-muted)",
+                                            marginBottom: "0.2rem",
+                                        }}
+                                    >
+                                        {hoveredPoint.date}
+                                    </div>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: "0.15rem",
+                                            textAlign: "left",
+                                        }}
+                                    >
+                                        {showTotalLine && (
+                                            <div style={{ fontWeight: "800", color: "#fbbf24" }}>
+                                                Total R: {Math.round(hoveredPoint.total)}
+                                            </div>
+                                        )}
+                                        {showNormalLine && (
+                                            <div style={{ fontSize: "0.7rem", color: "#22d3ee", fontWeight: "700" }}>
+                                                Player R: {Math.round(hoveredPoint.normal)}
+                                            </div>
+                                        )}
+                                        {showAppendLine && (
+                                            <div style={{ fontSize: "0.7rem", color: "#f472b6", fontWeight: "700" }}>
+                                                Append R: {Math.round(hoveredPoint.append)}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
                 </div>
             </div>
         );
@@ -1589,8 +1637,8 @@ function App() {
         try {
             const res = await fetch("/api/admin/users", {
                 headers: {
-                    "Authorization": `Bearer ${currentUser.token}`
-                }
+                    Authorization: `Bearer ${currentUser.token}`,
+                },
             });
             const data = await res.json();
             if (res.ok) {
@@ -1608,14 +1656,19 @@ function App() {
 
     const deleteAdminUser = async (username, nickname) => {
         if (!currentUser || !currentUser.token) return;
-        if (!window.confirm(`정말 ${nickname}님(${username})의 회원 정보를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+        if (
+            !window.confirm(
+                `정말 ${nickname}님(${username})의 회원 정보를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`,
+            )
+        )
+            return;
 
         try {
             const res = await fetch(`/api/admin/users/${username}`, {
                 method: "DELETE",
                 headers: {
-                    "Authorization": `Bearer ${currentUser.token}`
-                }
+                    Authorization: `Bearer ${currentUser.token}`,
+                },
             });
             const data = await res.json();
             if (res.ok) {
@@ -1638,8 +1691,8 @@ function App() {
             const res = await fetch(`/api/admin/users/${username}/reset-password`, {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${currentUser.token}`
-                }
+                    Authorization: `Bearer ${currentUser.token}`,
+                },
             });
             const data = await res.json();
             if (res.ok) {
@@ -1671,12 +1724,12 @@ function App() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${currentUser.token}`
+                    Authorization: `Bearer ${currentUser.token}`,
                 },
                 body: JSON.stringify({
                     currentPassword: changeCurrentPassword,
-                    newPassword: changeNewPassword
-                })
+                    newPassword: changeNewPassword,
+                }),
             });
             const data = await res.json();
             if (res.ok) {
@@ -2088,12 +2141,8 @@ function App() {
         const resA = computeUserB39(compareData.userA.scores);
         const resB = computeUserB39(compareData.userB.scores);
 
-        const mapA = new Map(
-            compareData.userA.scores.filter((s) => s && s.id).map((s) => [String(s.id), s])
-        );
-        const mapB = new Map(
-            compareData.userB.scores.filter((s) => s && s.id).map((s) => [String(s.id), s])
-        );
+        const mapA = new Map(compareData.userA.scores.filter((s) => s && s.id).map((s) => [String(s.id), s]));
+        const mapB = new Map(compareData.userB.scores.filter((s) => s && s.id).map((s) => [String(s.id), s]));
 
         const commonList = [];
         songs.forEach((song) => {
@@ -2226,8 +2275,12 @@ function App() {
     }, [filteredCompareList, compareVisibleCount]);
 
     const filteredCounts = useMemo(() => {
-        let apA = 0, fcA = 0, clrA = 0;
-        let apB = 0, fcB = 0, clrB = 0;
+        let apA = 0,
+            fcA = 0,
+            clrA = 0;
+        let apB = 0,
+            fcB = 0,
+            clrB = 0;
         filteredCompareList.forEach((item) => {
             if (item.statA === "full_perfect") apA++;
             else if (item.statA === "full_combo") fcA++;
@@ -2242,10 +2295,11 @@ function App() {
 
     const sortedAndFilteredRankings = useMemo(() => {
         let list = [...rankings];
-        
+
         // Sort dynamically
         list.sort((a, b) => {
-            let valA = 0, valB = 0;
+            let valA = 0,
+                valB = 0;
             if (rankingsSortBy === "total") {
                 valA = a.totalRating || 0;
                 valB = b.totalRating || 0;
@@ -2276,7 +2330,7 @@ function App() {
         // Assign absolute rank based on sorted order
         const rankedList = list.map((user, idx) => ({
             ...user,
-            absoluteRank: idx + 1
+            absoluteRank: idx + 1,
         }));
 
         // Filter by nickname search query after sorting
@@ -3309,7 +3363,7 @@ function App() {
             none: "NC (No Clear)",
             clear: "C (Clear)",
             full_combo: "FC (Full Combo)",
-            full_perfect: "AP (All Perfect)"
+            full_perfect: "AP (All Perfect)",
         };
         const msg = `현재 필터링된 곡 ${filteredAndSortedRecords.length}개의 성과를 일괄적으로 [${statusLabels[status]}] 상태로 변경하시겠습니까?`;
         if (window.confirm(msg)) {
@@ -3332,7 +3386,7 @@ function App() {
                     <div className="logo-section">
                         <span className="logo-icon">🎵</span>
                         <div>
-                            <h1 className="logo-text">SEKAI ANALYZER</h1>
+                            <h1 className="logo-text">SEKAITOOL</h1>
                         </div>
                     </div>
 
@@ -3501,7 +3555,7 @@ function App() {
                             <div className="logo-section">
                                 <span className="logo-icon">🎵</span>
                                 <span className="logo-text" style={{ fontSize: "1.3rem" }}>
-                                    SEKAI ANALYZER
+                                    SEKAITOOL
                                 </span>
                             </div>
                             <button
@@ -3967,7 +4021,15 @@ function App() {
                                 size={120}
                                 style={{ borderRadius: "8px", boxShadow: "0 4px 15px rgba(0,0,0,0.3)" }}
                             />
-                            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", minWidth: 0, flex: 1 }}>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "0.4rem",
+                                    minWidth: 0,
+                                    flex: 1,
+                                }}
+                            >
                                 <div
                                     style={{
                                         fontSize: "1.15rem",
@@ -3975,37 +4037,90 @@ function App() {
                                         color: "var(--text-primary)",
                                         overflow: "hidden",
                                         textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap"
+                                        whiteSpace: "nowrap",
                                     }}
                                     title={getSongTitle(selectedJacketSong.song)}
                                 >
                                     {getSongTitle(selectedJacketSong.song)}
                                 </div>
-                                <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                <div
+                                    style={{
+                                        fontSize: "0.85rem",
+                                        color: "var(--text-secondary)",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
                                     작곡: {selectedJacketSong.song.composer || "-"}
                                 </div>
                                 <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                                    난이도: <span className={`diff-badge diff-${selectedJacketSong.diff}`} style={{ display: "inline-block", padding: "0.1rem 0.4rem", borderRadius: "4px", fontWeight: "700", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                                    난이도:{" "}
+                                    <span
+                                        className={`diff-badge diff-${selectedJacketSong.diff}`}
+                                        style={{
+                                            display: "inline-block",
+                                            padding: "0.1rem 0.4rem",
+                                            borderRadius: "4px",
+                                            fontWeight: "700",
+                                            fontSize: "0.75rem",
+                                            textTransform: "uppercase",
+                                        }}
+                                    >
                                         {selectedJacketSong.diff.toUpperCase()}
                                     </span>
                                 </div>
                                 <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                                    기본 레벨: <strong>{selectedJacketSong.song.levels[selectedJacketSong.diff] || "-"}</strong>
+                                    기본 레벨:{" "}
+                                    <strong>{selectedJacketSong.song.levels[selectedJacketSong.diff] || "-"}</strong>
                                 </div>
                                 <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                                    상수: <strong>{getConstant(selectedJacketSong.song, selectedJacketSong.diff, selectedJacketSong.status).toFixed(1)}</strong>
+                                    상수:{" "}
+                                    <strong>
+                                        {getConstant(
+                                            selectedJacketSong.song,
+                                            selectedJacketSong.diff,
+                                            selectedJacketSong.status,
+                                        ).toFixed(1)}
+                                    </strong>
                                 </div>
                             </div>
                         </div>
 
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                            <label className="filter-label" style={{ fontWeight: "700" }}>성과 설정</label>
+                            <label className="filter-label" style={{ fontWeight: "700" }}>
+                                성과 설정
+                            </label>
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem" }}>
                                 {[
-                                    { value: "none", label: "미플레이 (NC)", color: "var(--text-muted)", bg: "rgba(255,255,255,0.05)", border: "var(--border-color)" },
-                                    { value: "clear", label: "클리어 (C)", color: "var(--color-clear)", bg: "rgba(251, 191, 36, 0.1)", border: "rgba(251, 191, 36, 0.3)" },
-                                    { value: "full_combo", label: "풀콤보 (FC)", color: "var(--color-fc)", bg: "rgba(192, 132, 252, 0.1)", border: "rgba(192, 132, 252, 0.3)" },
-                                    { value: "full_perfect", label: "퍼펙트 (AP)", color: "var(--color-ap)", bg: "rgba(56, 189, 248, 0.1)", border: "rgba(56, 189, 248, 0.3)" }
+                                    {
+                                        value: "none",
+                                        label: "미플레이 (NC)",
+                                        color: "var(--text-muted)",
+                                        bg: "rgba(255,255,255,0.05)",
+                                        border: "var(--border-color)",
+                                    },
+                                    {
+                                        value: "clear",
+                                        label: "클리어 (C)",
+                                        color: "var(--color-clear)",
+                                        bg: "rgba(251, 191, 36, 0.1)",
+                                        border: "rgba(251, 191, 36, 0.3)",
+                                    },
+                                    {
+                                        value: "full_combo",
+                                        label: "풀콤보 (FC)",
+                                        color: "var(--color-fc)",
+                                        bg: "rgba(192, 132, 252, 0.1)",
+                                        border: "rgba(192, 132, 252, 0.3)",
+                                    },
+                                    {
+                                        value: "full_perfect",
+                                        label: "퍼펙트 (AP)",
+                                        color: "var(--color-ap)",
+                                        bg: "rgba(56, 189, 248, 0.1)",
+                                        border: "rgba(56, 189, 248, 0.3)",
+                                    },
                                 ].map((opt) => {
                                     const isActive = selectedJacketSong.status === opt.value;
                                     return (
@@ -4022,10 +4137,14 @@ function App() {
                                                 boxShadow: isActive ? `0 0 10px ${opt.color}40` : "none",
                                             }}
                                             onClick={() => {
-                                                handleScoreChange(selectedJacketSong.song.id, selectedJacketSong.diff, opt.value);
+                                                handleScoreChange(
+                                                    selectedJacketSong.song.id,
+                                                    selectedJacketSong.diff,
+                                                    opt.value,
+                                                );
                                                 setSelectedJacketSong({
                                                     ...selectedJacketSong,
-                                                    status: opt.value
+                                                    status: opt.value,
                                                 });
                                             }}
                                         >
@@ -4109,7 +4228,15 @@ function App() {
                             </div>
 
                             {!isRegisterMode && (
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "-0.5rem", marginBottom: "0.25rem" }}>
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "0.5rem",
+                                        marginTop: "-0.5rem",
+                                        marginBottom: "0.25rem",
+                                    }}
+                                >
                                     <input
                                         type="checkbox"
                                         id="auto-login"
@@ -4123,7 +4250,7 @@ function App() {
                                             fontSize: "0.85rem",
                                             cursor: "pointer",
                                             color: "var(--text-secondary)",
-                                            userSelect: "none"
+                                            userSelect: "none",
                                         }}
                                     >
                                         자동 로그인
@@ -4181,7 +4308,15 @@ function App() {
                         {/* Close button */}
                         <button
                             className="btn-close"
-                            style={{ position: "absolute", top: "1.25rem", right: "1.25rem", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
+                            style={{
+                                position: "absolute",
+                                top: "1.25rem",
+                                right: "1.25rem",
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                color: "var(--text-muted)",
+                            }}
                             onClick={() => setShowChangePasswordModal(false)}
                             aria-label="닫기"
                         >
@@ -4205,7 +4340,10 @@ function App() {
                             onSubmit={handleChangePasswordSubmit}
                             style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}
                         >
-                            <div className="filter-group" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                            <div
+                                className="filter-group"
+                                style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
+                            >
                                 <label className="filter-label">현재 비밀번호</label>
                                 <input
                                     type="password"
@@ -4217,7 +4355,10 @@ function App() {
                                 />
                             </div>
 
-                            <div className="filter-group" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                            <div
+                                className="filter-group"
+                                style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
+                            >
                                 <label className="filter-label">새 비밀번호</label>
                                 <input
                                     type="password"
@@ -4229,7 +4370,10 @@ function App() {
                                 />
                             </div>
 
-                            <div className="filter-group" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                            <div
+                                className="filter-group"
+                                style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
+                            >
                                 <label className="filter-label">새 비밀번호 확인</label>
                                 <input
                                     type="password"
@@ -4244,7 +4388,9 @@ function App() {
                             {changePasswordMessage && (
                                 <div
                                     style={{
-                                        color: changePasswordMessage.startsWith("⚠") ? "var(--color-danger)" : "var(--color-success)",
+                                        color: changePasswordMessage.startsWith("⚠")
+                                            ? "var(--color-danger)"
+                                            : "var(--color-success)",
                                         fontSize: "0.85rem",
                                         fontWeight: "700",
                                         textAlign: "center",
@@ -4266,10 +4412,22 @@ function App() {
                 {/* ======================================================== */}
                 {/* 1. DASHBOARD TAB */}
                 {/* ======================================================== */}
-                {activeTab === "dashboard" && (
-                    isViewedDashboardLoading ? (
+                {activeTab === "dashboard" &&
+                    (isViewedDashboardLoading ? (
                         <div style={{ textAlign: "center", padding: "5rem 0", color: "var(--text-muted)" }}>
-                            <div className="loading-spinner" style={{ display: "inline-block", width: "40px", height: "40px", border: "4px solid rgba(255,255,255,0.1)", borderRadius: "50%", borderTopColor: "var(--color-cyan)", animation: "spin 1s linear infinite", marginBottom: "1rem" }}></div>
+                            <div
+                                className="loading-spinner"
+                                style={{
+                                    display: "inline-block",
+                                    width: "40px",
+                                    height: "40px",
+                                    border: "4px solid rgba(255,255,255,0.1)",
+                                    borderRadius: "50%",
+                                    borderTopColor: "var(--color-cyan)",
+                                    animation: "spin 1s linear infinite",
+                                    marginBottom: "1rem",
+                                }}
+                            ></div>
                             <style>{`
                                 @keyframes spin {
                                     to { transform: rotate(360deg); }
@@ -4278,9 +4436,27 @@ function App() {
                             <div style={{ fontWeight: "700" }}>유저 대시보드 정보를 불러오는 중입니다...</div>
                         </div>
                     ) : viewedDashboardError ? (
-                        <div className="glass-panel" style={{ textAlign: "center", padding: "4rem 2rem", margin: "2rem auto", maxWidth: "500px", border: "1px solid rgba(220,53,69,0.2)" }}>
+                        <div
+                            className="glass-panel"
+                            style={{
+                                textAlign: "center",
+                                padding: "4rem 2rem",
+                                margin: "2rem auto",
+                                maxWidth: "500px",
+                                border: "1px solid rgba(220,53,69,0.2)",
+                            }}
+                        >
                             <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>⚠️</div>
-                            <h3 style={{ fontSize: "1.2rem", marginBottom: "1.5rem", fontWeight: "700", color: "var(--color-danger)" }}>{viewedDashboardError}</h3>
+                            <h3
+                                style={{
+                                    fontSize: "1.2rem",
+                                    marginBottom: "1.5rem",
+                                    fontWeight: "700",
+                                    color: "var(--color-danger)",
+                                }}
+                            >
+                                {viewedDashboardError}
+                            </h3>
                             <button className="btn btn-primary animate-glow" onClick={() => navigate("/dashboard")}>
                                 내 대시보드로 돌아가기
                             </button>
@@ -4290,14 +4466,50 @@ function App() {
                             {/* Left Stats Sidebar */}
                             <aside className="stats-sidebar">
                                 {/* Profile Header Card */}
-                                <div className="glass-panel" style={{ padding: "1.25rem", display: "flex", flexDirection: "column", gap: "0.25rem", border: viewedUser ? "1px solid rgba(0, 242, 254, 0.3)" : "1px solid var(--border-color)", background: viewedUser ? "rgba(0, 242, 254, 0.03)" : "", marginBottom: "0.5rem" }}>
-
-                                    <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
-                                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{effectiveUser ? effectiveUser.nickname : "Guest"}</span>
+                                <div
+                                    className="glass-panel"
+                                    style={{
+                                        padding: "1.25rem",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: "0.25rem",
+                                        border: viewedUser
+                                            ? "1px solid rgba(0, 242, 254, 0.3)"
+                                            : "1px solid var(--border-color)",
+                                        background: viewedUser ? "rgba(0, 242, 254, 0.03)" : "",
+                                        marginBottom: "0.5rem",
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            fontSize: "1.2rem",
+                                            fontWeight: 800,
+                                            color: "var(--text-primary)",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            gap: "0.5rem",
+                                        }}
+                                    >
+                                        <span
+                                            style={{
+                                                overflow: "hidden",
+                                                textOverflow: "ellipsis",
+                                                whiteSpace: "nowrap",
+                                                flex: 1,
+                                            }}
+                                        >
+                                            {effectiveUser ? effectiveUser.nickname : "Guest"}
+                                        </span>
                                         {viewedUser && (
                                             <button
                                                 className="btn btn-outline"
-                                                style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem", borderColor: "var(--border-color)", flexShrink: 0 }}
+                                                style={{
+                                                    padding: "0.2rem 0.5rem",
+                                                    fontSize: "0.7rem",
+                                                    borderColor: "var(--border-color)",
+                                                    flexShrink: 0,
+                                                }}
                                                 onClick={() => navigate("/dashboard")}
                                             >
                                                 내 정보 보기
@@ -4308,140 +4520,212 @@ function App() {
                                         @{effectiveUser ? effectiveUser.username : "guest"}
                                     </div>
                                 </div>
-                            {/* 일반 셐포스 B39 */}
-                            <div className="glass-panel profile-card" style={{ marginBottom: "0.25rem" }}>
-                                <div className="rating-title">
-                                    Player R
-                                </div>
-                                <div className="rating-value">{playerRating}</div>
-                            </div>
-
-                            {/* 어펜드 셐포스 B15 */}
-                            <div className="glass-panel profile-card" style={{ position: "relative" }}>
-                                <div className="rating-title" style={{ color: "var(--color-append)" }}>
-                                    Append R
-                                </div>
-                                <div
-                                    className="rating-value"
-                                    style={{
-                                        background: "linear-gradient(135deg, #ffffff 30%, #ff9ebe 100%)",
-                                        WebkitTextFillColor: "transparent",
-                                        WebkitBackgroundClip: "text",
-                                    }}
-                                >
-                                    {playerAppendRating}
-                                </div>
-                            </div>
-
-                            <div className="glass-panel stat-box">
-                                <span className="stat-label">B39 평균 / 커트라인</span>
-                                <span className="stat-val" style={{ fontSize: "1.2rem", color: "var(--color-cyan)" }}>
-                                    {b39List.length > 0 ? (playerRating / b39List.length).toFixed(1) : "0.0"} /{" "}
-                                    {b39List.length === 39 ? Math.round(b39List[38].rating) : "0"}
-                                </span>
-                            </div>
-
-                            <div className="glass-panel stat-box">
-                                <span className="stat-label">어펜드 B15 평균 / 커트라인</span>
-                                <span className="stat-val" style={{ fontSize: "1.2rem", color: "var(--color-append)" }}>
-                                    {appendB15List.length > 0
-                                        ? (
-                                              appendB15List.reduce((acc, c) => acc + c.rating, 0) / appendB15List.length
-                                          ).toFixed(1)
-                                        : "0.0"}{" "}
-                                    / {appendB15List.length === 15 ? Math.round(appendB15List[14].rating) : "0"}
-                                </span>
-                            </div>
-
-                            <div className="stat-grid-half">
-                                <div className="glass-panel stat-box">
-                                    <span
-                                        className="stat-label"
-                                        style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}
-                                    >
-                                        <span style={{ color: "var(--color-ap)" }}>●</span> AP 수
-                                    </span>
-                                    <span className="stat-val">{overallStats.apCount}</span>
-                                </div>
-                                <div className="glass-panel stat-box">
-                                    <span
-                                        className="stat-label"
-                                        style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}
-                                    >
-                                        <span style={{ color: "var(--color-fc)" }}>●</span> FC 수
-                                    </span>
-                                    <span className="stat-val">{overallStats.fcCount}</span>
-                                </div>
-                            </div>
-                        </aside>
-
-                        {/* Right B39 / B15 List Panel */}
-                        <section className="glass-panel main-content">
-                            {/* 레이팅 상승 추세 그래프 */}
-                            <div
-                                className="glass-panel"
-                                style={{
-                                    padding: "1.5rem",
-                                    marginBottom: "1.5rem",
-                                    background: "rgba(10, 15, 30, 0.4)",
-                                }}
-                            >
-                                <h3
-                                    style={{
-                                        fontSize: "1.1rem",
-                                        marginBottom: "1rem",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "0.5rem",
-                                        fontWeight: "700",
-                                    }}
-                                >
-                                    <TrendingUp size={18} style={{ color: "var(--color-cyan)" }} /> 레이팅 상승 추세
-                                </h3>
-                                {renderRatingGraph()}
-                            </div>
-                            <div
-                                className="section-title-bar"
-                                style={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    alignItems: "flex-start",
-                                    gap: "1rem",
-                                }}
-                            >
-                                <div>
-                                    <h2 className="section-title">
-                                        <TrendingUp size={22} style={{ color: "var(--color-cyan)" }} /> B39
-                                    </h2>
+                                {/* 일반 셐포스 B39 */}
+                                <div className="glass-panel profile-card" style={{ marginBottom: "0.25rem" }}>
+                                    <div className="rating-title">Player R</div>
+                                    <div className="rating-value">{playerRating}</div>
                                 </div>
 
-                                {/* Dashboard Inner Sub Tab Selector */}
-                                <div
-                                    className="tabs-header"
-                                    style={{ width: "100%", marginBottom: 0, paddingBottom: 0 }}
-                                >
-                                    <button
-                                        className={`tab-btn ${dashboardSubTab === "b39" ? "active" : ""}`}
-                                        onClick={() => setDashboardSubTab("b39")}
-                                    >
-                                        B39
-                                    </button>
-                                    <button
-                                        className={`tab-btn ${dashboardSubTab === "b15" ? "active" : ""}`}
-                                        onClick={() => setDashboardSubTab("b15")}
+                                {/* 어펜드 셐포스 B15 */}
+                                <div className="glass-panel profile-card" style={{ position: "relative" }}>
+                                    <div className="rating-title" style={{ color: "var(--color-append)" }}>
+                                        Append R
+                                    </div>
+                                    <div
+                                        className="rating-value"
                                         style={{
-                                            borderBottomColor: dashboardSubTab === "b15" ? "var(--color-append)" : "",
-                                            color: dashboardSubTab === "b15" ? "var(--color-append)" : "",
+                                            background: "linear-gradient(135deg, #ffffff 30%, #ff9ebe 100%)",
+                                            WebkitTextFillColor: "transparent",
+                                            WebkitBackgroundClip: "text",
                                         }}
                                     >
-                                        APD B15
-                                    </button>
+                                        {playerAppendRating}
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="b39-list">
-                                {dashboardSubTab === "b39" ? (
-                                    b39List.length === 0 ? (
+                                <div className="glass-panel stat-box">
+                                    <span className="stat-label">B39 평균 / 커트라인</span>
+                                    <span
+                                        className="stat-val"
+                                        style={{ fontSize: "1.2rem", color: "var(--color-cyan)" }}
+                                    >
+                                        {b39List.length > 0 ? (playerRating / b39List.length).toFixed(1) : "0.0"} /{" "}
+                                        {b39List.length === 39 ? Math.round(b39List[38].rating) : "0"}
+                                    </span>
+                                </div>
+
+                                <div className="glass-panel stat-box">
+                                    <span className="stat-label">어펜드 B15 평균 / 커트라인</span>
+                                    <span
+                                        className="stat-val"
+                                        style={{ fontSize: "1.2rem", color: "var(--color-append)" }}
+                                    >
+                                        {appendB15List.length > 0
+                                            ? (
+                                                  appendB15List.reduce((acc, c) => acc + c.rating, 0) /
+                                                  appendB15List.length
+                                              ).toFixed(1)
+                                            : "0.0"}{" "}
+                                        / {appendB15List.length === 15 ? Math.round(appendB15List[14].rating) : "0"}
+                                    </span>
+                                </div>
+
+                                <div className="stat-grid-half">
+                                    <div className="glass-panel stat-box">
+                                        <span
+                                            className="stat-label"
+                                            style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}
+                                        >
+                                            <span style={{ color: "var(--color-ap)" }}>●</span> AP 수
+                                        </span>
+                                        <span className="stat-val">{overallStats.apCount}</span>
+                                    </div>
+                                    <div className="glass-panel stat-box">
+                                        <span
+                                            className="stat-label"
+                                            style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}
+                                        >
+                                            <span style={{ color: "var(--color-fc)" }}>●</span> FC 수
+                                        </span>
+                                        <span className="stat-val">{overallStats.fcCount}</span>
+                                    </div>
+                                </div>
+                            </aside>
+
+                            {/* Right B39 / B15 List Panel */}
+                            <section className="glass-panel main-content">
+                                {/* 레이팅 상승 추세 그래프 */}
+                                <div
+                                    className="glass-panel"
+                                    style={{
+                                        padding: "1.5rem",
+                                        marginBottom: "1.5rem",
+                                        background: "rgba(10, 15, 30, 0.4)",
+                                    }}
+                                >
+                                    <h3
+                                        style={{
+                                            fontSize: "1.1rem",
+                                            marginBottom: "1rem",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "0.5rem",
+                                            fontWeight: "700",
+                                        }}
+                                    >
+                                        <TrendingUp size={18} style={{ color: "var(--color-cyan)" }} /> 레이팅 상승 추세
+                                    </h3>
+                                    {renderRatingGraph()}
+                                </div>
+                                <div
+                                    className="section-title-bar"
+                                    style={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "flex-start",
+                                        gap: "1rem",
+                                    }}
+                                >
+                                    <div>
+                                        <h2 className="section-title">
+                                            <TrendingUp size={22} style={{ color: "var(--color-cyan)" }} /> B39
+                                        </h2>
+                                    </div>
+
+                                    {/* Dashboard Inner Sub Tab Selector */}
+                                    <div
+                                        className="tabs-header"
+                                        style={{ width: "100%", marginBottom: 0, paddingBottom: 0 }}
+                                    >
+                                        <button
+                                            className={`tab-btn ${dashboardSubTab === "b39" ? "active" : ""}`}
+                                            onClick={() => setDashboardSubTab("b39")}
+                                        >
+                                            B39
+                                        </button>
+                                        <button
+                                            className={`tab-btn ${dashboardSubTab === "b15" ? "active" : ""}`}
+                                            onClick={() => setDashboardSubTab("b15")}
+                                            style={{
+                                                borderBottomColor:
+                                                    dashboardSubTab === "b15" ? "var(--color-append)" : "",
+                                                color: dashboardSubTab === "b15" ? "var(--color-append)" : "",
+                                            }}
+                                        >
+                                            APD B15
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="b39-list">
+                                    {dashboardSubTab === "b39" ? (
+                                        b39List.length === 0 ? (
+                                            <div
+                                                style={{
+                                                    gridColumn: "1 / -1",
+                                                    textAlign: "center",
+                                                    padding: "4rem 0",
+                                                    color: "var(--text-muted)",
+                                                }}
+                                            >
+                                                등록된 일반 셐포스 B39 성과 기록이 없습니다.
+                                            </div>
+                                        ) : (
+                                            b39List.map((item, index) => {
+                                                const diffColors = {
+                                                    easy: "diff-easy",
+                                                    normal: "diff-normal",
+                                                    hard: "diff-hard",
+                                                    expert: "diff-expert",
+                                                    master: "diff-master",
+                                                };
+                                                return (
+                                                    <div
+                                                        key={`${item.song.id}-${item.diff}`}
+                                                        className={`glass-panel b39-item status-${item.status || "clear"} hover-lift`}
+                                                    >
+                                                        <div className="b39-rank">#{index + 1}</div>
+                                                        <div className="b39-jacket-wrapper">
+                                                            <JacketImage
+                                                                songId={item.song.id}
+                                                                size={200}
+                                                                className="b39-jacket"
+                                                            />
+                                                        </div>
+                                                        <div className="b39-card-body">
+                                                            <div className="b39-title" title={getSongTitle(item.song)}>
+                                                                {getSongTitle(item.song)}
+                                                            </div>
+                                                            <div className="b39-meta-row">
+                                                                <span className={`diff-badge ${diffColors[item.diff]}`}>
+                                                                    {item.diff.toUpperCase().substring(0, 3)}{" "}
+                                                                    {item.level}
+                                                                </span>
+                                                                <span
+                                                                    className={`status-badge ${item.status === "full_perfect" ? "status-ap" : item.status === "full_combo" ? "status-fc" : "status-clear"}`}
+                                                                >
+                                                                    {item.status === "full_perfect"
+                                                                        ? "AP"
+                                                                        : item.status === "full_combo"
+                                                                          ? "FC"
+                                                                          : "C"}
+                                                                </span>
+                                                            </div>
+                                                            <div className="b39-rating-row">
+                                                                <span className="b39-constant">
+                                                                    {item.constant.toFixed(1)}
+                                                                    {!item.hasConstant && "?"}
+                                                                </span>
+                                                                <span className="b39-rating-value">
+                                                                    {Math.round(item.rating)}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        )
+                                    ) : appendB15List.length === 0 ? (
                                         <div
                                             style={{
                                                 gridColumn: "1 / -1",
@@ -4450,114 +4734,55 @@ function App() {
                                                 color: "var(--text-muted)",
                                             }}
                                         >
-                                            등록된 일반 셐포스 B39 성과 기록이 없습니다.
+                                            등록된 어펜드 B15 성과 기록이 없습니다.
                                         </div>
                                     ) : (
-                                        b39List.map((item, index) => {
-                                            const diffColors = {
-                                                easy: "diff-easy",
-                                                normal: "diff-normal",
-                                                hard: "diff-hard",
-                                                expert: "diff-expert",
-                                                master: "diff-master",
-                                            };
-                                            return (
-                                                <div
-                                                    key={`${item.song.id}-${item.diff}`}
-                                                    className={`glass-panel b39-item status-${item.status || "clear"} hover-lift`}
-                                                >
-                                                    <div className="b39-rank">#{index + 1}</div>
-                                                    <div className="b39-jacket-wrapper">
-                                                        <JacketImage
-                                                            songId={item.song.id}
-                                                            size={200}
-                                                            className="b39-jacket"
-                                                        />
+                                        appendB15List.map((item, index) => (
+                                            <div
+                                                key={`${item.song.id}-append`}
+                                                className={`glass-panel b39-item status-${item.status || "clear"} append-item hover-lift`}
+                                            >
+                                                <div className="b39-rank">#{index + 1}</div>
+                                                <div className="b39-jacket-wrapper">
+                                                    <JacketImage
+                                                        songId={item.song.id}
+                                                        size={200}
+                                                        className="b39-jacket"
+                                                    />
+                                                </div>
+                                                <div className="b39-card-body">
+                                                    <div className="b39-title" title={getSongTitle(item.song)}>
+                                                        {getSongTitle(item.song)}
                                                     </div>
-                                                    <div className="b39-card-body">
-                                                        <div className="b39-title" title={getSongTitle(item.song)}>
-                                                            {getSongTitle(item.song)}
-                                                        </div>
-                                                        <div className="b39-meta-row">
-                                                            <span className={`diff-badge ${diffColors[item.diff]}`}>
-                                                                {item.diff.toUpperCase().substring(0, 3)} {item.level}
-                                                            </span>
-                                                            <span
-                                                                className={`status-badge ${item.status === "full_perfect" ? "status-ap" : item.status === "full_combo" ? "status-fc" : "status-clear"}`}
-                                                            >
-                                                                {item.status === "full_perfect"
-                                                                    ? "AP"
-                                                                    : item.status === "full_combo"
-                                                                      ? "FC"
-                                                                      : "C"}
-                                                            </span>
-                                                        </div>
-                                                        <div className="b39-rating-row">
-                                                            <span className="b39-constant">
-                                                                {item.constant.toFixed(1)}
-                                                                {!item.hasConstant && "?"}
-                                                            </span>
-                                                            <span className="b39-rating-value">
-                                                                {Math.round(item.rating)}
-                                                            </span>
-                                                        </div>
+                                                    <div className="b39-meta-row">
+                                                        <span className="diff-badge diff-append">APD {item.level}</span>
+                                                        <span
+                                                            className={`status-badge ${item.status === "full_perfect" ? "status-ap" : item.status === "full_combo" ? "status-fc" : "status-clear"}`}
+                                                        >
+                                                            {item.status === "full_perfect"
+                                                                ? "AP"
+                                                                : item.status === "full_combo"
+                                                                  ? "FC"
+                                                                  : "C"}
+                                                        </span>
+                                                    </div>
+                                                    <div className="b39-rating-row">
+                                                        <span className="b39-constant">
+                                                            {item.constant.toFixed(1)}
+                                                            {!item.hasConstant && "?"}
+                                                        </span>
+                                                        <span className="b39-rating-value">
+                                                            {Math.round(item.rating)}
+                                                        </span>
                                                     </div>
                                                 </div>
-                                            );
-                                        })
-                                    )
-                                ) : appendB15List.length === 0 ? (
-                                    <div
-                                        style={{
-                                            gridColumn: "1 / -1",
-                                            textAlign: "center",
-                                            padding: "4rem 0",
-                                            color: "var(--text-muted)",
-                                        }}
-                                    >
-                                        등록된 어펜드 B15 성과 기록이 없습니다.
-                                    </div>
-                                ) : (
-                                    appendB15List.map((item, index) => (
-                                        <div
-                                            key={`${item.song.id}-append`}
-                                            className={`glass-panel b39-item status-${item.status || "clear"} append-item hover-lift`}
-                                        >
-                                            <div className="b39-rank">#{index + 1}</div>
-                                            <div className="b39-jacket-wrapper">
-                                                <JacketImage songId={item.song.id} size={200} className="b39-jacket" />
                                             </div>
-                                            <div className="b39-card-body">
-                                                <div className="b39-title" title={getSongTitle(item.song)}>
-                                                    {getSongTitle(item.song)}
-                                                </div>
-                                                <div className="b39-meta-row">
-                                                    <span className="diff-badge diff-append">APD {item.level}</span>
-                                                    <span
-                                                        className={`status-badge ${item.status === "full_perfect" ? "status-ap" : item.status === "full_combo" ? "status-fc" : "status-clear"}`}
-                                                    >
-                                                        {item.status === "full_perfect"
-                                                            ? "AP"
-                                                            : item.status === "full_combo"
-                                                              ? "FC"
-                                                              : "C"}
-                                                    </span>
-                                                </div>
-                                                <div className="b39-rating-row">
-                                                    <span className="b39-constant">
-                                                        {item.constant.toFixed(1)}
-                                                        {!item.hasConstant && "?"}
-                                                    </span>
-                                                    <span className="b39-rating-value">{Math.round(item.rating)}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </section>
-                    </div>
-                ))}
+                                        ))
+                                    )}
+                                </div>
+                            </section>
+                        </div>
+                    ))}
 
                 {/* ======================================================== */}
                 {/* 1-2. SEKFORCE RANKING TAB */}
@@ -4565,7 +4790,16 @@ function App() {
                 {activeTab === "ranking" && (
                     <section className="glass-panel" style={{ padding: "2rem" }}>
                         <div className="section-title-bar">
-                            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    width: "100%",
+                                    alignItems: "center",
+                                    flexWrap: "wrap",
+                                    gap: "1rem",
+                                }}
+                            >
                                 <h2 className="section-title" style={{ margin: 0 }}>
                                     <Trophy size={22} style={{ color: "var(--color-cyan)" }} /> 랭킹
                                 </h2>
@@ -4574,7 +4808,10 @@ function App() {
 
                         {/* Search & Sort Filters */}
                         <div className="table-filters-expanded" style={{ display: "block", marginBottom: "1.5rem" }}>
-                            <div className="filters-row constants-filters-grid" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr auto", gap: "1rem" }}>
+                            <div
+                                className="filters-row constants-filters-grid"
+                                style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr auto", gap: "1rem" }}
+                            >
                                 <div className="filter-group">
                                     <label className="filter-label">닉네임 검색</label>
                                     <div style={{ position: "relative" }}>
@@ -4616,12 +4853,17 @@ function App() {
                                     </select>
                                 </div>
 
-                                <div className="filter-group" style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                                <div
+                                    className="filter-group"
+                                    style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}
+                                >
                                     <button
                                         type="button"
                                         className="btn btn-outline"
                                         style={{ height: "42px", padding: "0 1rem" }}
-                                        onClick={() => setRankingsSortOrder(rankingsSortOrder === "desc" ? "asc" : "desc")}
+                                        onClick={() =>
+                                            setRankingsSortOrder(rankingsSortOrder === "desc" ? "asc" : "desc")
+                                        }
                                     >
                                         {rankingsSortOrder === "desc" ? "내림차순 ↓" : "올림차순 ↑"}
                                     </button>
@@ -4640,9 +4882,23 @@ function App() {
                             </div>
                         ) : (
                             <div style={{ overflowX: "auto" }}>
-                                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "600px", textAlign: "left" }}>
+                                <table
+                                    style={{
+                                        width: "100%",
+                                        borderCollapse: "collapse",
+                                        minWidth: "600px",
+                                        textAlign: "left",
+                                    }}
+                                >
                                     <thead>
-                                        <tr style={{ borderBottom: "2px solid var(--border-color)", color: "var(--text-secondary)", fontSize: "0.85rem", fontWeight: "700" }}>
+                                        <tr
+                                            style={{
+                                                borderBottom: "2px solid var(--border-color)",
+                                                color: "var(--text-secondary)",
+                                                fontSize: "0.85rem",
+                                                fontWeight: "700",
+                                            }}
+                                        >
                                             <th style={{ padding: "1rem" }}>순위</th>
                                             <th style={{ padding: "1rem" }}>닉네임</th>
                                             <th style={{ padding: "1rem", textAlign: "right" }}>Total R</th>
@@ -4655,7 +4911,9 @@ function App() {
                                     </thead>
                                     <tbody>
                                         {sortedAndFilteredRankings.map((user, idx) => {
-                                            const isMe = currentUser && currentUser.username.toLowerCase() === user.username.toLowerCase();
+                                            const isMe =
+                                                currentUser &&
+                                                currentUser.username.toLowerCase() === user.username.toLowerCase();
                                             return (
                                                 <tr
                                                     key={user.username}
@@ -4672,37 +4930,125 @@ function App() {
                                                 >
                                                     <td style={{ padding: "1rem" }}>
                                                         {user.absoluteRank === 1 ? (
-                                                            <span style={{ fontSize: "1.2rem", filter: "drop-shadow(0 0 5px rgba(255,215,0,0.5))" }}>🥇</span>
+                                                            <span
+                                                                style={{
+                                                                    fontSize: "1.2rem",
+                                                                    filter: "drop-shadow(0 0 5px rgba(255,215,0,0.5))",
+                                                                }}
+                                                            >
+                                                                🥇
+                                                            </span>
                                                         ) : user.absoluteRank === 2 ? (
-                                                            <span style={{ fontSize: "1.2rem", filter: "drop-shadow(0 0 5px rgba(192,192,192,0.5))" }}>🥈</span>
+                                                            <span
+                                                                style={{
+                                                                    fontSize: "1.2rem",
+                                                                    filter: "drop-shadow(0 0 5px rgba(192,192,192,0.5))",
+                                                                }}
+                                                            >
+                                                                🥈
+                                                            </span>
                                                         ) : user.absoluteRank === 3 ? (
-                                                            <span style={{ fontSize: "1.2rem", filter: "drop-shadow(0 0 5px rgba(205,127,50,0.5))" }}>🥉</span>
+                                                            <span
+                                                                style={{
+                                                                    fontSize: "1.2rem",
+                                                                    filter: "drop-shadow(0 0 5px rgba(205,127,50,0.5))",
+                                                                }}
+                                                            >
+                                                                🥉
+                                                            </span>
                                                         ) : (
                                                             `#${user.absoluteRank}`
                                                         )}
                                                     </td>
                                                     <td style={{ padding: "1rem" }}>
-                                                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                                            {isMe && <span className="diff-badge diff-easy" style={{ fontSize: "0.65rem", padding: "0.05rem 0.25rem", borderRadius: "4px" }}>ME</span>}
-                                                            <span style={{ color: isMe ? "var(--color-cyan)" : "var(--text-primary)" }}>{user.nickname}</span>
+                                                        <div
+                                                            style={{
+                                                                display: "flex",
+                                                                alignItems: "center",
+                                                                gap: "0.5rem",
+                                                            }}
+                                                        >
+                                                            {isMe && (
+                                                                <span
+                                                                    className="diff-badge diff-easy"
+                                                                    style={{
+                                                                        fontSize: "0.65rem",
+                                                                        padding: "0.05rem 0.25rem",
+                                                                        borderRadius: "4px",
+                                                                    }}
+                                                                >
+                                                                    ME
+                                                                </span>
+                                                            )}
+                                                            <span
+                                                                style={{
+                                                                    color: isMe
+                                                                        ? "var(--color-cyan)"
+                                                                        : "var(--text-primary)",
+                                                                }}
+                                                            >
+                                                                {user.nickname}
+                                                            </span>
                                                         </div>
                                                     </td>
-                                                    <td style={{ padding: "1rem", textAlign: "right", fontWeight: "800", color: "var(--text-primary)" }}>
+                                                    <td
+                                                        style={{
+                                                            padding: "1rem",
+                                                            textAlign: "right",
+                                                            fontWeight: "800",
+                                                            color: "var(--text-primary)",
+                                                        }}
+                                                    >
                                                         {Math.round(user.totalRating)}
                                                     </td>
-                                                    <td style={{ padding: "1rem", textAlign: "right", color: "var(--color-cyan)", fontWeight: "700" }}>
+                                                    <td
+                                                        style={{
+                                                            padding: "1rem",
+                                                            textAlign: "right",
+                                                            color: "var(--color-cyan)",
+                                                            fontWeight: "700",
+                                                        }}
+                                                    >
                                                         {Math.round(user.normalRating)}
                                                     </td>
-                                                    <td style={{ padding: "1rem", textAlign: "right", color: "var(--color-append)", fontWeight: "700" }}>
+                                                    <td
+                                                        style={{
+                                                            padding: "1rem",
+                                                            textAlign: "right",
+                                                            color: "var(--color-append)",
+                                                            fontWeight: "700",
+                                                        }}
+                                                    >
                                                         {Math.round(user.appendRating)}
                                                     </td>
-                                                    <td style={{ padding: "1rem", textAlign: "center", color: "var(--color-ap)", fontWeight: "700" }}>
+                                                    <td
+                                                        style={{
+                                                            padding: "1rem",
+                                                            textAlign: "center",
+                                                            color: "var(--color-ap)",
+                                                            fontWeight: "700",
+                                                        }}
+                                                    >
                                                         {user.apCount}
                                                     </td>
-                                                    <td style={{ padding: "1rem", textAlign: "center", color: "var(--color-fc)", fontWeight: "700" }}>
+                                                    <td
+                                                        style={{
+                                                            padding: "1rem",
+                                                            textAlign: "center",
+                                                            color: "var(--color-fc)",
+                                                            fontWeight: "700",
+                                                        }}
+                                                    >
                                                         {user.fcCount}
                                                     </td>
-                                                    <td style={{ padding: "1rem", textAlign: "center", color: "var(--color-clear)", fontWeight: "700" }}>
+                                                    <td
+                                                        style={{
+                                                            padding: "1rem",
+                                                            textAlign: "center",
+                                                            color: "var(--color-clear)",
+                                                            fontWeight: "700",
+                                                        }}
+                                                    >
                                                         {user.clearCount}
                                                     </td>
                                                 </tr>
@@ -4721,14 +5067,27 @@ function App() {
                 {activeTab === "records" && (
                     <section className="glass-panel" style={{ padding: "2rem" }}>
                         <div className="section-title-bar">
-                            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    width: "100%",
+                                    alignItems: "center",
+                                }}
+                            >
                                 <h2 className="section-title">
                                     <ClipboardList size={22} style={{ color: "var(--color-cyan)" }} /> 기록
                                 </h2>
                                 <button
                                     className="btn btn-outline btn-sm"
                                     onClick={() => setIsRecordFilterExpanded(!isRecordFilterExpanded)}
-                                    style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.85rem", padding: "0.35rem 0.6rem" }}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "0.25rem",
+                                        fontSize: "0.85rem",
+                                        padding: "0.35rem 0.6rem",
+                                    }}
                                 >
                                     <Filter size={14} /> {isRecordFilterExpanded ? "필터 접기" : "필터 펼치기"}
                                 </button>
@@ -4738,214 +5097,212 @@ function App() {
                         {/* EXPANDED FILTER & SORT SECTION */}
                         {isRecordFilterExpanded && (
                             <div className="table-filters-expanded">
-                            {/* Row 1: Search, Constants, Levels & Sorting */}
-                            <div className="filters-row records-filters-grid">
-                                <div className="filter-group">
-                                    <label className="filter-label">곡 검색</label>
-                                    <div style={{ position: "relative" }}>
-                                        <Search
-                                            size={16}
-                                            style={{
-                                                position: "absolute",
-                                                left: "12px",
-                                                top: "50%",
-                                                transform: "translateY(-50%)",
-                                                color: "var(--text-muted)",
-                                            }}
-                                        />
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            placeholder="제목, 작곡가, 초성 검색..."
-                                            style={{ paddingLeft: "2.5rem", width: "100%" }}
-                                            value={recordSearchInput}
-                                            onChange={(e) => setRecordSearchInput(e.target.value)}
-                                        />
+                                {/* Row 1: Search, Constants, Levels & Sorting */}
+                                <div className="filters-row records-filters-grid">
+                                    <div className="filter-group">
+                                        <label className="filter-label">곡 검색</label>
+                                        <div style={{ position: "relative" }}>
+                                            <Search
+                                                size={16}
+                                                style={{
+                                                    position: "absolute",
+                                                    left: "12px",
+                                                    top: "50%",
+                                                    transform: "translateY(-50%)",
+                                                    color: "var(--text-muted)",
+                                                }}
+                                            />
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="제목, 작곡가, 초성 검색..."
+                                                style={{ paddingLeft: "2.5rem", width: "100%" }}
+                                                value={recordSearchInput}
+                                                onChange={(e) => setRecordSearchInput(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="filter-group">
-                                    <label className="filter-label">FC 상수</label>
-                                    <div className="range-inputs">
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            min="0"
-                                            max="100"
-                                            className="form-control"
-                                            placeholder="최소"
-                                            style={{ width: "100%" }}
-                                            value={recordMinFcConstInput}
-                                            onChange={(e) => setRecordMinFcConstInput(e.target.value)}
-                                        />
-                                        <span>~</span>
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            min="0"
-                                            max="100"
-                                            className="form-control"
-                                            placeholder="최대"
-                                            style={{ width: "100%" }}
-                                            value={recordMaxFcConstInput}
-                                            onChange={(e) => setRecordMaxFcConstInput(e.target.value)}
-                                        />
+                                    <div className="filter-group">
+                                        <label className="filter-label">FC 상수</label>
+                                        <div className="range-inputs">
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                max="100"
+                                                className="form-control"
+                                                placeholder="최소"
+                                                style={{ width: "100%" }}
+                                                value={recordMinFcConstInput}
+                                                onChange={(e) => setRecordMinFcConstInput(e.target.value)}
+                                            />
+                                            <span>~</span>
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                max="100"
+                                                className="form-control"
+                                                placeholder="최대"
+                                                style={{ width: "100%" }}
+                                                value={recordMaxFcConstInput}
+                                                onChange={(e) => setRecordMaxFcConstInput(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="filter-group">
-                                    <label className="filter-label">AP 상수</label>
-                                    <div className="range-inputs">
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            min="0"
-                                            max="100"
-                                            className="form-control"
-                                            placeholder="최소"
-                                            style={{ width: "100%" }}
-                                            value={recordMinApConstInput}
-                                            onChange={(e) => setRecordMinApConstInput(e.target.value)}
-                                        />
-                                        <span>~</span>
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            min="0"
-                                            max="100"
-                                            className="form-control"
-                                            placeholder="최대"
-                                            style={{ width: "100%" }}
-                                            value={recordMaxApConstInput}
-                                            onChange={(e) => setRecordMaxApConstInput(e.target.value)}
-                                        />
+                                    <div className="filter-group">
+                                        <label className="filter-label">AP 상수</label>
+                                        <div className="range-inputs">
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                max="100"
+                                                className="form-control"
+                                                placeholder="최소"
+                                                style={{ width: "100%" }}
+                                                value={recordMinApConstInput}
+                                                onChange={(e) => setRecordMinApConstInput(e.target.value)}
+                                            />
+                                            <span>~</span>
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                max="100"
+                                                className="form-control"
+                                                placeholder="최대"
+                                                style={{ width: "100%" }}
+                                                value={recordMaxApConstInput}
+                                                onChange={(e) => setRecordMaxApConstInput(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="filter-group">
-                                    <label className="filter-label">레벨</label>
-                                    <div className="range-inputs">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            className="form-control"
-                                            placeholder="최소"
-                                            style={{ width: "100%" }}
-                                            value={recordMinLevel}
-                                            onChange={(e) => setRecordMinLevel(e.target.value)}
-                                        />
-                                        <span>~</span>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            className="form-control"
-                                            placeholder="최대"
-                                            style={{ width: "100%" }}
-                                            value={recordMaxLevel}
-                                            onChange={(e) => setRecordMaxLevel(e.target.value)}
-                                        />
+                                    <div className="filter-group">
+                                        <label className="filter-label">레벨</label>
+                                        <div className="range-inputs">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                className="form-control"
+                                                placeholder="최소"
+                                                style={{ width: "100%" }}
+                                                value={recordMinLevel}
+                                                onChange={(e) => setRecordMinLevel(e.target.value)}
+                                            />
+                                            <span>~</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                className="form-control"
+                                                placeholder="최대"
+                                                style={{ width: "100%" }}
+                                                value={recordMaxLevel}
+                                                onChange={(e) => setRecordMaxLevel(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="filter-group">
-                                    <label className="filter-label">정렬 기준</label>
-                                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                                        <select
-                                            className="form-control"
-                                            value={recordSortBy}
-                                            onChange={(e) => setRecordSortBy(e.target.value)}
-                                            style={{ flex: 2 }}
-                                        >
-                                            <option value="title">곡명</option>
-                                            <option value="status">성과</option>
-                                            <option value="level">레벨</option>
-                                            <option value="fc_constant">FC 상수</option>
-                                            <option value="ap_constant">AP 상수</option>
-                                            <option value="rating">Music R</option>
-                                        </select>
-                                        <select
-                                            className="form-control"
-                                            value={recordSortOrder}
-                                            onChange={(e) => setRecordSortOrder(e.target.value)}
-                                            style={{ flex: 1.2 }}
-                                        >
-                                            <option value="desc">내림차순</option>
-                                            <option value="asc">오름차순</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Row 2: Difficulties Checkboxes */}
-                            <div className="filter-group">
-                                <label className="filter-label">난이도</label>
-                                <div className="filter-checkbox-group difficulty-checkbox-group">
-                                    {["easy", "normal", "hard", "expert", "master", "append"].map((diff) => {
-                                        const diffNames = {
-                                            easy: "EASY",
-                                            normal: "NORMAL",
-                                            hard: "HARD",
-                                            expert: "EXPERT",
-                                            master: "MASTER",
-                                            append: "APPEND",
-                                        };
-                                        const isActive = recordDiffFilters.includes(diff);
-                                        return (
-                                            <label
-                                                key={diff}
-                                                className={`checkbox-label ${isActive ? `active-${diff}` : ""}`}
+                                    <div className="filter-group">
+                                        <label className="filter-label">정렬 기준</label>
+                                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                                            <select
+                                                className="form-control"
+                                                value={recordSortBy}
+                                                onChange={(e) => setRecordSortBy(e.target.value)}
+                                                style={{ flex: 2 }}
                                             >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isActive}
-                                                    onChange={() => handleRecordDiffFilterToggle(diff)}
-                                                />
-                                                {diffNames[diff]}
-                                            </label>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Row 3: Play Statuses Checkboxes */}
-                            <div className="filter-group">
-                                <label className="filter-label">성과</label>
-                                <div className="filter-checkbox-group">
-                                    {[
-                                        { id: "unplayed", label: "NC" },
-                                        { id: "played", label: "C" },
-                                        { id: "fc", label: "FC" },
-                                        { id: "ap", label: "AP" },
-                                    ].map((playStatus) => {
-                                        const isActive = recordPlayFilters.includes(playStatus.id);
-                                        return (
-                                            <label
-                                                key={playStatus.id}
-                                                className={`checkbox-label ${isActive ? `active-${playStatus.id}` : ""}`}
+                                                <option value="title">곡명</option>
+                                                <option value="status">성과</option>
+                                                <option value="level">레벨</option>
+                                                <option value="fc_constant">FC 상수</option>
+                                                <option value="ap_constant">AP 상수</option>
+                                                <option value="rating">Music R</option>
+                                            </select>
+                                            <select
+                                                className="form-control"
+                                                value={recordSortOrder}
+                                                onChange={(e) => setRecordSortOrder(e.target.value)}
+                                                style={{ flex: 1.2 }}
                                             >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isActive}
-                                                    onChange={() => handleRecordPlayFilterToggle(playStatus.id)}
-                                                />
-                                                {playStatus.label}
-                                            </label>
-                                        );
-                                    })}
+                                                <option value="desc">내림차순</option>
+                                                <option value="asc">오름차순</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Row 2: Difficulties Checkboxes */}
+                                <div className="filter-group">
+                                    <label className="filter-label">난이도</label>
+                                    <div className="filter-checkbox-group difficulty-checkbox-group">
+                                        {["easy", "normal", "hard", "expert", "master", "append"].map((diff) => {
+                                            const diffNames = {
+                                                easy: "EASY",
+                                                normal: "NORMAL",
+                                                hard: "HARD",
+                                                expert: "EXPERT",
+                                                master: "MASTER",
+                                                append: "APPEND",
+                                            };
+                                            const isActive = recordDiffFilters.includes(diff);
+                                            return (
+                                                <label
+                                                    key={diff}
+                                                    className={`checkbox-label ${isActive ? `active-${diff}` : ""}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isActive}
+                                                        onChange={() => handleRecordDiffFilterToggle(diff)}
+                                                    />
+                                                    {diffNames[diff]}
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Row 3: Play Statuses Checkboxes */}
+                                <div className="filter-group">
+                                    <label className="filter-label">성과</label>
+                                    <div className="filter-checkbox-group">
+                                        {[
+                                            { id: "unplayed", label: "NC" },
+                                            { id: "played", label: "C" },
+                                            { id: "fc", label: "FC" },
+                                            { id: "ap", label: "AP" },
+                                        ].map((playStatus) => {
+                                            const isActive = recordPlayFilters.includes(playStatus.id);
+                                            return (
+                                                <label
+                                                    key={playStatus.id}
+                                                    className={`checkbox-label ${isActive ? `active-${playStatus.id}` : ""}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isActive}
+                                                        onChange={() => handleRecordPlayFilterToggle(playStatus.id)}
+                                                    />
+                                                    {playStatus.label}
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
                         )}
 
                         {/* BULK ACTION BAR */}
                         <div className="bulk-action-bar">
                             <div>
                                 <span className="bulk-title">필터링된 곡:</span>
-                                <span className="bulk-count">
-                                    {filteredAndSortedRecords.length}개
-                                </span>
+                                <span className="bulk-count">{filteredAndSortedRecords.length}개</span>
                             </div>
                             {filteredAndSortedRecords.length > 0 && (
                                 <div className="bulk-control-group">
@@ -5124,7 +5481,18 @@ function App() {
                                 )}
                                 {/* Sentinel for IntersectionObserver */}
                                 {filteredAndSortedRecords.length > recordVisibleCount && (
-                                    <div ref={recordSentinelRef} style={{ height: "45px", display: "flex", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", fontSize: "0.85rem", margin: "1rem 0" }}>
+                                    <div
+                                        ref={recordSentinelRef}
+                                        style={{
+                                            height: "45px",
+                                            display: "flex",
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                            color: "var(--text-muted)",
+                                            fontSize: "0.85rem",
+                                            margin: "1rem 0",
+                                        }}
+                                    >
                                         <span>기록을 불러오는 중...</span>
                                     </div>
                                 )}
@@ -5139,14 +5507,27 @@ function App() {
                 {activeTab === "constants" && (
                     <section className="glass-panel" style={{ padding: "2rem" }}>
                         <div className="section-title-bar">
-                            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    width: "100%",
+                                    alignItems: "center",
+                                }}
+                            >
                                 <h2 className="section-title">
                                     <Layers size={22} style={{ color: "var(--color-cyan)" }} /> 상수표
                                 </h2>
                                 <button
                                     className="btn btn-outline btn-sm"
                                     onClick={() => setIsConstFilterExpanded(!isConstFilterExpanded)}
-                                    style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.85rem", padding: "0.35rem 0.6rem" }}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "0.25rem",
+                                        fontSize: "0.85rem",
+                                        padding: "0.35rem 0.6rem",
+                                    }}
                                 >
                                     <Filter size={14} /> {isConstFilterExpanded ? "필터 접기" : "필터 펼치기"}
                                 </button>
@@ -5156,169 +5537,169 @@ function App() {
                         {/* EXPANDED FILTER SECTION (체크박스 및 입력창 개편) */}
                         {isConstFilterExpanded && (
                             <div className="table-filters-expanded">
-                            {/* Row 1: Search, Constants & Levels inputs */}
-                            <div className="filters-row constants-filters-grid">
-                                <div className="filter-group">
-                                    <label className="filter-label">곡 검색</label>
-                                    <div style={{ position: "relative" }}>
-                                        <Search
-                                            size={16}
-                                            style={{
-                                                position: "absolute",
-                                                left: "12px",
-                                                top: "50%",
-                                                transform: "translateY(-50%)",
-                                                color: "var(--text-muted)",
-                                            }}
-                                        />
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            placeholder="제목, 작곡가, 초성 검색..."
-                                            style={{ paddingLeft: "2.5rem", width: "100%" }}
-                                            value={constSearchInput}
-                                            onChange={(e) => setConstSearchInput(e.target.value)}
-                                        />
+                                {/* Row 1: Search, Constants & Levels inputs */}
+                                <div className="filters-row constants-filters-grid">
+                                    <div className="filter-group">
+                                        <label className="filter-label">곡 검색</label>
+                                        <div style={{ position: "relative" }}>
+                                            <Search
+                                                size={16}
+                                                style={{
+                                                    position: "absolute",
+                                                    left: "12px",
+                                                    top: "50%",
+                                                    transform: "translateY(-50%)",
+                                                    color: "var(--text-muted)",
+                                                }}
+                                            />
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="제목, 작곡가, 초성 검색..."
+                                                style={{ paddingLeft: "2.5rem", width: "100%" }}
+                                                value={constSearchInput}
+                                                onChange={(e) => setConstSearchInput(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="filter-group">
+                                        <label className="filter-label">상수</label>
+                                        <div className="range-inputs">
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                max="100"
+                                                className="form-control"
+                                                placeholder="최소"
+                                                style={{ width: "100%" }}
+                                                value={constMinLevelInput}
+                                                onChange={(e) => setConstMinLevelInput(e.target.value)}
+                                            />
+                                            <span>~</span>
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                max="100"
+                                                className="form-control"
+                                                placeholder="최대"
+                                                style={{ width: "100%" }}
+                                                value={constMaxLevelInput}
+                                                onChange={(e) => setConstMaxLevelInput(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="filter-group">
+                                        <label className="filter-label">레벨</label>
+                                        <div className="range-inputs">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                className="form-control"
+                                                placeholder="최소"
+                                                style={{ width: "100%" }}
+                                                value={constMinLevel}
+                                                onChange={(e) => setConstMinLevel(e.target.value)}
+                                            />
+                                            <span>~</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                className="form-control"
+                                                placeholder="최대"
+                                                style={{ width: "100%" }}
+                                                value={constMaxLevel}
+                                                onChange={(e) => setConstMaxLevel(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
+                                {/* Row 2: Difficulties Checkboxes */}
                                 <div className="filter-group">
-                                    <label className="filter-label">상수</label>
-                                    <div className="range-inputs">
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            min="0"
-                                            max="100"
-                                            className="form-control"
-                                            placeholder="최소"
-                                            style={{ width: "100%" }}
-                                            value={constMinLevelInput}
-                                            onChange={(e) => setConstMinLevelInput(e.target.value)}
-                                        />
-                                        <span>~</span>
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            min="0"
-                                            max="100"
-                                            className="form-control"
-                                            placeholder="최대"
-                                            style={{ width: "100%" }}
-                                            value={constMaxLevelInput}
-                                            onChange={(e) => setConstMaxLevelInput(e.target.value)}
-                                        />
+                                    <label className="filter-label">난이도</label>
+                                    <div className="filter-checkbox-group difficulty-checkbox-group">
+                                        {["easy", "normal", "hard", "expert", "master", "append"].map((diff) => {
+                                            const diffNames = {
+                                                easy: "EASY",
+                                                normal: "NORMAL",
+                                                hard: "HARD",
+                                                expert: "EXPERT",
+                                                master: "MASTER",
+                                                append: "APPEND",
+                                            };
+                                            const isActive = constDiffFilters.includes(diff);
+                                            return (
+                                                <label
+                                                    key={diff}
+                                                    className={`checkbox-label ${isActive ? `active-${diff}` : ""}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isActive}
+                                                        onChange={() => handleDiffFilterToggle(diff)}
+                                                    />
+                                                    {diffNames[diff]}
+                                                </label>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
+                                {/* Row 3: Play Statuses Checkboxes */}
                                 <div className="filter-group">
-                                    <label className="filter-label">레벨</label>
-                                    <div className="range-inputs">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            className="form-control"
-                                            placeholder="최소"
-                                            style={{ width: "100%" }}
-                                            value={constMinLevel}
-                                            onChange={(e) => setConstMinLevel(e.target.value)}
-                                        />
-                                        <span>~</span>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            className="form-control"
-                                            placeholder="최대"
-                                            style={{ width: "100%" }}
-                                            value={constMaxLevel}
-                                            onChange={(e) => setConstMaxLevel(e.target.value)}
-                                        />
+                                    <label className="filter-label">성과</label>
+                                    <div className="filter-checkbox-group">
+                                        {[
+                                            { id: "unplayed", label: "NC" },
+                                            { id: "played", label: "C" },
+                                            { id: "fc", label: "FC" },
+                                            { id: "ap", label: "AP" },
+                                        ].map((playStatus) => {
+                                            const isActive = constPlayFilters.includes(playStatus.id);
+                                            return (
+                                                <label
+                                                    key={playStatus.id}
+                                                    className={`checkbox-label ${isActive ? `active-${playStatus.id}` : ""}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isActive}
+                                                        onChange={() => handlePlayFilterToggle(playStatus.id)}
+                                                    />
+                                                    {playStatus.label}
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Row 4: Constant Type Toggle */}
+                                <div className="filter-group" style={{ marginTop: "0.5rem" }}>
+                                    <label className="filter-label">상수 타입</label>
+                                    <div style={{ display: "flex", gap: "0.5rem", maxWidth: "280px" }}>
+                                        <button
+                                            className={`btn btn-outline ${constType === "fc" ? "active" : ""}`}
+                                            style={{ flex: 1, padding: "0.4rem", fontSize: "0.85rem" }}
+                                            onClick={() => setConstType("fc")}
+                                        >
+                                            FC 상수
+                                        </button>
+                                        <button
+                                            className={`btn btn-outline ${constType === "ap" ? "active" : ""}`}
+                                            style={{ flex: 1, padding: "0.4rem", fontSize: "0.85rem" }}
+                                            onClick={() => setConstType("ap")}
+                                        >
+                                            AP 상수
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Row 2: Difficulties Checkboxes */}
-                            <div className="filter-group">
-                                <label className="filter-label">난이도</label>
-                                <div className="filter-checkbox-group difficulty-checkbox-group">
-                                    {["easy", "normal", "hard", "expert", "master", "append"].map((diff) => {
-                                        const diffNames = {
-                                            easy: "EASY",
-                                            normal: "NORMAL",
-                                            hard: "HARD",
-                                            expert: "EXPERT",
-                                            master: "MASTER",
-                                            append: "APPEND",
-                                        };
-                                        const isActive = constDiffFilters.includes(diff);
-                                        return (
-                                            <label
-                                                key={diff}
-                                                className={`checkbox-label ${isActive ? `active-${diff}` : ""}`}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isActive}
-                                                    onChange={() => handleDiffFilterToggle(diff)}
-                                                />
-                                                {diffNames[diff]}
-                                            </label>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Row 3: Play Statuses Checkboxes */}
-                            <div className="filter-group">
-                                <label className="filter-label">성과</label>
-                                <div className="filter-checkbox-group">
-                                    {[
-                                        { id: "unplayed", label: "NC" },
-                                        { id: "played", label: "C" },
-                                        { id: "fc", label: "FC" },
-                                        { id: "ap", label: "AP" },
-                                    ].map((playStatus) => {
-                                        const isActive = constPlayFilters.includes(playStatus.id);
-                                        return (
-                                            <label
-                                                key={playStatus.id}
-                                                className={`checkbox-label ${isActive ? `active-${playStatus.id}` : ""}`}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isActive}
-                                                    onChange={() => handlePlayFilterToggle(playStatus.id)}
-                                                />
-                                                {playStatus.label}
-                                            </label>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Row 4: Constant Type Toggle */}
-                            <div className="filter-group" style={{ marginTop: "0.5rem" }}>
-                                <label className="filter-label">상수 타입</label>
-                                <div style={{ display: "flex", gap: "0.5rem", maxWidth: "280px" }}>
-                                    <button
-                                        className={`btn btn-outline ${constType === "fc" ? "active" : ""}`}
-                                        style={{ flex: 1, padding: "0.4rem", fontSize: "0.85rem" }}
-                                        onClick={() => setConstType("fc")}
-                                    >
-                                        FC 상수
-                                    </button>
-                                    <button
-                                        className={`btn btn-outline ${constType === "ap" ? "active" : ""}`}
-                                        style={{ flex: 1, padding: "0.4rem", fontSize: "0.85rem" }}
-                                        onClick={() => setConstType("ap")}
-                                    >
-                                        AP 상수
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
                         )}
 
                         {/* CONSTANT SECTION GROUP GRID (상수별 바둑판 격자 렌더링) */}
@@ -5394,7 +5775,18 @@ function App() {
                             )}
                             {/* Sentinel for IntersectionObserver */}
                             {groupedConstants.length > constVisibleCount && (
-                                <div ref={constSentinelRef} style={{ height: "45px", display: "flex", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", fontSize: "0.85rem", margin: "1.5rem 0" }}>
+                                <div
+                                    ref={constSentinelRef}
+                                    style={{
+                                        height: "45px",
+                                        display: "flex",
+                                        justifyContent: "center",
+                                        alignItems: "center",
+                                        color: "var(--text-muted)",
+                                        fontSize: "0.85rem",
+                                        margin: "1.5rem 0",
+                                    }}
+                                >
                                     <span>상수표를 불러오는 중...</span>
                                 </div>
                             )}
@@ -5430,178 +5822,194 @@ function App() {
                                     }}
                                 >
                                     <span>순회 타겟</span>
-                                    <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: "500" }}>
+                                    <span
+                                        style={{
+                                            fontSize: "0.75rem",
+                                            color: "var(--text-secondary)",
+                                            fontWeight: "500",
+                                        }}
+                                    >
                                         {isTourFilterExpanded ? "접기" : "펼치기"}
                                     </span>
                                 </h3>
 
                                 {isTourFilterExpanded && (
                                     <>
+                                        <div className="filter-group">
+                                            <label className="filter-label">난이도</label>
+                                            <div
+                                                className="filter-checkbox-group"
+                                                style={{
+                                                    display: "grid",
+                                                    gridTemplateColumns: "repeat(3, 1fr)",
+                                                    gap: "0.4rem",
+                                                }}
+                                            >
+                                                {["easy", "normal", "hard", "expert", "master", "append"].map(
+                                                    (diff) => {
+                                                        const diffNames = {
+                                                            easy: "EASY",
+                                                            normal: "NORMAL",
+                                                            hard: "HARD",
+                                                            expert: "EXPERT",
+                                                            master: "MASTER",
+                                                            append: "APPEND",
+                                                        };
+                                                        const isActive = tourDiffs.includes(diff);
+                                                        return (
+                                                            <label
+                                                                key={diff}
+                                                                className={`checkbox-label ${isActive ? `active-${diff}` : ""}`}
+                                                                style={{
+                                                                    justifyContent: "center",
+                                                                    padding: "0.35rem 0.25rem",
+                                                                    fontSize: "0.75rem",
+                                                                }}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isActive}
+                                                                    onChange={() => {
+                                                                        if (isActive) {
+                                                                            if (tourDiffs.length > 1) {
+                                                                                setTourDiffs(
+                                                                                    tourDiffs.filter((d) => d !== diff),
+                                                                                );
+                                                                            }
+                                                                        } else {
+                                                                            setTourDiffs([...tourDiffs, diff]);
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                {diffNames[diff]}
+                                                            </label>
+                                                        );
+                                                    },
+                                                )}
+                                            </div>
+                                        </div>
 
-                                <div className="filter-group">
-                                    <label className="filter-label">난이도</label>
-                                    <div
-                                        className="filter-checkbox-group"
-                                        style={{
-                                            display: "grid",
-                                            gridTemplateColumns: "repeat(3, 1fr)",
-                                            gap: "0.4rem",
-                                        }}
-                                    >
-                                        {["easy", "normal", "hard", "expert", "master", "append"].map((diff) => {
-                                            const diffNames = {
-                                                easy: "EASY",
-                                                normal: "NORMAL",
-                                                hard: "HARD",
-                                                expert: "EXPERT",
-                                                master: "MASTER",
-                                                append: "APPEND",
-                                            };
-                                            const isActive = tourDiffs.includes(diff);
-                                            return (
-                                                <label
-                                                    key={diff}
-                                                    className={`checkbox-label ${isActive ? `active-${diff}` : ""}`}
-                                                    style={{
-                                                        justifyContent: "center",
-                                                        padding: "0.35rem 0.25rem",
-                                                        fontSize: "0.75rem",
+                                        <div className="filter-group">
+                                            <label className="filter-label">목표 레벨</label>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                                <select
+                                                    className="form-control"
+                                                    value={tourMinLevel}
+                                                    style={{ flex: 1 }}
+                                                    onChange={(e) => {
+                                                        const val = Number(e.target.value);
+                                                        setTourMinLevel(val);
+                                                        if (tourMaxLevel < val) {
+                                                            setTourMaxLevel(val);
+                                                        }
                                                     }}
                                                 >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={isActive}
-                                                        onChange={() => {
-                                                            if (isActive) {
-                                                                if (tourDiffs.length > 1) {
-                                                                    setTourDiffs(tourDiffs.filter((d) => d !== diff));
-                                                                }
-                                                            } else {
-                                                                setTourDiffs([...tourDiffs, diff]);
-                                                            }
-                                                        }}
-                                                    />
-                                                    {diffNames[diff]}
-                                                </label>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
+                                                    {tourAvailableLevels.length > 0 ? (
+                                                        tourAvailableLevels.map((lvl) => (
+                                                            <option key={lvl} value={lvl}>
+                                                                {lvl}
+                                                            </option>
+                                                        ))
+                                                    ) : (
+                                                        <option value="">-</option>
+                                                    )}
+                                                </select>
+                                                <span style={{ color: "var(--text-muted)" }}>~</span>
+                                                <select
+                                                    className="form-control"
+                                                    value={tourMaxLevel}
+                                                    style={{ flex: 1 }}
+                                                    onChange={(e) => {
+                                                        const val = Number(e.target.value);
+                                                        setTourMaxLevel(val);
+                                                        if (tourMinLevel > val) {
+                                                            setTourMinLevel(val);
+                                                        }
+                                                    }}
+                                                >
+                                                    {tourAvailableLevels.length > 0 ? (
+                                                        tourAvailableLevels.map((lvl) => (
+                                                            <option key={lvl} value={lvl}>
+                                                                {lvl}
+                                                            </option>
+                                                        ))
+                                                    ) : (
+                                                        <option value="">-</option>
+                                                    )}
+                                                </select>
+                                            </div>
+                                        </div>
 
-                                <div className="filter-group">
-                                    <label className="filter-label">목표 레벨</label>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                        <select
-                                            className="form-control"
-                                            value={tourMinLevel}
-                                            style={{ flex: 1 }}
-                                            onChange={(e) => {
-                                                const val = Number(e.target.value);
-                                                setTourMinLevel(val);
-                                                if (tourMaxLevel < val) {
-                                                    setTourMaxLevel(val);
-                                                }
-                                            }}
-                                        >
-                                            {tourAvailableLevels.length > 0 ? (
-                                                tourAvailableLevels.map((lvl) => (
-                                                    <option key={lvl} value={lvl}>
-                                                        {lvl}
-                                                    </option>
-                                                ))
-                                            ) : (
-                                                <option value="">-</option>
-                                            )}
-                                        </select>
-                                        <span style={{ color: "var(--text-muted)" }}>~</span>
-                                        <select
-                                            className="form-control"
-                                            value={tourMaxLevel}
-                                            style={{ flex: 1 }}
-                                            onChange={(e) => {
-                                                const val = Number(e.target.value);
-                                                setTourMaxLevel(val);
-                                                if (tourMinLevel > val) {
-                                                    setTourMinLevel(val);
-                                                }
-                                            }}
-                                        >
-                                            {tourAvailableLevels.length > 0 ? (
-                                                tourAvailableLevels.map((lvl) => (
-                                                    <option key={lvl} value={lvl}>
-                                                        {lvl}
-                                                    </option>
-                                                ))
-                                            ) : (
-                                                <option value="">-</option>
-                                            )}
-                                        </select>
-                                    </div>
-                                </div>
+                                        <div className="filter-group">
+                                            <label className="filter-label">달성 목표</label>
+                                            <div style={{ display: "flex", gap: "0.5rem" }}>
+                                                <button
+                                                    className={`btn btn-outline ${tourGoal === "fc" ? "active" : ""}`}
+                                                    style={{ flex: 1, padding: "0.4rem" }}
+                                                    onClick={() => setTourGoal("fc")}
+                                                >
+                                                    FC
+                                                </button>
+                                                <button
+                                                    className={`btn btn-outline ${tourGoal === "ap" ? "active" : ""}`}
+                                                    style={{ flex: 1, padding: "0.4rem" }}
+                                                    onClick={() => setTourGoal("ap")}
+                                                >
+                                                    AP
+                                                </button>
+                                            </div>
+                                        </div>
 
-                                <div className="filter-group">
-                                    <label className="filter-label">달성 목표</label>
-                                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                                        <button
-                                            className={`btn btn-outline ${tourGoal === "fc" ? "active" : ""}`}
-                                            style={{ flex: 1, padding: "0.4rem" }}
-                                            onClick={() => setTourGoal("fc")}
-                                        >
-                                            FC
-                                        </button>
-                                        <button
-                                            className={`btn btn-outline ${tourGoal === "ap" ? "active" : ""}`}
-                                            style={{ flex: 1, padding: "0.4rem" }}
-                                            onClick={() => setTourGoal("ap")}
-                                        >
-                                            AP
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="tour-stat-circle" style={{ margin: "1rem auto" }}>
-                                    <svg className="tour-gauge-svg" viewBox="0 0 100 100">
-                                        <defs>
-                                            <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                <stop offset="0%" stopColor="var(--color-cyan)" />
-                                                <stop offset="100%" stopColor="var(--color-pink)" />
-                                            </linearGradient>
-                                            <linearGradient
-                                                id="gaugeGradientSuccess"
-                                                x1="0%"
-                                                y1="0%"
-                                                x2="100%"
-                                                y2="100%"
-                                            >
-                                                <stop offset="0%" stopColor="var(--color-cyan)" />
-                                                <stop offset="100%" stopColor="var(--color-success)" />
-                                            </linearGradient>
-                                        </defs>
-                                        <circle className="tour-gauge-bg" cx="50" cy="50" r="44" />
-                                        <circle
-                                            className="tour-gauge-fill"
-                                            cx="50"
-                                            cy="50"
-                                            r="44"
-                                            stroke={
-                                                tourStats.percentage > 70
-                                                    ? "url(#gaugeGradientSuccess)"
-                                                    : "url(#gaugeGradient)"
-                                            }
-                                            style={{
-                                                strokeDasharray: 2 * Math.PI * 44,
-                                                strokeDashoffset: 2 * Math.PI * 44 * (1 - tourStats.percentage / 100),
-                                            }}
-                                        />
-                                    </svg>
-                                    <div className="tour-stat-content">
-                                        <span className="tour-pct">{tourStats.percentage}%</span>
-                                        <span className="tour-fraction">
-                                            {tourStats.completedCount} / {tourStats.total}
-                                        </span>
-                                    </div>
-                                </div>
-                                </>
+                                        <div className="tour-stat-circle" style={{ margin: "1rem auto" }}>
+                                            <svg className="tour-gauge-svg" viewBox="0 0 100 100">
+                                                <defs>
+                                                    <linearGradient
+                                                        id="gaugeGradient"
+                                                        x1="0%"
+                                                        y1="0%"
+                                                        x2="100%"
+                                                        y2="100%"
+                                                    >
+                                                        <stop offset="0%" stopColor="var(--color-cyan)" />
+                                                        <stop offset="100%" stopColor="var(--color-pink)" />
+                                                    </linearGradient>
+                                                    <linearGradient
+                                                        id="gaugeGradientSuccess"
+                                                        x1="0%"
+                                                        y1="0%"
+                                                        x2="100%"
+                                                        y2="100%"
+                                                    >
+                                                        <stop offset="0%" stopColor="var(--color-cyan)" />
+                                                        <stop offset="100%" stopColor="var(--color-success)" />
+                                                    </linearGradient>
+                                                </defs>
+                                                <circle className="tour-gauge-bg" cx="50" cy="50" r="44" />
+                                                <circle
+                                                    className="tour-gauge-fill"
+                                                    cx="50"
+                                                    cy="50"
+                                                    r="44"
+                                                    stroke={
+                                                        tourStats.percentage > 70
+                                                            ? "url(#gaugeGradientSuccess)"
+                                                            : "url(#gaugeGradient)"
+                                                    }
+                                                    style={{
+                                                        strokeDasharray: 2 * Math.PI * 44,
+                                                        strokeDashoffset:
+                                                            2 * Math.PI * 44 * (1 - tourStats.percentage / 100),
+                                                    }}
+                                                />
+                                            </svg>
+                                            <div className="tour-stat-content">
+                                                <span className="tour-pct">{tourStats.percentage}%</span>
+                                                <span className="tour-fraction">
+                                                    {tourStats.completedCount} / {tourStats.total}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </>
                                 )}
                             </aside>
 
@@ -5627,80 +6035,96 @@ function App() {
                                     <div className="tour-grid">
                                         {tourStats.remainingList.length === 0
                                             ? null
-                                            : tourStats.remainingList.slice(0, tourRemainingVisibleCount).map(({ song, diff, level, status }) => {
-                                                  const diffColors = {
-                                                      easy: "diff-easy",
-                                                      normal: "diff-normal",
-                                                      hard: "diff-hard",
-                                                      expert: "diff-expert",
-                                                      master: "diff-master",
-                                                      append: "diff-append",
-                                                  };
-                                                  const currentStatus = status || "none";
-                                                  const statusLabels = {
-                                                      full_perfect: "status-ap",
-                                                      full_combo: "status-fc",
-                                                      clear: "status-clear",
-                                                      none: "status-none",
-                                                  };
-                                                  const statusText = {
-                                                      full_perfect: "AP",
-                                                      full_combo: "FC",
-                                                      clear: "C",
-                                                      none: "NC",
-                                                  };
-                                                  return (
-                                                      <div
-                                                          key={`${song.id}-${diff}`}
-                                                          className="glass-panel tour-song-card hover-lift"
-                                                          style={{
-                                                              display: "flex",
-                                                              flexDirection: "row",
-                                                              gap: "0.75rem",
-                                                              alignItems: "center",
-                                                              cursor: "pointer",
-                                                          }}
-                                                          onClick={() => handleJacketClick(song, diff, currentStatus)}
-                                                      >
-                                                          <JacketImage songId={song.id} size={42} />
-                                                          <div style={{ flex: 1, minWidth: 0 }}>
-                                                              <div className="tour-song-title">
-                                                                  {getSongTitle(song)}
-                                                              </div>
-                                                              <div
-                                                                  style={{
-                                                                      display: "flex",
-                                                                      alignItems: "center",
-                                                                      gap: "0.4rem",
-                                                                      marginTop: "0.2rem",
-                                                                  }}
-                                                              >
-                                                                  <span
-                                                                      className={`diff-badge ${diffColors[diff] || ""}`}
+                                            : tourStats.remainingList
+                                                  .slice(0, tourRemainingVisibleCount)
+                                                  .map(({ song, diff, level, status }) => {
+                                                      const diffColors = {
+                                                          easy: "diff-easy",
+                                                          normal: "diff-normal",
+                                                          hard: "diff-hard",
+                                                          expert: "diff-expert",
+                                                          master: "diff-master",
+                                                          append: "diff-append",
+                                                      };
+                                                      const currentStatus = status || "none";
+                                                      const statusLabels = {
+                                                          full_perfect: "status-ap",
+                                                          full_combo: "status-fc",
+                                                          clear: "status-clear",
+                                                          none: "status-none",
+                                                      };
+                                                      const statusText = {
+                                                          full_perfect: "AP",
+                                                          full_combo: "FC",
+                                                          clear: "C",
+                                                          none: "NC",
+                                                      };
+                                                      return (
+                                                          <div
+                                                              key={`${song.id}-${diff}`}
+                                                              className="glass-panel tour-song-card hover-lift"
+                                                              style={{
+                                                                  display: "flex",
+                                                                  flexDirection: "row",
+                                                                  gap: "0.75rem",
+                                                                  alignItems: "center",
+                                                                  cursor: "pointer",
+                                                              }}
+                                                              onClick={() =>
+                                                                  handleJacketClick(song, diff, currentStatus)
+                                                              }
+                                                          >
+                                                              <JacketImage songId={song.id} size={42} />
+                                                              <div style={{ flex: 1, minWidth: 0 }}>
+                                                                  <div className="tour-song-title">
+                                                                      {getSongTitle(song)}
+                                                                  </div>
+                                                                  <div
                                                                       style={{
-                                                                          fontSize: "0.65rem",
-                                                                          padding: "0.05rem 0.3rem",
+                                                                          display: "flex",
+                                                                          alignItems: "center",
+                                                                          gap: "0.4rem",
+                                                                          marginTop: "0.2rem",
                                                                       }}
                                                                   >
-                                                                      {diff.toUpperCase()} {level}
-                                                                  </span>
-                                                                  <span
-                                                                      className={`status-badge ${statusLabels[currentStatus]}`}
-                                                                      style={{
-                                                                          fontSize: "0.65rem",
-                                                                          padding: "0.1rem 0.35rem",
-                                                                      }}
-                                                                  >
-                                                                      {statusText[currentStatus]}
-                                                                  </span>
+                                                                      <span
+                                                                          className={`diff-badge ${diffColors[diff] || ""}`}
+                                                                          style={{
+                                                                              fontSize: "0.65rem",
+                                                                              padding: "0.05rem 0.3rem",
+                                                                          }}
+                                                                      >
+                                                                          {diff.toUpperCase()} {level}
+                                                                      </span>
+                                                                      <span
+                                                                          className={`status-badge ${statusLabels[currentStatus]}`}
+                                                                          style={{
+                                                                              fontSize: "0.65rem",
+                                                                              padding: "0.1rem 0.35rem",
+                                                                          }}
+                                                                      >
+                                                                          {statusText[currentStatus]}
+                                                                      </span>
+                                                                  </div>
                                                               </div>
                                                           </div>
-                                                      </div>
-                                                  );
-                                              })}
+                                                      );
+                                                  })}
                                         {/* Sentinel for IntersectionObserver */}
                                         {tourStats.remainingList.length > tourRemainingVisibleCount && (
-                                            <div ref={tourRemainingSentinelRef} style={{ gridColumn: "1 / -1", height: "45px", display: "flex", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", fontSize: "0.85rem", margin: "1rem 0" }}>
+                                            <div
+                                                ref={tourRemainingSentinelRef}
+                                                style={{
+                                                    gridColumn: "1 / -1",
+                                                    height: "45px",
+                                                    display: "flex",
+                                                    justifyContent: "center",
+                                                    alignItems: "center",
+                                                    color: "var(--text-muted)",
+                                                    fontSize: "0.85rem",
+                                                    margin: "1rem 0",
+                                                }}
+                                            >
                                                 <span>미완료 곡을 불러오는 중...</span>
                                             </div>
                                         )}
@@ -5726,79 +6150,93 @@ function App() {
                                     </h3>
 
                                     <div className="tour-grid">
-                                        {tourStats.completedList.slice(0, tourCompletedVisibleCount).map(({ song, diff, level, status }) => {
-                                            const diffColors = {
-                                                easy: "diff-easy",
-                                                normal: "diff-normal",
-                                                hard: "diff-hard",
-                                                expert: "diff-expert",
-                                                master: "diff-master",
-                                                append: "diff-append",
-                                            };
-                                            const currentStatus = status || "none";
-                                            const statusLabels = {
-                                                full_perfect: "status-ap",
-                                                full_combo: "status-fc",
-                                                clear: "status-clear",
-                                                none: "status-none",
-                                            };
-                                            const statusText = {
-                                                full_perfect: "AP",
-                                                full_combo: "FC",
-                                                clear: "C",
-                                                none: "NC",
-                                            };
-                                            return (
-                                                <div
-                                                    key={`${song.id}-${diff}`}
-                                                    className="glass-panel tour-song-card hover-lift"
-                                                    style={{
-                                                        opacity: 0.6,
-                                                        display: "flex",
-                                                        flexDirection: "row",
-                                                        gap: "0.75rem",
-                                                        alignItems: "center",
-                                                        cursor: "pointer",
-                                                    }}
-                                                    onClick={() => handleJacketClick(song, diff, currentStatus)}
-                                                >
-                                                    <JacketImage songId={song.id} size={42} />
-                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <div className="tour-song-title">{getSongTitle(song)}</div>
-                                                        <div
-                                                            style={{
-                                                                display: "flex",
-                                                                alignItems: "center",
-                                                                gap: "0.4rem",
-                                                                marginTop: "0.2rem",
-                                                            }}
-                                                        >
-                                                            <span
-                                                                className={`diff-badge ${diffColors[diff] || ""}`}
+                                        {tourStats.completedList
+                                            .slice(0, tourCompletedVisibleCount)
+                                            .map(({ song, diff, level, status }) => {
+                                                const diffColors = {
+                                                    easy: "diff-easy",
+                                                    normal: "diff-normal",
+                                                    hard: "diff-hard",
+                                                    expert: "diff-expert",
+                                                    master: "diff-master",
+                                                    append: "diff-append",
+                                                };
+                                                const currentStatus = status || "none";
+                                                const statusLabels = {
+                                                    full_perfect: "status-ap",
+                                                    full_combo: "status-fc",
+                                                    clear: "status-clear",
+                                                    none: "status-none",
+                                                };
+                                                const statusText = {
+                                                    full_perfect: "AP",
+                                                    full_combo: "FC",
+                                                    clear: "C",
+                                                    none: "NC",
+                                                };
+                                                return (
+                                                    <div
+                                                        key={`${song.id}-${diff}`}
+                                                        className="glass-panel tour-song-card hover-lift"
+                                                        style={{
+                                                            opacity: 0.6,
+                                                            display: "flex",
+                                                            flexDirection: "row",
+                                                            gap: "0.75rem",
+                                                            alignItems: "center",
+                                                            cursor: "pointer",
+                                                        }}
+                                                        onClick={() => handleJacketClick(song, diff, currentStatus)}
+                                                    >
+                                                        <JacketImage songId={song.id} size={42} />
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div className="tour-song-title">{getSongTitle(song)}</div>
+                                                            <div
                                                                 style={{
-                                                                    fontSize: "0.65rem",
-                                                                    padding: "0.05rem 0.3rem",
+                                                                    display: "flex",
+                                                                    alignItems: "center",
+                                                                    gap: "0.4rem",
+                                                                    marginTop: "0.2rem",
                                                                 }}
                                                             >
-                                                                {diff.toUpperCase()} {level}
-                                                            </span>
-                                                            <span
-                                                                className={`status-badge ${statusLabels[currentStatus]}`}
-                                                                style={{
-                                                                    fontSize: "0.65rem",
-                                                                    padding: "0.1rem 0.35rem",
-                                                                }}
-                                                            >
-                                                                {statusText[currentStatus]}
-                                                            </span>
+                                                                <span
+                                                                    className={`diff-badge ${diffColors[diff] || ""}`}
+                                                                    style={{
+                                                                        fontSize: "0.65rem",
+                                                                        padding: "0.05rem 0.3rem",
+                                                                    }}
+                                                                >
+                                                                    {diff.toUpperCase()} {level}
+                                                                </span>
+                                                                <span
+                                                                    className={`status-badge ${statusLabels[currentStatus]}`}
+                                                                    style={{
+                                                                        fontSize: "0.65rem",
+                                                                        padding: "0.1rem 0.35rem",
+                                                                    }}
+                                                                >
+                                                                    {statusText[currentStatus]}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
+                                                );
+                                            })}
                                         {/* Sentinel for IntersectionObserver */}
                                         {tourStats.completedList.length > tourCompletedVisibleCount && (
-                                            <div ref={tourCompletedSentinelRef} style={{ gridColumn: "1 / -1", height: "45px", display: "flex", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", fontSize: "0.85rem", margin: "1rem 0" }}>
+                                            <div
+                                                ref={tourCompletedSentinelRef}
+                                                style={{
+                                                    gridColumn: "1 / -1",
+                                                    height: "45px",
+                                                    display: "flex",
+                                                    justifyContent: "center",
+                                                    alignItems: "center",
+                                                    color: "var(--text-muted)",
+                                                    fontSize: "0.85rem",
+                                                    margin: "1rem 0",
+                                                }}
+                                            >
                                                 <span>완료 곡을 불러오는 중...</span>
                                             </div>
                                         )}
@@ -6563,7 +7001,15 @@ function App() {
                                         </div>
 
                                         {/* Achievements counts comparison */}
-                                        <div className="glass-panel" style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                                        <div
+                                            className="glass-panel"
+                                            style={{
+                                                padding: "1.5rem",
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: "1rem",
+                                            }}
+                                        >
                                             <h4
                                                 style={{
                                                     color: "var(--text-secondary)",
@@ -6574,36 +7020,120 @@ function App() {
                                                     paddingBottom: "0.5rem",
                                                     display: "flex",
                                                     justifyContent: "space-between",
-                                                    alignItems: "center"
+                                                    alignItems: "center",
                                                 }}
                                             >
                                                 <span>성과 개수 비교</span>
-                                                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: "500" }}>
+                                                <span
+                                                    style={{
+                                                        fontSize: "0.75rem",
+                                                        color: "var(--text-muted)",
+                                                        fontWeight: "500",
+                                                    }}
+                                                >
                                                     필터링 결과: {filteredCompareList.length}개 곡 기준
                                                 </span>
                                             </h4>
-                                            
+
                                             <div style={{ overflowX: "auto" }}>
-                                                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", textAlign: "center" }}>
+                                                <table
+                                                    style={{
+                                                        width: "100%",
+                                                        borderCollapse: "collapse",
+                                                        fontSize: "0.85rem",
+                                                        textAlign: "center",
+                                                    }}
+                                                >
                                                     <thead>
-                                                        <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-secondary)", fontWeight: "700" }}>
-                                                            <th style={{ padding: "0.5rem", textAlign: "left" }}>성과</th>
-                                                            <th style={{ padding: "0.5rem", color: "var(--color-cyan)", textAlign: "right" }}>{compareData.userA.nickname}</th>
-                                                            <th style={{ padding: "0.5rem", color: "var(--color-pink)", textAlign: "right" }}>{compareData.userB.nickname}</th>
-                                                            <th style={{ padding: "0.5rem", textAlign: "right" }}>차이</th>
+                                                        <tr
+                                                            style={{
+                                                                borderBottom: "1px solid var(--border-color)",
+                                                                color: "var(--text-secondary)",
+                                                                fontWeight: "700",
+                                                            }}
+                                                        >
+                                                            <th style={{ padding: "0.5rem", textAlign: "left" }}>
+                                                                성과
+                                                            </th>
+                                                            <th
+                                                                style={{
+                                                                    padding: "0.5rem",
+                                                                    color: "var(--color-cyan)",
+                                                                    textAlign: "right",
+                                                                }}
+                                                            >
+                                                                {compareData.userA.nickname}
+                                                            </th>
+                                                            <th
+                                                                style={{
+                                                                    padding: "0.5rem",
+                                                                    color: "var(--color-pink)",
+                                                                    textAlign: "right",
+                                                                }}
+                                                            >
+                                                                {compareData.userB.nickname}
+                                                            </th>
+                                                            <th style={{ padding: "0.5rem", textAlign: "right" }}>
+                                                                차이
+                                                            </th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         {/* AP Row */}
-                                                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                                                            <td style={{ padding: "0.6rem 0.5rem", textAlign: "left", fontWeight: "700", color: "var(--color-ap)" }}>AP</td>
-                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right", color: "var(--color-cyan)" }}>{filteredCounts.apA}</td>
-                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right", color: "var(--color-pink)" }}>{filteredCounts.apB}</td>
-                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right" }}>
+                                                        <tr
+                                                            style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+                                                        >
+                                                            <td
+                                                                style={{
+                                                                    padding: "0.6rem 0.5rem",
+                                                                    textAlign: "left",
+                                                                    fontWeight: "700",
+                                                                    color: "var(--color-ap)",
+                                                                }}
+                                                            >
+                                                                AP
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    padding: "0.6rem 0.5rem",
+                                                                    fontWeight: "700",
+                                                                    textAlign: "right",
+                                                                    color: "var(--color-cyan)",
+                                                                }}
+                                                            >
+                                                                {filteredCounts.apA}
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    padding: "0.6rem 0.5rem",
+                                                                    fontWeight: "700",
+                                                                    textAlign: "right",
+                                                                    color: "var(--color-pink)",
+                                                                }}
+                                                            >
+                                                                {filteredCounts.apB}
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    padding: "0.6rem 0.5rem",
+                                                                    fontWeight: "700",
+                                                                    textAlign: "right",
+                                                                }}
+                                                            >
                                                                 {(() => {
-                                                                    const diff = filteredCounts.apA - filteredCounts.apB;
+                                                                    const diff =
+                                                                        filteredCounts.apA - filteredCounts.apB;
                                                                     return (
-                                                                        <span style={{ color: diff > 0 ? "var(--color-cyan)" : diff < 0 ? "var(--color-pink)" : "var(--text-muted)" }}>
+                                                                        <span
+                                                                            style={{
+                                                                                color:
+                                                                                    diff > 0
+                                                                                        ? "var(--color-cyan)"
+                                                                                        : diff < 0
+                                                                                          ? "var(--color-pink)"
+                                                                                          : "var(--text-muted)",
+                                                                            }}
+                                                                        >
                                                                             {diff > 0 ? `+${diff}` : diff}
                                                                         </span>
                                                                     );
@@ -6611,15 +7141,60 @@ function App() {
                                                             </td>
                                                         </tr>
                                                         {/* FC Row */}
-                                                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                                                            <td style={{ padding: "0.6rem 0.5rem", textAlign: "left", fontWeight: "700", color: "var(--color-fc)" }}>FC</td>
-                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right", color: "var(--color-cyan)" }}>{filteredCounts.fcA}</td>
-                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right", color: "var(--color-pink)" }}>{filteredCounts.fcB}</td>
-                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right" }}>
+                                                        <tr
+                                                            style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+                                                        >
+                                                            <td
+                                                                style={{
+                                                                    padding: "0.6rem 0.5rem",
+                                                                    textAlign: "left",
+                                                                    fontWeight: "700",
+                                                                    color: "var(--color-fc)",
+                                                                }}
+                                                            >
+                                                                FC
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    padding: "0.6rem 0.5rem",
+                                                                    fontWeight: "700",
+                                                                    textAlign: "right",
+                                                                    color: "var(--color-cyan)",
+                                                                }}
+                                                            >
+                                                                {filteredCounts.fcA}
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    padding: "0.6rem 0.5rem",
+                                                                    fontWeight: "700",
+                                                                    textAlign: "right",
+                                                                    color: "var(--color-pink)",
+                                                                }}
+                                                            >
+                                                                {filteredCounts.fcB}
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    padding: "0.6rem 0.5rem",
+                                                                    fontWeight: "700",
+                                                                    textAlign: "right",
+                                                                }}
+                                                            >
                                                                 {(() => {
-                                                                    const diff = filteredCounts.fcA - filteredCounts.fcB;
+                                                                    const diff =
+                                                                        filteredCounts.fcA - filteredCounts.fcB;
                                                                     return (
-                                                                        <span style={{ color: diff > 0 ? "var(--color-cyan)" : diff < 0 ? "var(--color-pink)" : "var(--text-muted)" }}>
+                                                                        <span
+                                                                            style={{
+                                                                                color:
+                                                                                    diff > 0
+                                                                                        ? "var(--color-cyan)"
+                                                                                        : diff < 0
+                                                                                          ? "var(--color-pink)"
+                                                                                          : "var(--text-muted)",
+                                                                            }}
+                                                                        >
                                                                             {diff > 0 ? `+${diff}` : diff}
                                                                         </span>
                                                                     );
@@ -6628,14 +7203,57 @@ function App() {
                                                         </tr>
                                                         {/* C Row */}
                                                         <tr>
-                                                            <td style={{ padding: "0.6rem 0.5rem", textAlign: "left", fontWeight: "700", color: "var(--color-clear)" }}>C</td>
-                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right", color: "var(--color-cyan)" }}>{filteredCounts.clrA}</td>
-                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right", color: "var(--color-pink)" }}>{filteredCounts.clrB}</td>
-                                                            <td style={{ padding: "0.6rem 0.5rem", fontWeight: "700", textAlign: "right" }}>
+                                                            <td
+                                                                style={{
+                                                                    padding: "0.6rem 0.5rem",
+                                                                    textAlign: "left",
+                                                                    fontWeight: "700",
+                                                                    color: "var(--color-clear)",
+                                                                }}
+                                                            >
+                                                                C
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    padding: "0.6rem 0.5rem",
+                                                                    fontWeight: "700",
+                                                                    textAlign: "right",
+                                                                    color: "var(--color-cyan)",
+                                                                }}
+                                                            >
+                                                                {filteredCounts.clrA}
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    padding: "0.6rem 0.5rem",
+                                                                    fontWeight: "700",
+                                                                    textAlign: "right",
+                                                                    color: "var(--color-pink)",
+                                                                }}
+                                                            >
+                                                                {filteredCounts.clrB}
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    padding: "0.6rem 0.5rem",
+                                                                    fontWeight: "700",
+                                                                    textAlign: "right",
+                                                                }}
+                                                            >
                                                                 {(() => {
-                                                                    const diff = filteredCounts.clrA - filteredCounts.clrB;
+                                                                    const diff =
+                                                                        filteredCounts.clrA - filteredCounts.clrB;
                                                                     return (
-                                                                        <span style={{ color: diff > 0 ? "var(--color-cyan)" : diff < 0 ? "var(--color-pink)" : "var(--text-muted)" }}>
+                                                                        <span
+                                                                            style={{
+                                                                                color:
+                                                                                    diff > 0
+                                                                                        ? "var(--color-cyan)"
+                                                                                        : diff < 0
+                                                                                          ? "var(--color-pink)"
+                                                                                          : "var(--text-muted)",
+                                                                            }}
+                                                                        >
                                                                             {diff > 0 ? `+${diff}` : diff}
                                                                         </span>
                                                                     );
@@ -6664,8 +7282,26 @@ function App() {
                                             <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                                 <Sparkles size={18} style={{ color: "var(--color-cyan)" }} /> 상세 비교
                                             </span>
-                                            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-                                                <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", cursor: "pointer", fontSize: "0.8rem", color: "var(--text-secondary)", userSelect: "none", fontWeight: "normal" }}>
+                                            <div
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "1rem",
+                                                    flexWrap: "wrap",
+                                                }}
+                                            >
+                                                <label
+                                                    style={{
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: "0.35rem",
+                                                        cursor: "pointer",
+                                                        fontSize: "0.8rem",
+                                                        color: "var(--text-secondary)",
+                                                        userSelect: "none",
+                                                        fontWeight: "normal",
+                                                    }}
+                                                >
                                                     <input
                                                         type="checkbox"
                                                         checked={compareIncludeClear}
@@ -6676,15 +7312,22 @@ function App() {
                                                             accentColor: "var(--color-cyan)",
                                                             cursor: "pointer",
                                                         }}
-                                                     />
-                                                     클리어를 성과로 인정
+                                                    />
+                                                    클리어를 성과로 인정
                                                 </label>
                                                 <button
                                                     className="btn btn-outline btn-sm"
                                                     onClick={() => setIsCompareFilterExpanded(!isCompareFilterExpanded)}
-                                                    style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.85rem", padding: "0.25rem 0.5rem" }}
+                                                    style={{
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: "0.25rem",
+                                                        fontSize: "0.85rem",
+                                                        padding: "0.25rem 0.5rem",
+                                                    }}
                                                 >
-                                                    <Filter size={12} /> {isCompareFilterExpanded ? "필터 접기" : "필터 펼치기"}
+                                                    <Filter size={12} />{" "}
+                                                    {isCompareFilterExpanded ? "필터 접기" : "필터 펼치기"}
                                                 </button>
                                             </div>
                                         </h3>
@@ -6692,168 +7335,172 @@ function App() {
                                         {/* FILTER PANEL FOR DETAILED COMPARISON */}
                                         {isCompareFilterExpanded && (
                                             <div
-                                            className="glass-panel"
-                                            style={{
-                                                padding: "1rem",
-                                                borderRadius: "8px",
-                                                marginBottom: "1.25rem",
-                                                display: "grid",
-                                                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                                                gap: "1rem",
-                                                alignItems: "end",
-                                                border: "1px solid rgba(255, 255, 255, 0.05)",
-                                            }}
-                                        >
-                                            {/* 1. Song search */}
-                                            <div className="filter-group" style={{ margin: 0 }}>
-                                                <label className="filter-label">곡 검색</label>
-                                                <div style={{ position: "relative" }}>
-                                                    <Search
-                                                        size={14}
-                                                        style={{
-                                                            position: "absolute",
-                                                            left: "10px",
-                                                            top: "50%",
-                                                            transform: "translateY(-50%)",
-                                                            color: "var(--text-muted)",
-                                                        }}
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        className="form-control"
-                                                        placeholder="곡명 검색..."
-                                                        style={{
-                                                            paddingLeft: "2.2rem",
-                                                            width: "100%",
-                                                            paddingRight: "0.5rem",
-                                                        }}
-                                                        value={compareSearchInput}
-                                                        onChange={(e) => setCompareSearchInput(e.target.value)}
-                                                    />
+                                                className="glass-panel"
+                                                style={{
+                                                    padding: "1rem",
+                                                    borderRadius: "8px",
+                                                    marginBottom: "1.25rem",
+                                                    display: "grid",
+                                                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                                                    gap: "1rem",
+                                                    alignItems: "end",
+                                                    border: "1px solid rgba(255, 255, 255, 0.05)",
+                                                }}
+                                            >
+                                                {/* 1. Song search */}
+                                                <div className="filter-group" style={{ margin: 0 }}>
+                                                    <label className="filter-label">곡 검색</label>
+                                                    <div style={{ position: "relative" }}>
+                                                        <Search
+                                                            size={14}
+                                                            style={{
+                                                                position: "absolute",
+                                                                left: "10px",
+                                                                top: "50%",
+                                                                transform: "translateY(-50%)",
+                                                                color: "var(--text-muted)",
+                                                            }}
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            className="form-control"
+                                                            placeholder="곡명 검색..."
+                                                            style={{
+                                                                paddingLeft: "2.2rem",
+                                                                width: "100%",
+                                                                paddingRight: "0.5rem",
+                                                            }}
+                                                            value={compareSearchInput}
+                                                            onChange={(e) => setCompareSearchInput(e.target.value)}
+                                                        />
+                                                    </div>
                                                 </div>
-                                            </div>
 
-                                            {/* 2. Difficulty filters */}
-                                            <div className="filter-group" style={{ margin: 0 }}>
-                                                <label className="filter-label">난이도</label>
-                                                <div className="filter-checkbox-group difficulty-checkbox-group compare-diff-group">
-                                                    {["easy", "normal", "hard", "expert", "master", "append"].map(
-                                                        (d) => {
-                                                            const isActive = compareDiffFilters.includes(d);
-                                                            return (
-                                                                <button
-                                                                    key={d}
-                                                                    type="button"
-                                                                    className={`btn btn-outline ${isActive ? "active" : ""}`}
-                                                                    style={{
-                                                                        padding: "0.25rem 0.4rem",
-                                                                        fontSize: "0.72rem",
-                                                                        borderRadius: "6px",
-                                                                        borderColor: isActive
-                                                                            ? "var(--color-cyan)"
-                                                                            : "var(--border-color)",
-                                                                        color: isActive
-                                                                            ? "var(--color-cyan)"
-                                                                            : "var(--text-secondary)",
-                                                                    }}
-                                                                    onClick={() => {
-                                                                        if (isActive) {
-                                                                            if (compareDiffFilters.length > 1) {
-                                                                                setCompareDiffFilters(
-                                                                                    compareDiffFilters.filter(
-                                                                                        (f) => f !== d,
-                                                                                    ),
-                                                                                );
+                                                {/* 2. Difficulty filters */}
+                                                <div className="filter-group" style={{ margin: 0 }}>
+                                                    <label className="filter-label">난이도</label>
+                                                    <div className="filter-checkbox-group difficulty-checkbox-group compare-diff-group">
+                                                        {["easy", "normal", "hard", "expert", "master", "append"].map(
+                                                            (d) => {
+                                                                const isActive = compareDiffFilters.includes(d);
+                                                                return (
+                                                                    <button
+                                                                        key={d}
+                                                                        type="button"
+                                                                        className={`btn btn-outline ${isActive ? "active" : ""}`}
+                                                                        style={{
+                                                                            padding: "0.25rem 0.4rem",
+                                                                            fontSize: "0.72rem",
+                                                                            borderRadius: "6px",
+                                                                            borderColor: isActive
+                                                                                ? "var(--color-cyan)"
+                                                                                : "var(--border-color)",
+                                                                            color: isActive
+                                                                                ? "var(--color-cyan)"
+                                                                                : "var(--text-secondary)",
+                                                                        }}
+                                                                        onClick={() => {
+                                                                            if (isActive) {
+                                                                                if (compareDiffFilters.length > 1) {
+                                                                                    setCompareDiffFilters(
+                                                                                        compareDiffFilters.filter(
+                                                                                            (f) => f !== d,
+                                                                                        ),
+                                                                                    );
+                                                                                }
+                                                                            } else {
+                                                                                setCompareDiffFilters([
+                                                                                    ...compareDiffFilters,
+                                                                                    d,
+                                                                                ]);
                                                                             }
-                                                                        } else {
-                                                                            setCompareDiffFilters([
-                                                                                ...compareDiffFilters,
-                                                                                d,
-                                                                            ]);
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    {d.toUpperCase()}
-                                                                </button>
-                                                            );
-                                                        },
-                                                    )}
+                                                                        }}
+                                                                    >
+                                                                        {d.toUpperCase()}
+                                                                    </button>
+                                                                );
+                                                            },
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
 
-                                            {/* 3. Level filters */}
-                                            <div className="filter-group" style={{ margin: 0 }}>
-                                                <label className="filter-label">레벨 범위</label>
-                                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        max="100"
-                                                        className="form-control"
-                                                        placeholder="최소"
-                                                        style={{ width: "100%", padding: "0.45rem 0.6rem" }}
-                                                        value={compareMinLevel}
-                                                        onChange={(e) => setCompareMinLevel(e.target.value)}
-                                                    />
-                                                    <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                                                        ~
-                                                    </span>
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        max="100"
-                                                        className="form-control"
-                                                        placeholder="최대"
-                                                        style={{ width: "100%", padding: "0.45rem 0.6rem" }}
-                                                        value={compareMaxLevel}
-                                                        onChange={(e) => setCompareMaxLevel(e.target.value)}
-                                                    />
+                                                {/* 3. Level filters */}
+                                                <div className="filter-group" style={{ margin: 0 }}>
+                                                    <label className="filter-label">레벨 범위</label>
+                                                    <div
+                                                        style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+                                                    >
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max="100"
+                                                            className="form-control"
+                                                            placeholder="최소"
+                                                            style={{ width: "100%", padding: "0.45rem 0.6rem" }}
+                                                            value={compareMinLevel}
+                                                            onChange={(e) => setCompareMinLevel(e.target.value)}
+                                                        />
+                                                        <span
+                                                            style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}
+                                                        >
+                                                            ~
+                                                        </span>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max="100"
+                                                            className="form-control"
+                                                            placeholder="최대"
+                                                            style={{ width: "100%", padding: "0.45rem 0.6rem" }}
+                                                            value={compareMaxLevel}
+                                                            onChange={(e) => setCompareMaxLevel(e.target.value)}
+                                                        />
+                                                    </div>
                                                 </div>
-                                            </div>
 
-                                            <div className="filter-group" style={{ margin: 0 }}>
-                                                <label className="filter-label">성과 격차</label>
-                                                <select
-                                                    className="form-control"
-                                                    style={{ width: "100%", padding: "0.45rem 1rem" }}
-                                                    value={compareResultFilter}
-                                                    onChange={(e) => setCompareResultFilter(e.target.value)}
-                                                >
-                                                    <option value="all">ALL</option>
-                                                    <option value="win">(+)</option>
-                                                    <option value="lose">(-)</option>
-                                                    <option value="draw">0</option>
-                                                </select>
-                                            </div>
-
-                                            {/* 5. Sorting Options */}
-                                            <div className="filter-group" style={{ margin: 0 }}>
-                                                <label className="filter-label">정렬</label>
-                                                <div style={{ display: "flex", gap: "0.4rem" }}>
+                                                <div className="filter-group" style={{ margin: 0 }}>
+                                                    <label className="filter-label">성과 격차</label>
                                                     <select
                                                         className="form-control"
-                                                        style={{ flex: 1.5, padding: "0.45rem" }}
-                                                        value={compareSortBy}
-                                                        onChange={(e) => setCompareSortBy(e.target.value)}
+                                                        style={{ width: "100%", padding: "0.45rem 1rem" }}
+                                                        value={compareResultFilter}
+                                                        onChange={(e) => setCompareResultFilter(e.target.value)}
                                                     >
-                                                        <option value="level">레벨</option>
-                                                        <option value="gap">성과 격차</option>
-                                                        <option value="title">곡명</option>
-                                                        <option value="ratingA">내 레이팅</option>
-                                                        <option value="ratingB">상대 레이팅</option>
-                                                    </select>
-                                                    <select
-                                                        className="form-control"
-                                                        style={{ flex: 1, padding: "0.45rem" }}
-                                                        value={compareSortOrder}
-                                                        onChange={(e) => setCompareSortOrder(e.target.value)}
-                                                    >
-                                                        <option value="desc">내림차순</option>
-                                                        <option value="asc">오름차순</option>
+                                                        <option value="all">ALL</option>
+                                                        <option value="win">(+)</option>
+                                                        <option value="lose">(-)</option>
+                                                        <option value="draw">0</option>
                                                     </select>
                                                 </div>
+
+                                                {/* 5. Sorting Options */}
+                                                <div className="filter-group" style={{ margin: 0 }}>
+                                                    <label className="filter-label">정렬</label>
+                                                    <div style={{ display: "flex", gap: "0.4rem" }}>
+                                                        <select
+                                                            className="form-control"
+                                                            style={{ flex: 1.5, padding: "0.45rem" }}
+                                                            value={compareSortBy}
+                                                            onChange={(e) => setCompareSortBy(e.target.value)}
+                                                        >
+                                                            <option value="level">레벨</option>
+                                                            <option value="gap">성과 격차</option>
+                                                            <option value="title">곡명</option>
+                                                            <option value="ratingA">내 레이팅</option>
+                                                            <option value="ratingB">상대 레이팅</option>
+                                                        </select>
+                                                        <select
+                                                            className="form-control"
+                                                            style={{ flex: 1, padding: "0.45rem" }}
+                                                            value={compareSortOrder}
+                                                            onChange={(e) => setCompareSortOrder(e.target.value)}
+                                                        >
+                                                            <option value="desc">내림차순</option>
+                                                            <option value="asc">오름차순</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
                                         )}
 
                                         {filteredCompareList.length === 0 ? (
@@ -7043,7 +7690,18 @@ function App() {
                                     </div>
                                     {/* Sentinel for IntersectionObserver */}
                                     {filteredCompareList.length > compareVisibleCount && (
-                                        <div ref={compareSentinelRef} style={{ height: "45px", display: "flex", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", fontSize: "0.85rem", margin: "1rem 0" }}>
+                                        <div
+                                            ref={compareSentinelRef}
+                                            style={{
+                                                height: "45px",
+                                                display: "flex",
+                                                justifyContent: "center",
+                                                alignItems: "center",
+                                                color: "var(--text-muted)",
+                                                fontSize: "0.85rem",
+                                                margin: "1rem 0",
+                                            }}
+                                        >
                                             <span>비교 결과를 불러오는 중...</span>
                                         </div>
                                     )}
@@ -7220,7 +7878,7 @@ function App() {
                                     style={{
                                         marginTop: "1.25rem",
                                         borderTop: "1px solid var(--border-color)",
-                                        paddingTop: "1.25rem"
+                                        paddingTop: "1.25rem",
                                     }}
                                 >
                                     <button
@@ -7234,7 +7892,7 @@ function App() {
                                             display: "flex",
                                             alignItems: "center",
                                             justifyContent: "center",
-                                            gap: "0.5rem"
+                                            gap: "0.5rem",
                                         }}
                                         onClick={() => {
                                             setChangeCurrentPassword("");
@@ -7282,7 +7940,8 @@ function App() {
                     <section className="glass-panel" style={{ padding: "2.5rem" }}>
                         <div className="section-title-bar" style={{ marginBottom: "2rem" }}>
                             <h2 className="section-title">
-                                <Users size={22} style={{ color: "var(--color-pink)", marginRight: "0.5rem" }} /> 회원 관리
+                                <Users size={22} style={{ color: "var(--color-pink)", marginRight: "0.5rem" }} /> 회원
+                                관리
                             </h2>
                             <button className="btn btn-outline btn-sm" onClick={fetchAdminUsers}>
                                 새로고침
@@ -7296,25 +7955,80 @@ function App() {
                         ) : adminError ? (
                             <div style={{ textAlign: "center", padding: "3rem" }}>
                                 <p style={{ color: "var(--color-danger)", marginBottom: "1rem" }}>{adminError}</p>
-                                <button className="btn btn-outline" onClick={fetchAdminUsers}>다시 시도</button>
+                                <button className="btn btn-outline" onClick={fetchAdminUsers}>
+                                    다시 시도
+                                </button>
                             </div>
                         ) : (
                             <div className="record-list-container" style={{ marginTop: "1rem" }}>
                                 <div style={{ overflowX: "auto" }}>
                                     <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                                         <thead>
-                                            <tr style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: "1rem" }}>
-                                                <th style={{ padding: "1rem 0.5rem", color: "var(--text-secondary)", fontWeight: "600" }}>#</th>
-                                                <th style={{ padding: "1rem 0.5rem", color: "var(--text-secondary)", fontWeight: "600" }}>아이디</th>
-                                                <th style={{ padding: "1rem 0.5rem", color: "var(--text-secondary)", fontWeight: "600" }}>닉네임</th>
-                                                <th style={{ padding: "1rem 0.5rem", color: "var(--text-secondary)", fontWeight: "600" }}>가입 일자</th>
-                                                <th style={{ padding: "1rem 0.5rem", color: "var(--text-secondary)", fontWeight: "600", textAlign: "center" }}>관리</th>
+                                            <tr
+                                                style={{
+                                                    borderBottom: "1px solid var(--border-color)",
+                                                    paddingBottom: "1rem",
+                                                }}
+                                            >
+                                                <th
+                                                    style={{
+                                                        padding: "1rem 0.5rem",
+                                                        color: "var(--text-secondary)",
+                                                        fontWeight: "600",
+                                                    }}
+                                                >
+                                                    #
+                                                </th>
+                                                <th
+                                                    style={{
+                                                        padding: "1rem 0.5rem",
+                                                        color: "var(--text-secondary)",
+                                                        fontWeight: "600",
+                                                    }}
+                                                >
+                                                    아이디
+                                                </th>
+                                                <th
+                                                    style={{
+                                                        padding: "1rem 0.5rem",
+                                                        color: "var(--text-secondary)",
+                                                        fontWeight: "600",
+                                                    }}
+                                                >
+                                                    닉네임
+                                                </th>
+                                                <th
+                                                    style={{
+                                                        padding: "1rem 0.5rem",
+                                                        color: "var(--text-secondary)",
+                                                        fontWeight: "600",
+                                                    }}
+                                                >
+                                                    가입 일자
+                                                </th>
+                                                <th
+                                                    style={{
+                                                        padding: "1rem 0.5rem",
+                                                        color: "var(--text-secondary)",
+                                                        fontWeight: "600",
+                                                        textAlign: "center",
+                                                    }}
+                                                >
+                                                    관리
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {adminUsers.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan="5" style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>
+                                                    <td
+                                                        colSpan="5"
+                                                        style={{
+                                                            padding: "3rem",
+                                                            textAlign: "center",
+                                                            color: "var(--text-muted)",
+                                                        }}
+                                                    >
                                                         가입된 일반 회원이 없습니다.
                                                     </td>
                                                 </tr>
@@ -7332,20 +8046,52 @@ function App() {
                                                     const isAdmin = user.username.toLowerCase() === "admin";
 
                                                     return (
-                                                        <tr key={user.username} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                                                        <tr
+                                                            key={user.username}
+                                                            style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}
+                                                        >
                                                             <td style={{ padding: "0.75rem 0.5rem" }}>{idx + 1}</td>
-                                                            <td style={{ padding: "0.75rem 0.5rem", fontWeight: "600" }}>{user.username}</td>
-                                                            <td style={{ padding: "0.75rem 0.5rem" }}>{user.nickname}</td>
-                                                            <td style={{ padding: "0.75rem 0.5rem", color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                                                            <td
+                                                                style={{ padding: "0.75rem 0.5rem", fontWeight: "600" }}
+                                                            >
+                                                                {user.username}
+                                                            </td>
+                                                            <td style={{ padding: "0.75rem 0.5rem" }}>
+                                                                {user.nickname}
+                                                            </td>
+                                                            <td
+                                                                style={{
+                                                                    padding: "0.75rem 0.5rem",
+                                                                    color: "var(--text-muted)",
+                                                                    fontSize: "0.85rem",
+                                                                }}
+                                                            >
                                                                 {formattedDate}
                                                             </td>
-                                                            <td style={{ padding: "0.75rem 0.5rem", textAlign: "center" }}>
+                                                            <td
+                                                                style={{
+                                                                    padding: "0.75rem 0.5rem",
+                                                                    textAlign: "center",
+                                                                }}
+                                                            >
                                                                 {isAdmin ? (
-                                                                    <span style={{ fontSize: "0.85rem", color: "var(--color-pink)", fontWeight: "700" }}>
+                                                                    <span
+                                                                        style={{
+                                                                            fontSize: "0.85rem",
+                                                                            color: "var(--color-pink)",
+                                                                            fontWeight: "700",
+                                                                        }}
+                                                                    >
                                                                         최고 관리자
                                                                     </span>
                                                                 ) : (
-                                                                    <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
+                                                                    <div
+                                                                        style={{
+                                                                            display: "flex",
+                                                                            gap: "0.5rem",
+                                                                            justifyContent: "center",
+                                                                        }}
+                                                                    >
                                                                         <button
                                                                             className="btn btn-outline btn-sm"
                                                                             style={{
@@ -7354,7 +8100,12 @@ function App() {
                                                                                 padding: "0.2rem 0.5rem",
                                                                                 fontSize: "0.8rem",
                                                                             }}
-                                                                            onClick={() => resetAdminUserPassword(user.username, user.nickname)}
+                                                                            onClick={() =>
+                                                                                resetAdminUserPassword(
+                                                                                    user.username,
+                                                                                    user.nickname,
+                                                                                )
+                                                                            }
                                                                         >
                                                                             비번 초기화
                                                                         </button>
@@ -7366,7 +8117,12 @@ function App() {
                                                                                 padding: "0.2rem 0.5rem",
                                                                                 fontSize: "0.8rem",
                                                                             }}
-                                                                            onClick={() => deleteAdminUser(user.username, user.nickname)}
+                                                                            onClick={() =>
+                                                                                deleteAdminUser(
+                                                                                    user.username,
+                                                                                    user.nickname,
+                                                                                )
+                                                                            }
                                                                         >
                                                                             회원 삭제
                                                                         </button>
@@ -7391,14 +8147,27 @@ function App() {
                 {activeTab === "distributions" && (
                     <section className="glass-panel" style={{ padding: "2rem" }}>
                         <div className="section-title-bar">
-                            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    width: "100%",
+                                    alignItems: "center",
+                                }}
+                            >
                                 <h2 className="section-title">
                                     <BarChart3 size={22} style={{ color: "var(--color-cyan)" }} /> 분포
                                 </h2>
                                 <button
                                     className="btn btn-outline btn-sm"
                                     onClick={() => setIsDistFilterExpanded(!isDistFilterExpanded)}
-                                    style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.85rem", padding: "0.35rem 0.6rem" }}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "0.25rem",
+                                        fontSize: "0.85rem",
+                                        padding: "0.35rem 0.6rem",
+                                    }}
                                 >
                                     <Filter size={14} /> {isDistFilterExpanded ? "필터 접기" : "필터 펼치기"}
                                 </button>
@@ -7436,116 +8205,116 @@ function App() {
                         {/* DETAILED FILTER PANELS */}
                         {isDistFilterExpanded && (
                             <div className="table-filters-expanded" style={{ marginBottom: "2rem" }}>
-                            {/* Row 1: Level range, Constant range, Display type */}
-                            <div className="filters-row distributions-filters-grid">
-                                <div className="filter-group">
-                                    <label className="filter-label">레벨</label>
-                                    <div className="range-inputs">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            className="form-control"
-                                            placeholder="최소"
-                                            style={{ width: "100%" }}
-                                            value={distMinLevelInput}
-                                            onChange={(e) => setDistMinLevelInput(e.target.value)}
-                                        />
-                                        <span>~</span>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            className="form-control"
-                                            placeholder="최대"
-                                            style={{ width: "100%" }}
-                                            value={distMaxLevelInput}
-                                            onChange={(e) => setDistMaxLevelInput(e.target.value)}
-                                        />
+                                {/* Row 1: Level range, Constant range, Display type */}
+                                <div className="filters-row distributions-filters-grid">
+                                    <div className="filter-group">
+                                        <label className="filter-label">레벨</label>
+                                        <div className="range-inputs">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                className="form-control"
+                                                placeholder="최소"
+                                                style={{ width: "100%" }}
+                                                value={distMinLevelInput}
+                                                onChange={(e) => setDistMinLevelInput(e.target.value)}
+                                            />
+                                            <span>~</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                className="form-control"
+                                                placeholder="최대"
+                                                style={{ width: "100%" }}
+                                                value={distMaxLevelInput}
+                                                onChange={(e) => setDistMaxLevelInput(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="filter-group">
-                                    <label className="filter-label">상수</label>
-                                    <div className="range-inputs">
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            min="0"
-                                            max="100"
-                                            className="form-control"
-                                            placeholder="최소"
-                                            style={{ width: "100%" }}
-                                            value={distMinConstInput}
-                                            onChange={(e) => setDistMinConstInput(e.target.value)}
-                                        />
-                                        <span>~</span>
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            min="0"
-                                            max="100"
-                                            className="form-control"
-                                            placeholder="최대"
-                                            style={{ width: "100%" }}
-                                            value={distMaxConstInput}
-                                            onChange={(e) => setDistMaxConstInput(e.target.value)}
-                                        />
+                                    <div className="filter-group">
+                                        <label className="filter-label">상수</label>
+                                        <div className="range-inputs">
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                max="100"
+                                                className="form-control"
+                                                placeholder="최소"
+                                                style={{ width: "100%" }}
+                                                value={distMinConstInput}
+                                                onChange={(e) => setDistMinConstInput(e.target.value)}
+                                            />
+                                            <span>~</span>
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                max="100"
+                                                className="form-control"
+                                                placeholder="최대"
+                                                style={{ width: "100%" }}
+                                                value={distMaxConstInput}
+                                                onChange={(e) => setDistMaxConstInput(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="filter-group">
-                                    <label className="filter-label">표시 형식</label>
-                                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                                        <button
-                                            className={`btn btn-outline ${distDisplayType === "count" ? "active" : ""}`}
-                                            style={{ flex: 1, padding: "0.45rem" }}
-                                            onClick={() => setDistDisplayType("count")}
-                                        >
-                                            곡 개수
-                                        </button>
-                                        <button
-                                            className={`btn btn-outline ${distDisplayType === "percent" ? "active" : ""}`}
-                                            style={{ flex: 1, padding: "0.45rem" }}
-                                            onClick={() => setDistDisplayType("percent")}
-                                        >
-                                            비율
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Row 2: Difficulty Checkboxes */}
-                            <div className="filter-group" style={{ marginTop: "1rem" }}>
-                                <label className="filter-label">포함할 난이도</label>
-                                <div className="filter-checkbox-group difficulty-checkbox-group">
-                                    {["easy", "normal", "hard", "expert", "master", "append"].map((diff) => {
-                                        const diffNames = {
-                                            easy: "EASY",
-                                            normal: "NORMAL",
-                                            hard: "HARD",
-                                            expert: "EXPERT",
-                                            master: "MASTER",
-                                            append: "APPEND",
-                                        };
-                                        const isActive = distDiffs.includes(diff);
-                                        return (
-                                            <label
-                                                key={diff}
-                                                className={`checkbox-label ${isActive ? `active-${diff}` : ""}`}
+                                    <div className="filter-group">
+                                        <label className="filter-label">표시 형식</label>
+                                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                                            <button
+                                                className={`btn btn-outline ${distDisplayType === "count" ? "active" : ""}`}
+                                                style={{ flex: 1, padding: "0.45rem" }}
+                                                onClick={() => setDistDisplayType("count")}
                                             >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isActive}
-                                                    onChange={() => handleDistDiffFilterToggle(diff)}
-                                                />
-                                                {diffNames[diff]}
-                                            </label>
-                                        );
-                                    })}
+                                                곡 개수
+                                            </button>
+                                            <button
+                                                className={`btn btn-outline ${distDisplayType === "percent" ? "active" : ""}`}
+                                                style={{ flex: 1, padding: "0.45rem" }}
+                                                onClick={() => setDistDisplayType("percent")}
+                                            >
+                                                비율
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Row 2: Difficulty Checkboxes */}
+                                <div className="filter-group" style={{ marginTop: "1rem" }}>
+                                    <label className="filter-label">포함할 난이도</label>
+                                    <div className="filter-checkbox-group difficulty-checkbox-group">
+                                        {["easy", "normal", "hard", "expert", "master", "append"].map((diff) => {
+                                            const diffNames = {
+                                                easy: "EASY",
+                                                normal: "NORMAL",
+                                                hard: "HARD",
+                                                expert: "EXPERT",
+                                                master: "MASTER",
+                                                append: "APPEND",
+                                            };
+                                            const isActive = distDiffs.includes(diff);
+                                            return (
+                                                <label
+                                                    key={diff}
+                                                    className={`checkbox-label ${isActive ? `active-${diff}` : ""}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isActive}
+                                                        onChange={() => handleDistDiffFilterToggle(diff)}
+                                                    />
+                                                    {diffNames[diff]}
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
                         )}
 
                         {/* STATS OVERVIEW CARDS */}
@@ -7645,8 +8414,22 @@ function App() {
                                     >
                                         AP
                                     </span>
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", marginTop: "0.1rem" }}>
-                                        <span style={{ fontSize: "1.4rem", fontWeight: "800", color: "var(--color-ap)", lineHeight: "1" }}>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: "0.15rem",
+                                            marginTop: "0.1rem",
+                                        }}
+                                    >
+                                        <span
+                                            style={{
+                                                fontSize: "1.4rem",
+                                                fontWeight: "800",
+                                                color: "var(--color-ap)",
+                                                lineHeight: "1",
+                                            }}
+                                        >
                                             {statsOverview.ap}개
                                         </span>
                                         <span
@@ -7657,7 +8440,11 @@ function App() {
                                                 lineHeight: "1",
                                             }}
                                         >
-                                            ({statsOverview.total > 0 ? Math.round((statsOverview.ap / statsOverview.total) * 100) : 0}%)
+                                            (
+                                            {statsOverview.total > 0
+                                                ? Math.round((statsOverview.ap / statsOverview.total) * 100)
+                                                : 0}
+                                            %)
                                         </span>
                                     </div>
                                 </div>
@@ -7681,8 +8468,22 @@ function App() {
                                     >
                                         FC
                                     </span>
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", marginTop: "0.1rem" }}>
-                                        <span style={{ fontSize: "1.4rem", fontWeight: "800", color: "var(--color-fc)", lineHeight: "1" }}>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: "0.15rem",
+                                            marginTop: "0.1rem",
+                                        }}
+                                    >
+                                        <span
+                                            style={{
+                                                fontSize: "1.4rem",
+                                                fontWeight: "800",
+                                                color: "var(--color-fc)",
+                                                lineHeight: "1",
+                                            }}
+                                        >
                                             {statsOverview.fc}개
                                         </span>
                                         <span
@@ -7693,7 +8494,11 @@ function App() {
                                                 lineHeight: "1",
                                             }}
                                         >
-                                            ({statsOverview.total > 0 ? Math.round((statsOverview.fc / statsOverview.total) * 100) : 0}%)
+                                            (
+                                            {statsOverview.total > 0
+                                                ? Math.round((statsOverview.fc / statsOverview.total) * 100)
+                                                : 0}
+                                            %)
                                         </span>
                                     </div>
                                 </div>
@@ -7717,8 +8522,22 @@ function App() {
                                     >
                                         C
                                     </span>
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", marginTop: "0.1rem" }}>
-                                        <span style={{ fontSize: "1.4rem", fontWeight: "800", color: "var(--color-clear)", lineHeight: "1" }}>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: "0.15rem",
+                                            marginTop: "0.1rem",
+                                        }}
+                                    >
+                                        <span
+                                            style={{
+                                                fontSize: "1.4rem",
+                                                fontWeight: "800",
+                                                color: "var(--color-clear)",
+                                                lineHeight: "1",
+                                            }}
+                                        >
                                             {statsOverview.clr}개
                                         </span>
                                         <span
@@ -7729,7 +8548,11 @@ function App() {
                                                 lineHeight: "1",
                                             }}
                                         >
-                                            ({statsOverview.total > 0 ? Math.round((statsOverview.clr / statsOverview.total) * 100) : 0}%)
+                                            (
+                                            {statsOverview.total > 0
+                                                ? Math.round((statsOverview.clr / statsOverview.total) * 100)
+                                                : 0}
+                                            %)
                                         </span>
                                     </div>
                                 </div>
@@ -7859,13 +8682,13 @@ const DistributionChart = ({ data, displayType, distTab }) => {
 
         // Calculate position relative to outermost container
         const containerRect = containerRef.current.getBoundingClientRect();
-        
+
         const tooltipWidth = 220;
         const tooltipHeight = 185;
-        
+
         let placement = "top";
         let tooltipX = clientX - containerRect.left + 15;
-        
+
         // Prevent overflowing screen width
         if (clientX + tooltipWidth + 20 > window.innerWidth) {
             tooltipX = clientX - containerRect.left - tooltipWidth - 15;
@@ -7897,189 +8720,189 @@ const DistributionChart = ({ data, displayType, distTab }) => {
                     height="100%"
                     style={{ overflow: "visible" }}
                 >
-                <defs>
-                    <linearGradient id="apGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#38bdf8" />
-                        <stop offset="100%" stopColor="#0ea5e9" />
-                    </linearGradient>
-                    <linearGradient id="fcGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#c084fc" />
-                        <stop offset="100%" stopColor="#a855f7" />
-                    </linearGradient>
-                    <linearGradient id="clearGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#fbbf24" />
-                        <stop offset="100%" stopColor="#f59e0b" />
-                    </linearGradient>
-                    <linearGradient id="unplayGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="rgba(255,255,255,0.07)" />
-                        <stop offset="100%" stopColor="rgba(255,255,255,0.03)" />
-                    </linearGradient>
-                </defs>
+                    <defs>
+                        <linearGradient id="apGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#38bdf8" />
+                            <stop offset="100%" stopColor="#0ea5e9" />
+                        </linearGradient>
+                        <linearGradient id="fcGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#c084fc" />
+                            <stop offset="100%" stopColor="#a855f7" />
+                        </linearGradient>
+                        <linearGradient id="clearGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#fbbf24" />
+                            <stop offset="100%" stopColor="#f59e0b" />
+                        </linearGradient>
+                        <linearGradient id="unplayGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="rgba(255,255,255,0.07)" />
+                            <stop offset="100%" stopColor="rgba(255,255,255,0.03)" />
+                        </linearGradient>
+                    </defs>
 
-                {/* Grid Lines */}
-                {yTicks.map((t) => {
-                    const y = chartBottom - t * chartHeight;
-                    const valueLabel =
-                        displayType === "percent" ? `${Math.round(t * 100)}%` : `${Math.round(t * maxTotal)}`;
+                    {/* Grid Lines */}
+                    {yTicks.map((t) => {
+                        const y = chartBottom - t * chartHeight;
+                        const valueLabel =
+                            displayType === "percent" ? `${Math.round(t * 100)}%` : `${Math.round(t * maxTotal)}`;
 
-                    return (
-                        <g key={t} opacity={0.65}>
-                            <line
-                                x1={padding.left}
-                                y1={y}
-                                x2={svgWidth - padding.right}
-                                y2={y}
-                                stroke="rgba(255,255,255,0.08)"
-                                strokeDasharray="4 4"
-                            />
-                            <text
-                                x={padding.left - 10}
-                                y={y + 4}
-                                fill="var(--text-secondary)"
-                                fontSize="12"
-                                fontWeight="600"
-                                textAnchor="end"
+                        return (
+                            <g key={t} opacity={0.65}>
+                                <line
+                                    x1={padding.left}
+                                    y1={y}
+                                    x2={svgWidth - padding.right}
+                                    y2={y}
+                                    stroke="rgba(255,255,255,0.08)"
+                                    strokeDasharray="4 4"
+                                />
+                                <text
+                                    x={padding.left - 10}
+                                    y={y + 4}
+                                    fill="var(--text-secondary)"
+                                    fontSize="12"
+                                    fontWeight="600"
+                                    textAnchor="end"
+                                >
+                                    {valueLabel}
+                                </text>
+                            </g>
+                        );
+                    })}
+
+                    {/* Bars */}
+                    {data.map((d, i) => {
+                        const x = padding.left + i * (barWidth + spacing);
+
+                        // Stacked heights
+                        let h_ap, h_fc, h_clear, h_unplay;
+                        if (displayType === "percent") {
+                            h_ap = (d.ap / d.total) * chartHeight;
+                            h_fc = (d.fc / d.total) * chartHeight;
+                            h_clear = (d.clear / d.total) * chartHeight;
+                            h_unplay = (d.unplayed / d.total) * chartHeight;
+                        } else {
+                            h_ap = (d.ap / maxTotal) * chartHeight;
+                            h_fc = (d.fc / maxTotal) * chartHeight;
+                            h_clear = (d.clear / maxTotal) * chartHeight;
+                            h_unplay = (d.unplayed / maxTotal) * chartHeight;
+                        }
+
+                        // y positions
+                        const y_unplay = chartBottom - h_unplay;
+                        const y_clear = y_unplay - h_clear;
+                        const y_fc = y_clear - h_fc;
+                        const y_ap = y_fc - h_ap;
+
+                        const isHovered = hovered && hovered.index === i;
+
+                        return (
+                            <g
+                                key={d.label}
+                                onMouseMove={(e) => handleMouseMove(e, d, i)}
+                                onMouseLeave={() => setHovered(null)}
+                                style={{ cursor: "pointer" }}
                             >
-                                {valueLabel}
-                            </text>
-                        </g>
-                    );
-                })}
-
-                {/* Bars */}
-                {data.map((d, i) => {
-                    const x = padding.left + i * (barWidth + spacing);
-
-                    // Stacked heights
-                    let h_ap, h_fc, h_clear, h_unplay;
-                    if (displayType === "percent") {
-                        h_ap = (d.ap / d.total) * chartHeight;
-                        h_fc = (d.fc / d.total) * chartHeight;
-                        h_clear = (d.clear / d.total) * chartHeight;
-                        h_unplay = (d.unplayed / d.total) * chartHeight;
-                    } else {
-                        h_ap = (d.ap / maxTotal) * chartHeight;
-                        h_fc = (d.fc / maxTotal) * chartHeight;
-                        h_clear = (d.clear / maxTotal) * chartHeight;
-                        h_unplay = (d.unplayed / maxTotal) * chartHeight;
-                    }
-
-                    // y positions
-                    const y_unplay = chartBottom - h_unplay;
-                    const y_clear = y_unplay - h_clear;
-                    const y_fc = y_clear - h_fc;
-                    const y_ap = y_fc - h_ap;
-
-                    const isHovered = hovered && hovered.index === i;
-
-                    return (
-                        <g
-                            key={d.label}
-                            onMouseMove={(e) => handleMouseMove(e, d, i)}
-                            onMouseLeave={() => setHovered(null)}
-                            style={{ cursor: "pointer" }}
-                        >
-                            {/* Background Rect for easy hovering */}
-                            <rect
-                                x={x - spacing / 2}
-                                y={padding.top}
-                                width={barWidth + spacing}
-                                height={chartHeight}
-                                fill="transparent"
-                            />
-
-                            {/* Stacked rects */}
-                            {h_unplay > 0 && (
+                                {/* Background Rect for easy hovering */}
                                 <rect
-                                    x={x}
-                                    y={y_unplay}
-                                    width={barWidth}
-                                    height={h_unplay}
-                                    fill="url(#unplayGrad)"
-                                    rx={h_clear === 0 && h_fc === 0 && h_ap === 0 ? 3 : 0}
-                                    style={{ transition: "all 0.3s ease" }}
-                                    opacity={isHovered ? 1 : 0.8}
+                                    x={x - spacing / 2}
+                                    y={padding.top}
+                                    width={barWidth + spacing}
+                                    height={chartHeight}
+                                    fill="transparent"
                                 />
-                            )}
-                            {h_clear > 0 && (
-                                <rect
-                                    x={x}
-                                    y={y_clear}
-                                    width={barWidth}
-                                    height={h_clear}
-                                    fill="url(#clearGrad)"
-                                    rx={h_fc === 0 && h_ap === 0 ? 3 : 0}
-                                    style={{ transition: "all 0.3s ease" }}
-                                    opacity={isHovered ? 1 : 0.85}
-                                />
-                            )}
-                            {h_fc > 0 && (
-                                <rect
-                                    x={x}
-                                    y={y_fc}
-                                    width={barWidth}
-                                    height={h_fc}
-                                    fill="url(#fcGrad)"
-                                    rx={h_ap === 0 ? 3 : 0}
-                                    style={{ transition: "all 0.3s ease" }}
-                                    opacity={isHovered ? 1 : 0.85}
-                                />
-                            )}
-                            {h_ap > 0 && (
-                                <rect
-                                    x={x}
-                                    y={y_ap}
-                                    width={barWidth}
-                                    height={h_ap}
-                                    fill="url(#apGrad)"
-                                    rx={3}
-                                    style={{ transition: "all 0.3s ease" }}
-                                    opacity={isHovered ? 1 : 0.85}
-                                />
-                            )}
 
-                            {/* X-axis Label */}
-                            <text
-                                x={x + barWidth / 2}
-                                y={chartBottom + 20}
-                                fill={isHovered ? "var(--color-cyan)" : "var(--text-secondary)"}
-                                fontSize={n > 20 ? "10" : "12"}
-                                fontWeight="700"
-                                textAnchor="middle"
-                                transform={n > 15 ? `rotate(-25, ${x + barWidth / 2}, ${chartBottom + 20})` : ""}
-                                style={{ transition: "fill 0.2s ease" }}
-                            >
-                                {d.label}
-                            </text>
+                                {/* Stacked rects */}
+                                {h_unplay > 0 && (
+                                    <rect
+                                        x={x}
+                                        y={y_unplay}
+                                        width={barWidth}
+                                        height={h_unplay}
+                                        fill="url(#unplayGrad)"
+                                        rx={h_clear === 0 && h_fc === 0 && h_ap === 0 ? 3 : 0}
+                                        style={{ transition: "all 0.3s ease" }}
+                                        opacity={isHovered ? 1 : 0.8}
+                                    />
+                                )}
+                                {h_clear > 0 && (
+                                    <rect
+                                        x={x}
+                                        y={y_clear}
+                                        width={barWidth}
+                                        height={h_clear}
+                                        fill="url(#clearGrad)"
+                                        rx={h_fc === 0 && h_ap === 0 ? 3 : 0}
+                                        style={{ transition: "all 0.3s ease" }}
+                                        opacity={isHovered ? 1 : 0.85}
+                                    />
+                                )}
+                                {h_fc > 0 && (
+                                    <rect
+                                        x={x}
+                                        y={y_fc}
+                                        width={barWidth}
+                                        height={h_fc}
+                                        fill="url(#fcGrad)"
+                                        rx={h_ap === 0 ? 3 : 0}
+                                        style={{ transition: "all 0.3s ease" }}
+                                        opacity={isHovered ? 1 : 0.85}
+                                    />
+                                )}
+                                {h_ap > 0 && (
+                                    <rect
+                                        x={x}
+                                        y={y_ap}
+                                        width={barWidth}
+                                        height={h_ap}
+                                        fill="url(#apGrad)"
+                                        rx={3}
+                                        style={{ transition: "all 0.3s ease" }}
+                                        opacity={isHovered ? 1 : 0.85}
+                                    />
+                                )}
 
-                            {/* Top Total Count (only in count mode and if wide enough) */}
-                            {displayType === "count" && barWidth > 18 && d.total > 0 && (
+                                {/* X-axis Label */}
                                 <text
                                     x={x + barWidth / 2}
-                                    y={y_ap - 6}
-                                    fill="var(--text-primary)"
-                                    fontSize="10"
+                                    y={chartBottom + 20}
+                                    fill={isHovered ? "var(--color-cyan)" : "var(--text-secondary)"}
+                                    fontSize={n > 20 ? "10" : "12"}
                                     fontWeight="700"
                                     textAnchor="middle"
-                                    opacity={isHovered ? 1 : 0.6}
+                                    transform={n > 15 ? `rotate(-25, ${x + barWidth / 2}, ${chartBottom + 20})` : ""}
+                                    style={{ transition: "fill 0.2s ease" }}
                                 >
-                                    {d.total}
+                                    {d.label}
                                 </text>
-                            )}
-                        </g>
-                    );
-                })}
 
-                {/* X Axis Line */}
-                <line
-                    x1={padding.left}
-                    y1={chartBottom}
-                    x2={svgWidth - padding.right}
-                    y2={chartBottom}
-                    stroke="rgba(255,255,255,0.15)"
-                    strokeWidth="1.5"
-                />
-            </svg>
+                                {/* Top Total Count (only in count mode and if wide enough) */}
+                                {displayType === "count" && barWidth > 18 && d.total > 0 && (
+                                    <text
+                                        x={x + barWidth / 2}
+                                        y={y_ap - 6}
+                                        fill="var(--text-primary)"
+                                        fontSize="10"
+                                        fontWeight="700"
+                                        textAnchor="middle"
+                                        opacity={isHovered ? 1 : 0.6}
+                                    >
+                                        {d.total}
+                                    </text>
+                                )}
+                            </g>
+                        );
+                    })}
+
+                    {/* X Axis Line */}
+                    <line
+                        x1={padding.left}
+                        y1={chartBottom}
+                        x2={svgWidth - padding.right}
+                        y2={chartBottom}
+                        stroke="rgba(255,255,255,0.15)"
+                        strokeWidth="1.5"
+                    />
+                </svg>
             </div>
 
             {/* TOOLTIP */}
@@ -8137,7 +8960,14 @@ const DistributionChart = ({ data, displayType, distTab }) => {
                         }}
                     >
                         <span>● AP</span>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1.1 }}>
+                        <div
+                            style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "flex-end",
+                                lineHeight: 1.1,
+                            }}
+                        >
                             <span style={{ fontWeight: "700" }}>{hovered.item.ap}개</span>
                             <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>
                                 {hovered.item.total > 0 ? Math.round((hovered.item.ap / hovered.item.total) * 100) : 0}%
@@ -8155,7 +8985,14 @@ const DistributionChart = ({ data, displayType, distTab }) => {
                         }}
                     >
                         <span>● FC</span>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1.1 }}>
+                        <div
+                            style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "flex-end",
+                                lineHeight: 1.1,
+                            }}
+                        >
                             <span style={{ fontWeight: "700" }}>{hovered.item.fc}개</span>
                             <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>
                                 {hovered.item.total > 0 ? Math.round((hovered.item.fc / hovered.item.total) * 100) : 0}%
@@ -8173,10 +9010,20 @@ const DistributionChart = ({ data, displayType, distTab }) => {
                         }}
                     >
                         <span>● C</span>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1.1 }}>
+                        <div
+                            style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "flex-end",
+                                lineHeight: 1.1,
+                            }}
+                        >
                             <span style={{ fontWeight: "700" }}>{hovered.item.clear}개</span>
                             <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>
-                                {hovered.item.total > 0 ? Math.round((hovered.item.clear / hovered.item.total) * 100) : 0}%
+                                {hovered.item.total > 0
+                                    ? Math.round((hovered.item.clear / hovered.item.total) * 100)
+                                    : 0}
+                                %
                             </span>
                         </div>
                     </div>
@@ -8190,10 +9037,20 @@ const DistributionChart = ({ data, displayType, distTab }) => {
                         }}
                     >
                         <span>● NC</span>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1.1 }}>
+                        <div
+                            style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "flex-end",
+                                lineHeight: 1.1,
+                            }}
+                        >
                             <span style={{ fontWeight: "700" }}>{hovered.item.unplayed}개</span>
                             <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>
-                                {hovered.item.total > 0 ? Math.round((hovered.item.unplayed / hovered.item.total) * 100) : 0}%
+                                {hovered.item.total > 0
+                                    ? Math.round((hovered.item.unplayed / hovered.item.total) * 100)
+                                    : 0}
+                                %
                             </span>
                         </div>
                     </div>
