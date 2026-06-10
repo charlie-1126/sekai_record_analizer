@@ -41,8 +41,20 @@ async function fetchSongs() {
   console.log('Fetching songs from API with fallbacks...');
   try {
     const data = await fetchUrlWithFallback(SONGS_API_URL);
-
     console.log(`Successfully fetched ${data.length} songs.`);
+
+    let releaseDates = {};
+    try {
+      const datesData = await fetchUrlWithFallback('https://sekai-world.github.io/sekai-master-db-diff/musics.json');
+      datesData.forEach(m => {
+        if (m.id && m.publishedAt) {
+          releaseDates[String(m.id)] = m.publishedAt;
+        }
+      });
+      console.log(`Successfully fetched ${Object.keys(releaseDates).length} release dates.`);
+    } catch (e) {
+      console.error('Failed to fetch release dates, fallback to none:', e);
+    }
 
     const processedSongs = data.map(song => {
       const levels = {
@@ -85,6 +97,7 @@ async function fetchSongs() {
         levels: levels,
         constants: constants,
         composer: song.composer || song.composer_jp || '',
+        publishedAt: releaseDates[String(song.id)] || song.publishedAt || null,
       };
     });
 

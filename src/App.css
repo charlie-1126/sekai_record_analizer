@@ -2083,3 +2083,31 @@ input[type="number"] {
     background: rgba(56, 189, 248, 0.15);
     box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
 }
+
+/* Compare Filters Layout */
+.compare-filters-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.compare-filters-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1.2fr 1fr 1.8fr 1fr;
+    gap: 1rem;
+    align-items: end;
+}
+
+@media (max-width: 1024px) {
+    .compare-filters-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 1rem !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .compare-filters-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+}

@@ -550,7 +550,8 @@ function processAndSaveSongs(songsArray) {
       levels: levels,
       constants: constants,
       composer: song.composer || song.composer_jp || '',
-      jacketUrl: `/jackets/jacket_s_${String(song.id).padStart(3, '0')}.webp`
+      jacketUrl: `/jackets/jacket_s_${String(song.id).padStart(3, '0')}.webp`,
+      publishedAt: song.publishedAt || null
     };
 
     if (currentMap.has(song.id)) {
@@ -687,11 +688,13 @@ app.post('/api/scores', async (req, res) => {
     
     let lastNormal = 0;
     let lastAppend = 0;
+    let lastPotential = 0;
     if (sortedDates.length > 0) {
       const lastEntry = ratingHistory[sortedDates[sortedDates.length - 1]];
       if (typeof lastEntry === 'object' && lastEntry !== null) {
         lastNormal = lastEntry.normal || 0;
         lastAppend = lastEntry.append || 0;
+        lastPotential = lastEntry.potential || 0;
       } else if (typeof lastEntry === 'number') {
         lastNormal = lastEntry;
       }
@@ -699,23 +702,26 @@ app.post('/api/scores', async (req, res) => {
 
     let newNormal = 0;
     let newAppend = 0;
+    let newPotential = 0;
     if (typeof rating === 'object' && rating !== null) {
       newNormal = Number(rating.normal) || 0;
       newAppend = Number(rating.append) || 0;
+      newPotential = Number(rating.potential) || 0;
     } else if (typeof rating === 'number') {
       newNormal = rating;
     }
 
-    // Only update history if there's no history yet OR the new normal/append has changed from the last recorded value
-    if (newNormal > 0 || newAppend > 0) {
-      if (sortedDates.length === 0 || newNormal !== lastNormal || newAppend !== lastAppend) {
+    // Only update history if there's no history yet OR the new normal/append/potential has changed from the last recorded value
+    if (newNormal > 0 || newAppend > 0 || newPotential > 0) {
+      if (sortedDates.length === 0 || newNormal !== lastNormal || newAppend !== lastAppend || newPotential !== lastPotential) {
         const today = new Date();
         const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' });
         const todayStr = formatter.format(today); // Returns YYYY-MM-DD
         
         ratingHistory[todayStr] = {
           normal: newNormal,
-          append: newAppend
+          append: newAppend,
+          potential: newPotential
         };
       }
     }
@@ -862,16 +868,19 @@ app.get('/api/friends/list/:username', async (req, res) => {
       let normalRating = 0;
       let appendRating = 0;
       let totalRating = 0;
+      let potentialRating = 0;
       if (dates.length > 0) {
         const lastEntry = history[dates[dates.length - 1]];
         if (typeof lastEntry === 'object' && lastEntry !== null) {
           normalRating = lastEntry.normal || 0;
           appendRating = lastEntry.append || 0;
           totalRating = normalRating + appendRating;
+          potentialRating = lastEntry.potential || 0;
         } else if (typeof lastEntry === 'number') {
           normalRating = lastEntry;
           appendRating = 0;
           totalRating = lastEntry;
+          potentialRating = 0;
         }
       }
       return {
@@ -879,7 +888,8 @@ app.get('/api/friends/list/:username', async (req, res) => {
         nickname: f.nickname,
         normalRating,
         appendRating,
-        totalRating
+        totalRating,
+        potentialRating
       };
     });
 
@@ -923,14 +933,162 @@ app.post('/api/user/settings', async (req, res) => {
   }
 });
 
+// --- Server-side Rating Calculation Helpers for Rankings ---
+function isNewSongServer(song) {
+  if (!song) return false;
+  const publishedAt = song.publishedAt ? Number(song.publishedAt) : null;
+  if (!publishedAt) return false;
+  const threeMonthsMs = 90 * 24 * 60 * 60 * 1000;
+  return (Date.now() - publishedAt) < threeMonthsMs && publishedAt > 0;
+}
+
+function getConstantForRatingServer(song, diff, status) {
+  if (!song.constants) return song.levels?.[diff] || 0;
+  const apKey = `${diff}_ap`;
+  const fcKey = `${diff}_fc`;
+  if (song.constants[diff] !== undefined && song.constants[diff] !== null) {
+    return song.constants[diff];
+  }
+  if (status === 'full_perfect' || status === 'ap') {
+    if (song.constants[apKey] !== undefined && song.constants[apKey] !== null) {
+      return song.constants[apKey];
+    }
+  } else {
+    if (song.constants[fcKey] !== undefined && song.constants[fcKey] !== null) {
+      return song.constants[fcKey];
+    }
+  }
+  return song.levels?.[diff] || 0;
+}
+
+function getConstantServer(song, diff, status) {
+  if (!song.constants) return song.levels?.[diff] || 0;
+  const apKey = `${diff}_ap`;
+  const fcKey = `${diff}_fc`;
+  if (song.constants[diff] !== undefined && song.constants[diff] !== null) {
+    return song.constants[diff];
+  }
+  if (status === 'full_perfect' || status === 'ap') {
+    if (song.constants[apKey] !== undefined && song.constants[apKey] !== null) {
+      return song.constants[apKey];
+    }
+    return song.levels?.[diff] || 0;
+  } else if (status === 'full_combo' || status === 'fc') {
+    if (song.constants[fcKey] !== undefined && song.constants[fcKey] !== null) {
+      return song.constants[fcKey];
+    }
+    return song.levels?.[diff] || 0;
+  } else {
+    if (song.constants[fcKey] !== undefined && song.constants[fcKey] !== null) {
+      return song.constants[fcKey];
+    }
+    return song.levels?.[diff] || 0;
+  }
+}
+
+function calculateRatingServer(song, diff, status) {
+  if (!status || status === 'none') return 0;
+  let multiplier = 0;
+  if (status === 'full_perfect') multiplier = 8.0;
+  else if (status === 'full_combo') multiplier = 7.5;
+  else if (status === 'clear') multiplier = 5.0;
+  else return 0;
+
+  const levelConst = getConstantServer(song, diff, status);
+  return Math.round(multiplier * levelConst);
+}
+
+function calculateNewRatingServer(song, diff, status) {
+  if (!status || status === 'none') return 0;
+  if (status === 'full_perfect') {
+    const constant = getConstantForRatingServer(song, diff, 'full_perfect');
+    return constant + 2.0;
+  } else if (status === 'full_combo') {
+    const constant = getConstantForRatingServer(song, diff, 'full_combo');
+    return constant + 0.0;
+  } else if (status === 'clear') {
+    const level = song.levels?.[diff] || 0;
+    return level - 4.0;
+  }
+  return 0;
+}
+
+function calculateRatingsOnServer(scoresArray, songsMap) {
+  const allRatings = [];
+  const appendRatings = [];
+  const newList = [];
+  const oldList = [];
+
+  scoresArray.forEach(score => {
+    const songId = String(score.id);
+    const song = songsMap.get(songId);
+    if (!song) return;
+
+    const difficulties = ['easy', 'normal', 'hard', 'expert', 'master'];
+    difficulties.forEach(diff => {
+      const status = score[diff];
+      if (status && status !== 'none') {
+        const rating = calculateRatingServer(song, diff, status);
+        if (rating > 0) {
+          allRatings.push(rating);
+        }
+
+        const newRating = calculateNewRatingServer(song, diff, status);
+        if (newRating > 0) {
+          const isNew = isNewSongServer(song);
+          if (isNew) {
+            newList.push(newRating);
+          } else {
+            oldList.push(newRating);
+          }
+        }
+      }
+    });
+
+    const appendStatus = score.append;
+    if (appendStatus && appendStatus !== 'none') {
+      const rating = calculateRatingServer(song, 'append', appendStatus);
+      if (rating > 0) {
+        appendRatings.push(rating);
+      }
+    }
+  });
+
+  allRatings.sort((a, b) => b - a);
+  const top39 = allRatings.slice(0, 39);
+  const normal = Math.round(top39.reduce((acc, curr) => acc + curr, 0));
+
+  appendRatings.sort((a, b) => b - a);
+  const top15 = appendRatings.slice(0, 15);
+  const append = Math.round(top15.reduce((acc, curr) => acc + curr, 0) * 2.6);
+
+  newList.sort((a, b) => b - a);
+  oldList.sort((a, b) => b - a);
+  const bestNew = newList.slice(0, 10);
+  const bestOld = oldList.slice(0, 30);
+  const sumNew = bestNew.reduce((acc, curr) => acc + curr, 0);
+  const sumOld = bestOld.reduce((acc, curr) => acc + curr, 0);
+  const potential = (bestNew.length + bestOld.length) > 0 ? (sumNew + sumOld) / 40 : 0.0;
+
+  return {
+    normal,
+    append,
+    potential
+  };
+}
+
 // 7. Global Rankings API
 app.get('/api/rankings', async (req, res) => {
   try {
+    const songsList = dbSongs.read();
+    const songsMap = new Map(songsList.map(s => [String(s.id), s]));
+
     const rows = await dbQuery.all("SELECT username, nickname, rating_history, scores, created_at FROM users WHERE LOWER(username) != 'admin'");
     const rankings = rows.map(row => {
       let normalRating = 0;
       let appendRating = 0;
       let totalRating = 0;
+      let potentialRating = 0;
 
       try {
         const history = JSON.parse(row.rating_history || '{}');
@@ -940,6 +1098,7 @@ app.get('/api/rankings', async (req, res) => {
           if (typeof lastEntry === 'object' && lastEntry !== null) {
             normalRating = lastEntry.normal || 0;
             appendRating = lastEntry.append || 0;
+            potentialRating = lastEntry.potential || 0;
             totalRating = normalRating + appendRating;
           } else if (typeof lastEntry === 'number') {
             normalRating = lastEntry;
@@ -951,21 +1110,36 @@ app.get('/api/rankings', async (req, res) => {
         console.error('Error parsing rating history for user', row.username, e);
       }
 
-      let apCount = 0;
-      let fcCount = 0;
-      let clearCount = 0;
+      // Dynamic recalculation fallback if potentialRating is 0 or normalRating is 0, but scores are present
+      let scoresArray = [];
       try {
-        const scores = JSON.parse(row.scores || '[]');
-        scores.forEach(s => {
-          ['easy', 'normal', 'hard', 'expert', 'master', 'append'].forEach(d => {
-            if (s[d] === 'full_perfect') apCount++;
-            else if (s[d] === 'full_combo') fcCount++;
-            else if (s[d] === 'clear') clearCount++;
-          });
-        });
+        scoresArray = JSON.parse(row.scores || '[]');
       } catch (e) {
         console.error('Error parsing scores for user', row.username, e);
       }
+
+      if ((normalRating === 0 || potentialRating === 0) && scoresArray.length > 0) {
+        const computed = calculateRatingsOnServer(scoresArray, songsMap);
+        if (normalRating === 0) normalRating = computed.normal;
+        if (appendRating === 0) appendRating = computed.append;
+        if (potentialRating === 0) potentialRating = computed.potential;
+        totalRating = normalRating + appendRating;
+      }
+
+      if (potentialRating === 0 && normalRating > 0) {
+        potentialRating = normalRating / 292.5;
+      }
+
+      let apCount = 0;
+      let fcCount = 0;
+      let clearCount = 0;
+      scoresArray.forEach(s => {
+        ['easy', 'normal', 'hard', 'expert', 'master', 'append'].forEach(d => {
+          if (s[d] === 'full_perfect') apCount++;
+          else if (s[d] === 'full_combo') fcCount++;
+          else if (s[d] === 'clear') clearCount++;
+        });
+      });
 
       return {
         username: row.username,
@@ -973,6 +1147,7 @@ app.get('/api/rankings', async (req, res) => {
         normalRating,
         appendRating,
         totalRating,
+        potentialRating,
         apCount,
         fcCount,
         clearCount,
