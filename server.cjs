@@ -503,7 +503,7 @@ async function prefetchJacketsBackground(songs) {
   }
 }
 
-function processAndSaveSongs(songsArray) {
+function processAndSaveSongs(songsArray, releaseDates = {}) {
   const currentSongs = dbSongs.read();
   const currentMap = new Map(currentSongs.map(s => [s.id, s]));
   let updatedCount = 0;
@@ -539,6 +539,9 @@ function processAndSaveSongs(songsArray) {
       append_ap: parseConstant(song.apd_ap),
     };
 
+    const songIdStr = String(song.id);
+    const publishedAtVal = releaseDates[songIdStr] || song.publishedAt || (currentMap.get(song.id)?.publishedAt) || null;
+
     const refinedSong = {
       id: song.id,
       title_ko: song.title_ko || '',
@@ -551,7 +554,7 @@ function processAndSaveSongs(songsArray) {
       constants: constants,
       composer: song.composer || song.composer_jp || '',
       jacketUrl: `/jackets/jacket_s_${String(song.id).padStart(3, '0')}.webp`,
-      publishedAt: song.publishedAt || null
+      publishedAt: publishedAtVal
     };
 
     if (currentMap.has(song.id)) {
@@ -576,7 +579,23 @@ async function syncSongsInternal(targetUrl = SONGS_API_URL) {
   isSyncing = true;
   try {
     const apiResponse = await fetchUrlWithFallback(targetUrl);
-    return processAndSaveSongs(apiResponse);
+    
+    let releaseDates = {};
+    try {
+      const datesData = await fetchUrlWithFallback('https://sekai-world.github.io/sekai-master-db-diff/musics.json');
+      if (Array.isArray(datesData)) {
+        datesData.forEach(m => {
+          if (m.id && m.publishedAt) {
+            releaseDates[String(m.id)] = m.publishedAt;
+          }
+        });
+        console.log(`[Auto Sync] Successfully fetched ${Object.keys(releaseDates).length} release dates.`);
+      }
+    } catch (e) {
+      console.error('[Auto Sync] Failed to fetch release dates, fallback to none:', e.message);
+    }
+
+    return processAndSaveSongs(apiResponse, releaseDates);
   } catch (error) {
     console.error('[Auto Sync] Error syncing songs:', error);
     throw error;
