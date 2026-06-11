@@ -98,9 +98,7 @@ export const Dashboard = ({
                         display: "flex",
                         flexDirection: "column",
                         gap: "0.25rem",
-                        border: viewedUser
-                            ? "1px solid rgba(0, 242, 254, 0.3)"
-                            : "1px solid var(--border-color)",
+                        border: viewedUser ? "1px solid rgba(0, 242, 254, 0.3)" : "1px solid var(--border-color)",
                         background: viewedUser ? "rgba(0, 242, 254, 0.03)" : "",
                         marginBottom: "0.5rem",
                     }}
@@ -141,9 +139,7 @@ export const Dashboard = ({
                             </button>
                         )}
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        @{effectiveUserUsername}
-                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>@{effectiveUserUsername}</div>
                 </div>
 
                 {/* 일반 셐포스 B39 */}
@@ -161,8 +157,9 @@ export const Dashboard = ({
                         className="rating-value"
                         style={{
                             background: "linear-gradient(135deg, #ffffff 30%, #ff9ebe 100%)",
-                            WebkitTextFillColor: "transparent",
                             WebkitBackgroundClip: "text",
+                            backgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
                         }}
                     >
                         {playerAppendRating}
@@ -171,10 +168,7 @@ export const Dashboard = ({
 
                 <div className="glass-panel stat-box">
                     <span className="stat-label">B39 평균 / 커트라인</span>
-                    <span
-                        className="stat-val"
-                        style={{ fontSize: "1.2rem", color: "var(--color-cyan)" }}
-                    >
+                    <span className="stat-val" style={{ fontSize: "1.2rem", color: "var(--color-cyan)" }}>
                         {b39List.length > 0 ? (playerRating / b39List.length).toFixed(1) : "0.0"} /{" "}
                         {b39List.length === 39 ? Math.round(b39List[38].rating) : "0"}
                     </span>
@@ -182,15 +176,9 @@ export const Dashboard = ({
 
                 <div className="glass-panel stat-box">
                     <span className="stat-label">어펜드 B15 평균 / 커트라인</span>
-                    <span
-                        className="stat-val"
-                        style={{ fontSize: "1.2rem", color: "var(--color-append)" }}
-                    >
+                    <span className="stat-val" style={{ fontSize: "1.2rem", color: "var(--color-append)" }}>
                         {appendB15List.length > 0
-                            ? (
-                                  appendB15List.reduce((acc, c) => acc + c.rating, 0) /
-                                  appendB15List.length
-                              ).toFixed(1)
+                            ? (appendB15List.reduce((acc, c) => acc + c.rating, 0) / appendB15List.length).toFixed(1)
                             : "0.0"}{" "}
                         / {appendB15List.length === 15 ? Math.round(appendB15List[14].rating) : "0"}
                     </span>
@@ -198,19 +186,13 @@ export const Dashboard = ({
 
                 <div className="stat-grid-half">
                     <div className="glass-panel stat-box">
-                        <span
-                            className="stat-label"
-                            style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}
-                        >
+                        <span className="stat-label" style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
                             <span style={{ color: "var(--color-ap)" }}>●</span> AP 수
                         </span>
                         <span className="stat-val">{overallStats.apCount}</span>
                     </div>
                     <div className="glass-panel stat-box">
-                        <span
-                            className="stat-label"
-                            style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}
-                        >
+                        <span className="stat-label" style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
                             <span style={{ color: "var(--color-fc)" }}>●</span> FC 수
                         </span>
                         <span className="stat-val">{overallStats.fcCount}</span>
@@ -260,10 +242,7 @@ export const Dashboard = ({
                     </div>
 
                     {/* Dashboard Inner Sub Tab Selector */}
-                    <div
-                        className="tabs-header"
-                        style={{ width: "100%", marginBottom: 0, paddingBottom: 0 }}
-                    >
+                    <div className="tabs-header" style={{ width: "100%", marginBottom: 0, paddingBottom: 0 }}>
                         <button
                             className={`tab-btn ${dashboardSubTab === "b39" ? "active" : ""}`}
                             onClick={() => setDashboardSubTab("b39")}
@@ -274,8 +253,7 @@ export const Dashboard = ({
                             className={`tab-btn ${dashboardSubTab === "b15" ? "active" : ""}`}
                             onClick={() => setDashboardSubTab("b15")}
                             style={{
-                                borderBottomColor:
-                                    dashboardSubTab === "b15" ? "var(--color-append)" : "",
+                                borderBottomColor: dashboardSubTab === "b15" ? "var(--color-append)" : "",
                                 color: dashboardSubTab === "b15" ? "var(--color-append)" : "",
                             }}
                         >
@@ -313,11 +291,7 @@ export const Dashboard = ({
                                     >
                                         <div className="b39-rank">#{index + 1}</div>
                                         <div className="b39-jacket-wrapper">
-                                            <JacketImage
-                                                songId={item.song.id}
-                                                size={200}
-                                                className="b39-jacket"
-                                            />
+                                            <JacketImage songId={item.song.id} size={200} className="b39-jacket" />
                                         </div>
                                         <div className="b39-card-body">
                                             <div className="b39-title" title={getSongTitle(item.song)}>
@@ -325,8 +299,7 @@ export const Dashboard = ({
                                             </div>
                                             <div className="b39-meta-row">
                                                 <span className={`diff-badge ${diffColors[item.diff]}`}>
-                                                    {item.diff.toUpperCase().substring(0, 3)}{" "}
-                                                    {item.level}
+                                                    {item.diff.toUpperCase().substring(0, 3)} {item.level}
                                                 </span>
                                                 <span
                                                     className={`status-badge ${item.status === "full_perfect" ? "status-ap" : item.status === "full_combo" ? "status-fc" : "status-clear"}`}
@@ -343,9 +316,7 @@ export const Dashboard = ({
                                                     {item.constant.toFixed(1)}
                                                     {!item.hasConstant && "?"}
                                                 </span>
-                                                <span className="b39-rating-value">
-                                                    {Math.round(item.rating)}
-                                                </span>
+                                                <span className="b39-rating-value">{Math.round(item.rating)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -371,11 +342,7 @@ export const Dashboard = ({
                             >
                                 <div className="b39-rank">#{index + 1}</div>
                                 <div className="b39-jacket-wrapper">
-                                    <JacketImage
-                                        songId={item.song.id}
-                                        size={200}
-                                        className="b39-jacket"
-                                    />
+                                    <JacketImage songId={item.song.id} size={200} className="b39-jacket" />
                                 </div>
                                 <div className="b39-card-body">
                                     <div className="b39-title" title={getSongTitle(item.song)}>
@@ -398,9 +365,7 @@ export const Dashboard = ({
                                             {item.constant.toFixed(1)}
                                             {!item.hasConstant && "?"}
                                         </span>
-                                        <span className="b39-rating-value">
-                                            {Math.round(item.rating)}
-                                        </span>
+                                        <span className="b39-rating-value">{Math.round(item.rating)}</span>
                                     </div>
                                 </div>
                             </div>

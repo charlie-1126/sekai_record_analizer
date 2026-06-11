@@ -2,13 +2,9 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { ClipboardList, Filter, Search } from "lucide-react";
 import { JacketImage } from "../Common/JacketImage";
 import { calculateRating, getConstant, hasExplicitConstant } from "../../utils/ratingUtils";
+import { isNewSong, calculateSongPotential } from "../../utils/potentialUtils";
 
-export const Records = ({
-    songs,
-    scores,
-    updateScores,
-    settingsTitleLang,
-}) => {
+export const Records = ({ songs, scores, updateScores, settingsTitleLang, ratingMode = "b39" }) => {
     // --- States ---
     const [isRecordFilterExpanded, setIsRecordFilterExpanded] = useState(true);
     const [recordSearchInput, setRecordSearchInput] = useState("");
@@ -31,6 +27,7 @@ export const Records = ({
     const [recordMaxLevel, setRecordMaxLevel] = useState("");
     const [recordSortBy, setRecordSortBy] = useState("level"); // title, status, level, constant
     const [recordSortOrder, setRecordSortOrder] = useState("desc"); // asc, desc
+    const [recordNewFilter, setRecordNewFilter] = useState("all"); // "all", "new", "old"
 
     // --- Debounce Search Term ---
     useEffect(() => {
@@ -238,7 +235,15 @@ export const Records = ({
                     if (!matchesText) return;
                 }
 
-                const rating = calculateRating(song, diff, status || "none");
+                // 신곡 필터
+                const songNew = isNewSong(song);
+                if (recordNewFilter === "new" && !songNew) return;
+                if (recordNewFilter === "old" && songNew) return;
+
+                const rating =
+                    ratingMode === "potential"
+                        ? calculateSongPotential(song, diff, status || "none")
+                        : calculateRating(song, diff, status || "none");
                 list.push({
                     song,
                     diff,
@@ -335,6 +340,7 @@ export const Records = ({
         recordMaxLevel,
         recordSortBy,
         recordSortOrder,
+        recordNewFilter,
         settingsTitleLang,
     ]);
 
@@ -500,7 +506,9 @@ export const Records = ({
                                     <option value="level">레벨</option>
                                     <option value="fc_constant">FC 상수</option>
                                     <option value="ap_constant">AP 상수</option>
-                                    <option value="rating">Music R</option>
+                                    <option value="rating">
+                                        {ratingMode === "potential" ? "Potential" : "Music R"}
+                                    </option>
                                 </select>
                                 <select
                                     className="form-control"
@@ -530,10 +538,7 @@ export const Records = ({
                                 };
                                 const isActive = recordDiffFilters.includes(diff);
                                 return (
-                                    <label
-                                        key={diff}
-                                        className={`checkbox-label ${isActive ? `active-${diff}` : ""}`}
-                                    >
+                                    <label key={diff} className={`checkbox-label ${isActive ? `active-${diff}` : ""}`}>
                                         <input
                                             type="checkbox"
                                             checked={isActive}
@@ -573,6 +578,33 @@ export const Records = ({
                             })}
                         </div>
                     </div>
+
+                    {/* Row 4: 신곡 필터 */}
+                    <div className="filter-group" style={{ marginTop: "0.5rem" }}>
+                        <label className="filter-label">신곡 여부</label>
+                        <div style={{ display: "flex", gap: "0.5rem", maxWidth: "320px" }}>
+                            {[
+                                { id: "all", label: "전체" },
+                                { id: "new", label: "신곡" },
+                                { id: "old", label: "구곡" },
+                            ].map((opt) => (
+                                <button
+                                    key={opt.id}
+                                    className={`btn btn-outline ${recordNewFilter === opt.id ? "active" : ""}`}
+                                    style={{
+                                        flex: 1,
+                                        padding: "0.4rem",
+                                        fontSize: "0.8rem",
+                                        borderColor: recordNewFilter === opt.id && opt.id === "new" ? "#ffd200" : "",
+                                        color: recordNewFilter === opt.id && opt.id === "new" ? "#ffd200" : "",
+                                    }}
+                                    onClick={() => setRecordNewFilter(opt.id)}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -586,28 +618,16 @@ export const Records = ({
                     <div className="bulk-control-group">
                         <span className="bulk-label">일괄 성과 입력:</span>
                         <div className="bulk-buttons">
-                            <button
-                                className="bulk-btn btn-nc"
-                                onClick={() => handleBulkScoreConfirm("none")}
-                            >
+                            <button className="bulk-btn btn-nc" onClick={() => handleBulkScoreConfirm("none")}>
                                 NC
                             </button>
-                            <button
-                                className="bulk-btn btn-clear"
-                                onClick={() => handleBulkScoreConfirm("clear")}
-                            >
+                            <button className="bulk-btn btn-clear" onClick={() => handleBulkScoreConfirm("clear")}>
                                 C
                             </button>
-                            <button
-                                className="bulk-btn btn-fc"
-                                onClick={() => handleBulkScoreConfirm("full_combo")}
-                            >
+                            <button className="bulk-btn btn-fc" onClick={() => handleBulkScoreConfirm("full_combo")}>
                                 FC
                             </button>
-                            <button
-                                className="bulk-btn btn-ap"
-                                onClick={() => handleBulkScoreConfirm("full_perfect")}
-                            >
+                            <button className="bulk-btn btn-ap" onClick={() => handleBulkScoreConfirm("full_perfect")}>
                                 AP
                             </button>
                         </div>
@@ -633,7 +653,7 @@ export const Records = ({
                         <span>레벨</span>
                         <span>FC 상수</span>
                         <span>AP 상수</span>
-                        <span>Music R</span>
+                        <span>{ratingMode === "potential" ? "Potential" : "Music R"}</span>
                         <span>성과 설정</span>
                     </div>
 
@@ -660,16 +680,32 @@ export const Records = ({
                             };
 
                             return (
-                                <div
-                                    key={`${item.song.id}-${item.diff}`}
-                                    className="record-row-item record-grid-row"
-                                >
+                                <div key={`${item.song.id}-${item.diff}`} className="record-row-item record-grid-row">
                                     {/* Rank */}
                                     <div className="record-rank-col">#{index + 1}</div>
 
                                     {/* Jacket */}
-                                    <div className="record-jacket-col">
+                                    <div className="record-jacket-col" style={{ position: "relative" }}>
                                         <JacketImage songId={item.song.id} size={50} />
+                                        {isNewSong(item.song) && (
+                                            <span
+                                                style={{
+                                                    position: "absolute",
+                                                    top: "0px",
+                                                    left: "0px",
+                                                    background: "linear-gradient(135deg, #ff4545ed, #f42516)",
+                                                    color: "#000",
+                                                    fontWeight: 800,
+                                                    fontSize: "0.5rem",
+                                                    padding: "0.1rem 0.25rem",
+                                                    borderRadius: "3px",
+                                                    zIndex: 2,
+                                                    letterSpacing: "0.05em",
+                                                }}
+                                            >
+                                                NEW
+                                            </span>
+                                        )}
                                     </div>
 
                                     {/* Title / Composer */}
@@ -681,18 +717,26 @@ export const Records = ({
                                         {/* Mobile sub-info row */}
                                         <div className="record-mobile-meta">
                                             <span className={`diff-badge diff-${item.diff} mini`}>
-                                                {diffNames[item.diff].substring(0, 3)} {item.level}
+                                                {item.diff === "append" ? "APD" : diffNames[item.diff].substring(0, 3)}{" "}
+                                                {item.level}
                                             </span>
                                             <span
                                                 className="meta-rating"
                                                 style={{
                                                     color:
                                                         item.rating > 0
-                                                            ? "var(--color-pink)"
+                                                            ? ratingMode === "potential"
+                                                                ? "#c77dff"
+                                                                : "var(--color-pink)"
                                                             : "var(--text-muted)",
                                                 }}
                                             >
-                                                R: {item.rating > 0 ? Math.round(item.rating) : "-"}
+                                                {ratingMode === "potential" ? "Pot" : "R"}:{" "}
+                                                {item.rating > 0
+                                                    ? ratingMode === "potential"
+                                                        ? item.rating.toFixed(1)
+                                                        : Math.round(item.rating)
+                                                    : "-"}
                                             </span>
                                             <span className="meta-constant">
                                                 C(FC): {item.fcConstant.toFixed(1)}
@@ -707,9 +751,7 @@ export const Records = ({
 
                                     {/* Difficulty Badge */}
                                     <div className="record-diff-col">
-                                        <span className={`diff-badge diff-${item.diff}`}>
-                                            {diffNames[item.diff]}
-                                        </span>
+                                        <span className={`diff-badge diff-${item.diff}`}>{diffNames[item.diff]}</span>
                                     </div>
 
                                     {/* Level */}
@@ -732,10 +774,18 @@ export const Records = ({
                                         className="record-rating-col"
                                         style={{
                                             color:
-                                                item.rating > 0 ? "var(--color-pink)" : "var(--text-muted)",
+                                                item.rating > 0
+                                                    ? ratingMode === "potential"
+                                                        ? "#c77dff"
+                                                        : "var(--color-pink)"
+                                                    : "var(--text-muted)",
                                         }}
                                     >
-                                        {item.rating > 0 ? Math.round(item.rating) : "-"}
+                                        {item.rating > 0
+                                            ? ratingMode === "potential"
+                                                ? item.rating.toFixed(1)
+                                                : Math.round(item.rating)
+                                            : "-"}
                                     </div>
 
                                     {/* Action / Selector */}
@@ -743,9 +793,7 @@ export const Records = ({
                                         <select
                                             className={`record-status-select status-${item.status}`}
                                             value={item.status}
-                                            onChange={(e) =>
-                                                handleScoreChange(item.song.id, item.diff, e.target.value)
-                                            }
+                                            onChange={(e) => handleScoreChange(item.song.id, item.diff, e.target.value)}
                                         >
                                             <option value="none">NC</option>
                                             <option value="clear">C</option>

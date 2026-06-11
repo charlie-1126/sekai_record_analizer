@@ -53,6 +53,13 @@ import JacketDetailsModal from "./components/Common/JacketDetailsModal";
 
 // Rating Utils
 import { calculateRating, getConstant, hasExplicitConstant, calculateTempRatings } from "./utils/ratingUtils";
+import {
+    computePotentialRating,
+    calculateTempPotential,
+    getTierInfo,
+    getTierDisplayName,
+} from "./utils/potentialUtils";
+import { PotentialDashboard } from "./components/Dashboard/PotentialDashboard";
 
 function App() {
     // --- Routing Hooks ---
@@ -94,6 +101,18 @@ function App() {
     const [isLoadingSongs, setIsLoadingSongs] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [openMobileAccordions, setOpenMobileAccordions] = useState({ records: false, tools: false });
+
+    // --- Rating Mode Toggle: "b39" | "potential" ---
+    const [ratingMode, setRatingMode] = useState(() => {
+        return localStorage.getItem("pjsk_rating_mode") || "b39";
+    });
+    const toggleRatingMode = () => {
+        setRatingMode((prev) => {
+            const next = prev === "b39" ? "potential" : "b39";
+            localStorage.setItem("pjsk_rating_mode", next);
+            return next;
+        });
+    };
 
     // --- Jacket Click Popup State ---
     const [selectedJacketSong, setSelectedJacketSong] = useState(null);
@@ -195,9 +214,11 @@ function App() {
         let ratings = ratingObj;
         if (!ratings) {
             const tempCalc = calculateTempRatings(currentScores, songs);
+            const tempPot = calculateTempPotential(currentScores, songs);
             ratings = {
                 normal: tempCalc.playerRating,
                 append: tempCalc.playerAppendRating,
+                potential: tempPot.potential4,
             };
         }
 
@@ -224,9 +245,11 @@ function App() {
         localStorage.setItem("pjsk_user_scores", JSON.stringify(newScores));
         if (currentUser) {
             const tempCalc = calculateTempRatings(newScores, songs);
+            const tempPot = calculateTempPotential(newScores, songs);
             const ratingObj = {
                 normal: tempCalc.playerRating,
                 append: tempCalc.playerAppendRating,
+                potential: tempPot.potential4,
             };
             syncScoresToServer(currentUser, newScores, ratingObj);
         }
@@ -626,6 +649,11 @@ function App() {
         return Math.round(sum);
     }, [b39List]);
 
+    // --- Potential Rating ---
+    const potentialData = useMemo(() => {
+        return computePotentialRating(songs, userScoresMap);
+    }, [songs, userScoresMap]);
+
     // --- Compute Append Ratings (B15 - ONLY APPEND!) ---
     const appendRatings = useMemo(() => {
         const list = [];
@@ -892,8 +920,25 @@ function App() {
                                         <span>{currentUser.nickname}님</span>
                                     </div>
                                     <div className="user-ratings">
-                                        <div className="rating-badge rating-normal">B39: {playerRating}</div>
-                                        <div className="rating-badge rating-append">B15: {playerAppendRating}</div>
+                                        {ratingMode === "b39" ? (
+                                            <>
+                                                <div className="rating-badge rating-normal">B39: {playerRating}</div>
+                                                <div className="rating-badge rating-append">
+                                                    B15: {playerAppendRating}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div
+                                                className="rating-badge"
+                                                style={{
+                                                    background: "rgba(199,125,255,0.15)",
+                                                    color: "#c77dff",
+                                                    border: "1px solid rgba(199,125,255,0.3)",
+                                                }}
+                                            >
+                                                Potential: {potentialData.potential2.toFixed(2)}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ) : (
@@ -1125,24 +1170,34 @@ function App() {
             />
 
             <main className="container" style={{ flex: 1 }}>
-                {activeTab === "dashboard" && (
-                    <Dashboard
-                        effectiveUser={effectiveUser}
-                        playerRating={playerRating}
-                        playerAppendRating={playerAppendRating}
-                        b39List={b39List}
-                        appendB15List={appendB15List}
-                        overallStats={overallStats}
-                        isViewedDashboardLoading={isViewedDashboardLoading}
-                        viewedDashboardError={viewedDashboardError}
-                        viewedUser={viewedUser}
-                        settingsTitleLang={settingsTitleLang}
-                    />
-                )}
+                {activeTab === "dashboard" &&
+                    (ratingMode === "potential" ? (
+                        <PotentialDashboard
+                            effectiveUser={effectiveUser}
+                            potentialRating={potentialData.potential4}
+                            oldBest30={potentialData.oldBest30}
+                            newBest10={potentialData.newBest10}
+                            isViewedDashboardLoading={isViewedDashboardLoading}
+                            viewedDashboardError={viewedDashboardError}
+                            viewedUser={viewedUser}
+                            settingsTitleLang={settingsTitleLang}
+                        />
+                    ) : (
+                        <Dashboard
+                            effectiveUser={effectiveUser}
+                            playerRating={playerRating}
+                            playerAppendRating={playerAppendRating}
+                            b39List={b39List}
+                            appendB15List={appendB15List}
+                            overallStats={overallStats}
+                            isViewedDashboardLoading={isViewedDashboardLoading}
+                            viewedDashboardError={viewedDashboardError}
+                            viewedUser={viewedUser}
+                            settingsTitleLang={settingsTitleLang}
+                        />
+                    ))}
 
-                {activeTab === "ranking" && (
-                    <Ranking currentUser={currentUser} />
-                )}
+                {activeTab === "ranking" && <Ranking currentUser={currentUser} ratingMode={ratingMode} />}
 
                 {activeTab === "records" && (
                     <Records
@@ -1150,6 +1205,7 @@ function App() {
                         scores={scores}
                         updateScores={updateScores}
                         settingsTitleLang={settingsTitleLang}
+                        ratingMode={ratingMode}
                     />
                 )}
 
@@ -1159,6 +1215,7 @@ function App() {
                         scores={scores}
                         onJacketClick={handleJacketClick}
                         settingsTitleLang={settingsTitleLang}
+                        ratingMode={ratingMode}
                     />
                 )}
 
@@ -1168,6 +1225,7 @@ function App() {
                         scores={scores}
                         onJacketClick={handleJacketClick}
                         settingsTitleLang={settingsTitleLang}
+                        ratingMode={ratingMode}
                     />
                 )}
 
@@ -1181,6 +1239,9 @@ function App() {
                         allRatings={allRatings}
                         appendRatings={appendRatings}
                         settingsTitleLang={settingsTitleLang}
+                        ratingMode={ratingMode}
+                        potentialData={potentialData}
+                        userScoresMap={userScoresMap}
                     />
                 )}
 
@@ -1192,6 +1253,7 @@ function App() {
                         friendsList={friendsList}
                         fetchFriendsList={fetchFriendsList}
                         settingsTitleLang={settingsTitleLang}
+                        ratingMode={ratingMode}
                     />
                 )}
 
@@ -1209,18 +1271,15 @@ function App() {
                         settingsMessage={settingsMessage}
                         setSettingsMessage={setSettingsMessage}
                         handleLogout={handleLogout}
+                        ratingMode={ratingMode}
+                        toggleRatingMode={toggleRatingMode}
                     />
                 )}
 
-                {activeTab === "admin" && (
-                    <Admin currentUser={currentUser} />
-                )}
+                {activeTab === "admin" && <Admin currentUser={currentUser} />}
 
                 {activeTab === "distributions" && (
-                    <Distributions
-                        songs={songs}
-                        userScoresMap={userScoresMap}
-                    />
+                    <Distributions songs={songs} userScoresMap={userScoresMap} ratingMode={ratingMode} />
                 )}
             </main>
         </div>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Users, Search, Plus, TrendingUp, XCircle, Sparkles, Filter } from "lucide-react";
 import { JacketImage } from "../Common/JacketImage";
 import { calculateRating, getConstant, getRelativePercentages } from "../../utils/ratingUtils";
+import { isNewSong, computePotentialRating, calculateSongPotential } from "../../utils/potentialUtils";
 
 export const Compare = ({
     currentUser,
@@ -11,6 +12,7 @@ export const Compare = ({
     friendsList,
     fetchFriendsList,
     settingsTitleLang,
+    ratingMode = "b39",
 }) => {
     const navigate = useNavigate();
 
@@ -42,6 +44,7 @@ export const Compare = ({
     const [compareMaxLevel, setCompareMaxLevel] = useState("");
     const [compareSortBy, setCompareSortBy] = useState("level"); // "level", "gap", "title", "ratingA", "ratingB"
     const [compareSortOrder, setCompareSortOrder] = useState("desc"); // "asc", "desc"
+    const [compareNewFilter, setCompareNewFilter] = useState("all"); // "all", "new", "old"
     const [isCompareFilterExpanded, setIsCompareFilterExpanded] = useState(true);
 
     // --- Debounce Search Term ---
@@ -64,6 +67,7 @@ export const Compare = ({
         compareSortBy,
         compareSortOrder,
         compareIncludeClear,
+        compareNewFilter,
     ]);
 
     // --- Infinite scroll observer ---
@@ -202,7 +206,7 @@ export const Compare = ({
     const compareResults = useMemo(() => {
         if (!compareData) return null;
 
-        const computeUserB39 = (userScores) => {
+        const computeUserStats = (userScores) => {
             const uScoresMap = new Map();
             userScores.forEach((s) => {
                 if (s && s.id) uScoresMap.set(String(s.id), s);
@@ -214,11 +218,12 @@ export const Compare = ({
                 const play = uScoresMap.get(String(song.id));
                 if (!play) return;
 
-                // B39 excludes append
                 ["easy", "normal", "hard", "expert", "master"].forEach((diff) => {
                     const status = play[diff];
                     if (status && status !== "none") {
-                        const rating = calculateRating(song, diff, status);
+                        const rating = ratingMode === "potential"
+                            ? calculateSongPotential(song, diff, status)
+                            : calculateRating(song, diff, status);
                         if (rating > 0) {
                             list.push({
                                 song,
@@ -232,10 +237,11 @@ export const Compare = ({
                     }
                 });
 
-                // Append rating calculation
                 const appendStatus = play["append"];
                 if (appendStatus && appendStatus !== "none") {
-                    const rating = calculateRating(song, "append", appendStatus);
+                    const rating = ratingMode === "potential"
+                        ? calculateSongPotential(song, "append", appendStatus)
+                        : calculateRating(song, "append", appendStatus);
                     if (rating > 0) {
                         appendList.push({
                             song,
@@ -251,11 +257,11 @@ export const Compare = ({
 
             const sorted = list.sort((a, b) => b.rating - a.rating);
             const b39 = sorted.slice(0, 39);
-            const sum = Math.round(b39.reduce((acc, curr) => acc + curr.rating, 0));
+            const sum = ratingMode === "potential" ? 0 : Math.round(b39.reduce((acc, curr) => acc + curr.rating, 0));
 
             const appendSorted = appendList.sort((a, b) => b.rating - a.rating);
             const b15 = appendSorted.slice(0, 15);
-            const appendSum = Math.round(b15.reduce((acc, curr) => acc + curr.rating, 0) * 2.6);
+            const appendSum = ratingMode === "potential" ? 0 : Math.round(b15.reduce((acc, curr) => acc + curr.rating, 0) * 2.6);
             const totalSum = sum + appendSum;
 
             let ap = 0,
@@ -269,11 +275,14 @@ export const Compare = ({
                 });
             });
 
-            return { b39, sum, b15, appendSum, totalSum, ap, fc, clr };
+            const potResult = computePotentialRating(songs, uScoresMap);
+            const potential = potResult.potential4;
+
+            return { b39, sum, b15, appendSum, totalSum, ap, fc, clr, potential };
         };
 
-        const resA = computeUserB39(compareData.userA.scores);
-        const resB = computeUserB39(compareData.userB.scores);
+        const resA = computeUserStats(compareData.userA.scores);
+        const resB = computeUserStats(compareData.userB.scores);
 
         const mapA = new Map(compareData.userA.scores.filter((s) => s && s.id).map((s) => [String(s.id), s]));
         const mapB = new Map(compareData.userB.scores.filter((s) => s && s.id).map((s) => [String(s.id), s]));
@@ -298,8 +307,8 @@ export const Compare = ({
                         level: lvl,
                         statA: statA || "none",
                         statB: statB || "none",
-                        ratingA: statA ? calculateRating(song, diff, statA) : 0,
-                        ratingB: statB ? calculateRating(song, diff, statB) : 0,
+                        ratingA: statA ? (ratingMode === "potential" ? calculateSongPotential(song, diff, statA) : calculateRating(song, diff, statA)) : 0,
+                        ratingB: statB ? (ratingMode === "potential" ? calculateSongPotential(song, diff, statB) : calculateRating(song, diff, statB)) : 0,
                     });
                 }
             });
@@ -308,7 +317,7 @@ export const Compare = ({
         commonList.sort((a, b) => b.level - a.level);
 
         return { resA, resB, commonList };
-    }, [compareData, songs]);
+    }, [compareData, songs, ratingMode]);
 
     // --- Filter and sort the detailed comparison rows ---
     const filteredCompareList = useMemo(() => {
@@ -353,7 +362,15 @@ export const Compare = ({
             });
         }
 
-        // 5. Sorting
+        // 5. New song filter
+        if (compareNewFilter !== "all") {
+            list = list.filter((item) => {
+                const isNew = isNewSong(item.song);
+                return compareNewFilter === "new" ? isNew : !isNew;
+            });
+        }
+
+        // 6. Sorting
         list.sort((a, b) => {
             let valA, valB;
             if (compareSortBy === "level") {
@@ -403,6 +420,7 @@ export const Compare = ({
         compareSortOrder,
         settingsTitleLang,
         compareIncludeClear,
+        compareNewFilter,
     ]);
 
     const visibleCompareList = useMemo(() => {
@@ -606,18 +624,29 @@ export const Compare = ({
                                                 marginTop: "0.25rem",
                                             }}
                                         >
-                                            R:{" "}
-                                            <span style={{ color: "var(--color-cyan)" }}>
-                                                {friend.normalRating || 0}
-                                            </span>{" "}
-                                            / AR:{" "}
-                                            <span style={{ color: "var(--color-append)" }}>
-                                                {friend.appendRating || 0}
-                                            </span>{" "}
-                                            / TR:{" "}
-                                            <span style={{ color: "var(--color-success)" }}>
-                                                {friend.totalRating || 0}
-                                            </span>
+                                            {ratingMode === "potential" ? (
+                                                <>
+                                                    Potential:{" "}
+                                                    <span style={{ color: "#c77dff" }}>
+                                                        {(friend.potentialRating || 0.0).toFixed(2)}
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    R:{" "}
+                                                    <span style={{ color: "var(--color-cyan)" }}>
+                                                        {friend.normalRating || 0}
+                                                    </span>{" "}
+                                                    / AR:{" "}
+                                                    <span style={{ color: "var(--color-append)" }}>
+                                                        {friend.appendRating || 0}
+                                                    </span>{" "}
+                                                    / TR:{" "}
+                                                    <span style={{ color: "var(--color-success)" }}>
+                                                        {friend.totalRating || 0}
+                                                    </span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                     <div style={{ display: "flex", gap: "0.3rem", alignItems: "center" }}>
@@ -775,66 +804,76 @@ export const Compare = ({
                                         style={{
                                             color: "var(--text-secondary)",
                                             margin: 0,
-                                            fontSize: "0.9rem",
+                                            fontSize: "0.95rem",
                                             fontWeight: "700",
                                         }}
                                     >
-                                        {compareRatingType === "player"
-                                            ? "Player R"
-                                            : compareRatingType === "append"
-                                              ? "Append R"
-                                              : "Total R"}
+                                        {ratingMode === "potential" ? (
+                                            "Potential 비교"
+                                        ) : (
+                                            compareRatingType === "player"
+                                                ? "Player R"
+                                                : compareRatingType === "append"
+                                                  ? "Append R"
+                                                  : "Total R"
+                                        )}
                                     </h4>
-                                    <div style={{ display: "flex", gap: "0.25rem" }}>
-                                        {["player", "append", "total"].map((type) => (
-                                            <button
-                                                key={type}
-                                                type="button"
-                                                className={`btn btn-outline ${compareRatingType === type ? "active" : ""}`}
-                                                style={{
-                                                    padding: "0.2rem 0.5rem",
-                                                    fontSize: "0.75rem",
-                                                    borderRadius: "6px",
-                                                    background:
-                                                        compareRatingType === type
-                                                            ? "rgba(0, 242, 254, 0.15)"
-                                                            : "",
-                                                    borderColor:
-                                                        compareRatingType === type
-                                                            ? "var(--color-cyan)"
-                                                            : "var(--border-color)",
-                                                    color:
-                                                        compareRatingType === type
-                                                            ? "var(--color-cyan)"
-                                                            : "var(--text-secondary)",
-                                                }}
-                                                onClick={() => setCompareRatingType(type)}
-                                            >
-                                                {type === "player"
-                                                    ? "Player R"
-                                                    : type === "append"
-                                                      ? "Append R"
-                                                      : "Total R"}
-                                            </button>
-                                        ))}
-                                    </div>
+                                    {ratingMode !== "potential" && (
+                                        <div style={{ display: "flex", gap: "0.25rem" }}>
+                                            {["player", "append", "total"].map((type) => (
+                                                <button
+                                                    key={type}
+                                                    type="button"
+                                                    className={`btn btn-outline ${compareRatingType === type ? "active" : ""}`}
+                                                    style={{
+                                                        padding: "0.2rem 0.5rem",
+                                                        fontSize: "0.75rem",
+                                                        borderRadius: "6px",
+                                                        background:
+                                                            compareRatingType === type
+                                                                ? "rgba(0, 242, 254, 0.15)"
+                                                                : "",
+                                                        borderColor:
+                                                            compareRatingType === type
+                                                                ? "var(--color-cyan)"
+                                                                : "var(--border-color)",
+                                                        color:
+                                                            compareRatingType === type
+                                                                ? "var(--color-cyan)"
+                                                                : "var(--text-secondary)",
+                                                    }}
+                                                    onClick={() => setCompareRatingType(type)}
+                                                >
+                                                    {type === "player"
+                                                        ? "Player R"
+                                                        : type === "append"
+                                                          ? "Append R"
+                                                          : "Total R"}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {(() => {
                                     const valA =
-                                        compareRatingType === "player"
-                                            ? compareResults.resA.sum
-                                            : compareRatingType === "append"
-                                              ? compareResults.resA.appendSum
-                                              : compareResults.resA.totalSum;
+                                        ratingMode === "potential"
+                                            ? compareResults.resA.potential
+                                            : compareRatingType === "player"
+                                                ? compareResults.resA.sum
+                                                : compareRatingType === "append"
+                                                  ? compareResults.resA.appendSum
+                                                  : compareResults.resA.totalSum;
                                     const valB =
-                                        compareRatingType === "player"
-                                            ? compareResults.resB.sum
-                                            : compareRatingType === "append"
-                                              ? compareResults.resB.appendSum
-                                              : compareResults.resB.totalSum;
+                                        ratingMode === "potential"
+                                            ? compareResults.resB.potential
+                                            : compareRatingType === "player"
+                                                ? compareResults.resB.sum
+                                                : compareRatingType === "append"
+                                                  ? compareResults.resB.appendSum
+                                                  : compareResults.resB.totalSum;
 
-                                    const { pctA, pctB } = getRelativePercentages(valA, valB);
+                                    const { pctA, pctB } = getRelativePercentages(valA, valB, ratingMode === "potential");
 
                                     return (
                                         <>
@@ -905,7 +944,7 @@ export const Compare = ({
                                                         textAlign: "left",
                                                     }}
                                                 >
-                                                    {valA}
+                                                    {ratingMode === "potential" ? valA.toFixed(2) : valA}
                                                 </span>
                                                 <span
                                                     style={{
@@ -919,10 +958,10 @@ export const Compare = ({
                                                     }}
                                                 >
                                                     {valA > valB
-                                                        ? `+${Math.round(valA - valB)}`
+                                                        ? `+${(valA - valB).toFixed(ratingMode === "potential" ? 2 : 0)}`
                                                         : valA < valB
-                                                          ? `-${Math.round(valB - valA)}`
-                                                          : "0"}
+                                                          ? `-${(valB - valA).toFixed(ratingMode === "potential" ? 2 : 0)}`
+                                                          : ratingMode === "potential" ? "0.00" : "0"}
                                                 </span>
                                                 <span
                                                     style={{
@@ -930,7 +969,7 @@ export const Compare = ({
                                                         textAlign: "right",
                                                     }}
                                                 >
-                                                    {valB}
+                                                    {ratingMode === "potential" ? valB.toFixed(2) : valB}
                                                 </span>
                                             </div>
                                         </>
@@ -1400,6 +1439,21 @@ export const Compare = ({
                                         </select>
                                     </div>
 
+                                    {/* 신곡 필터 */}
+                                    <div className="filter-group" style={{ margin: 0 }}>
+                                        <label className="filter-label">신곡 여부</label>
+                                        <select
+                                            className="form-control"
+                                            style={{ width: "100%", padding: "0.45rem 1rem" }}
+                                            value={compareNewFilter}
+                                            onChange={(e) => setCompareNewFilter(e.target.value)}
+                                        >
+                                            <option value="all">전체</option>
+                                            <option value="new">신곡</option>
+                                            <option value="old">구곡</option>
+                                        </select>
+                                    </div>
+
                                     {/* 5. Sorting Options */}
                                     <div className="filter-group" style={{ margin: 0 }}>
                                         <label className="filter-label">정렬</label>
@@ -1413,8 +1467,8 @@ export const Compare = ({
                                                 <option value="level">레벨</option>
                                                 <option value="gap">성과 격차</option>
                                                 <option value="title">곡명</option>
-                                                <option value="ratingA">내 레이팅</option>
-                                                <option value="ratingB">상대 레이팅</option>
+                                                <option value="ratingA">{ratingMode === "potential" ? "내 Potential" : "내 레이팅"}</option>
+                                                <option value="ratingB">{ratingMode === "potential" ? "상대 Potential" : "상대 레이팅"}</option>
                                             </select>
                                             <select
                                                 className="form-control"
@@ -1507,7 +1561,7 @@ export const Compare = ({
                                                             marginTop: "0.15rem",
                                                         }}
                                                     >
-                                                        {ratingA.toFixed(1)}
+                                                        {ratingA.toFixed(ratingMode === "potential" ? 2 : 1)}
                                                     </span>
                                                 </div>
 
@@ -1534,7 +1588,7 @@ export const Compare = ({
                                                             marginTop: "0.15rem",
                                                         }}
                                                     >
-                                                        {ratingB.toFixed(1)}
+                                                        {ratingB.toFixed(ratingMode === "potential" ? 2 : 1)}
                                                     </span>
                                                 </div>
 

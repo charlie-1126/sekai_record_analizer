@@ -254,6 +254,21 @@ h1, h2, h3, h4, h5, h6 {
   animation: pulse-glow 3s infinite;
 }
 
+@keyframes pulse-glow-purple {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(199, 125, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(199, 125, 255, 0.5);
+  }
+}
+
+.glow-potential {
+  animation: pulse-glow-purple 3s infinite;
+  border: 1px solid rgba(199, 125, 255, 0.3) !important;
+  background: rgba(199, 125, 255, 0.05) !important;
+}
+
 .hover-lift {
   transition: var(--transition-smooth);
 }

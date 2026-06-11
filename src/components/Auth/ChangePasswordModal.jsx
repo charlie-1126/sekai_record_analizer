@@ -82,6 +82,7 @@ export default function ChangePasswordModal({ isOpen, onClose, token }) {
                         marginBottom: "1.5rem",
                         background: "linear-gradient(135deg, var(--color-cyan) 0%, var(--color-pink) 100%)",
                         WebkitBackgroundClip: "text",
+                        backgroundClip: "text",
                         WebkitTextFillColor: "transparent",
                         textAlign: "center",
                     }}

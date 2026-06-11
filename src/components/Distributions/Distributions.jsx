@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from "react";
 import { BarChart3, Filter } from "lucide-react";
 import { getConstant } from "../../utils/ratingUtils";
+import { isNewSong } from "../../utils/potentialUtils";
 
 export default function Distributions({ songs, userScoresMap }) {
     const [isDistFilterExpanded, setIsDistFilterExpanded] = useState(true);
@@ -11,6 +12,7 @@ export default function Distributions({ songs, userScoresMap }) {
     const [distMinConstInput, setDistMinConstInput] = useState("");
     const [distMaxConstInput, setDistMaxConstInput] = useState("");
     const [distDisplayType, setDistDisplayType] = useState("count"); // count, percent
+    const [distNewFilter, setDistNewFilter] = useState("all"); // all, new, old
 
     const handleDistDiffFilterToggle = (diff) => {
         if (distDiffs.includes(diff)) {
@@ -44,6 +46,9 @@ export default function Distributions({ songs, userScoresMap }) {
         const maxLvlVal = distMaxLevelInput === "" ? 100 : parseInt(distMaxLevelInput);
 
         songs.forEach((song) => {
+            if (distNewFilter === "new" && !isNewSong(song)) return;
+            if (distNewFilter === "old" && isNewSong(song)) return;
+
             const userPlay = userScoresMap.get(String(song.id)) || {};
             distDiffs.forEach((diff) => {
                 const lvl = song.levels[diff];
@@ -94,7 +99,7 @@ export default function Distributions({ songs, userScoresMap }) {
             maxApLvl: maxApLvl > 0 ? maxApLvl : "-",
             maxFcLvl: maxFcLvl > 0 ? maxFcLvl : "-",
         };
-    }, [songs, userScoresMap, distDiffs, distMinLevelInput, distMaxLevelInput, distMinConstInput, distMaxConstInput]);
+    }, [songs, userScoresMap, distDiffs, distMinLevelInput, distMaxLevelInput, distMinConstInput, distMaxConstInput, distNewFilter]);
 
     const filteredLevelData = useMemo(() => {
         const data = {};
@@ -104,6 +109,9 @@ export default function Distributions({ songs, userScoresMap }) {
         const maxLvlVal = distMaxLevelInput === "" ? 100 : parseInt(distMaxLevelInput);
 
         songs.forEach((song) => {
+            if (distNewFilter === "new" && !isNewSong(song)) return;
+            if (distNewFilter === "old" && isNewSong(song)) return;
+
             const userPlay = userScoresMap.get(String(song.id)) || {};
             distDiffs.forEach((diff) => {
                 const lvl = song.levels[diff];
@@ -127,7 +135,7 @@ export default function Distributions({ songs, userScoresMap }) {
         });
 
         return Object.values(data).sort((a, b) => parseInt(a.label) - parseInt(b.label));
-    }, [songs, userScoresMap, distDiffs, distMinLevelInput, distMaxLevelInput, distMinConstInput, distMaxConstInput]);
+    }, [songs, userScoresMap, distDiffs, distMinLevelInput, distMaxLevelInput, distMinConstInput, distMaxConstInput, distNewFilter]);
 
     const filteredConstantData = useMemo(() => {
         const data = {};
@@ -137,6 +145,9 @@ export default function Distributions({ songs, userScoresMap }) {
         const maxLvlVal = distMaxLevelInput === "" ? 100 : parseInt(distMaxLevelInput);
 
         songs.forEach((song) => {
+            if (distNewFilter === "new" && !isNewSong(song)) return;
+            if (distNewFilter === "old" && isNewSong(song)) return;
+
             const userPlay = userScoresMap.get(String(song.id)) || {};
             distDiffs.forEach((diff) => {
                 const lvl = song.levels[diff];
@@ -164,7 +175,7 @@ export default function Distributions({ songs, userScoresMap }) {
         });
 
         return Object.values(data).sort((a, b) => a.sortVal - b.sortVal);
-    }, [songs, userScoresMap, distDiffs, distMinLevelInput, distMaxLevelInput, distMinConstInput, distMaxConstInput]);
+    }, [songs, userScoresMap, distDiffs, distMinLevelInput, distMaxLevelInput, distMinConstInput, distMaxConstInput, distNewFilter]);
 
     const filteredDifficultyData = useMemo(() => {
         const diffNames = {
@@ -193,6 +204,9 @@ export default function Distributions({ songs, userScoresMap }) {
                 unplayed: 0,
             };
             songs.forEach((song) => {
+                if (distNewFilter === "new" && !isNewSong(song)) return;
+                if (distNewFilter === "old" && isNewSong(song)) return;
+
                 const lvl = song.levels[diff];
                 if (lvl === null || lvl === undefined) return;
                 if (lvl < minLvlVal || lvl > maxLvlVal) return;
@@ -214,7 +228,7 @@ export default function Distributions({ songs, userScoresMap }) {
         });
 
         return data;
-    }, [songs, userScoresMap, distDiffs, distMinLevelInput, distMaxLevelInput, distMinConstInput, distMaxConstInput]);
+    }, [songs, userScoresMap, distDiffs, distMinLevelInput, distMaxLevelInput, distMinConstInput, distMaxConstInput, distNewFilter]);
 
     const filteredUnitData = useMemo(() => {
         const unitNames = {
@@ -234,6 +248,9 @@ export default function Distributions({ songs, userScoresMap }) {
         const maxLvlVal = distMaxLevelInput === "" ? 100 : parseInt(distMaxLevelInput);
 
         songs.forEach((song) => {
+            if (distNewFilter === "new" && !isNewSong(song)) return;
+            if (distNewFilter === "old" && isNewSong(song)) return;
+
             const unit = song.unit_code || "Oth";
             distDiffs.forEach((diff) => {
                 const lvl = song.levels[diff];
@@ -273,7 +290,7 @@ export default function Distributions({ songs, userScoresMap }) {
             const valB = idxB === -1 ? 999 : idxB;
             return valA - valB;
         });
-    }, [songs, userScoresMap, distDiffs, distMinLevelInput, distMaxLevelInput, distMinConstInput, distMaxConstInput]);
+    }, [songs, userScoresMap, distDiffs, distMinLevelInput, distMaxLevelInput, distMinConstInput, distMaxConstInput, distNewFilter]);
 
     const distChartData = useMemo(() => {
         if (distTab === "level") return filteredLevelData;
@@ -419,6 +436,33 @@ export default function Distributions({ songs, userScoresMap }) {
                                 >
                                     비율
                                 </button>
+                            </div>
+                        </div>
+
+                        <div className="filter-group">
+                            <label className="filter-label">신곡 여부</label>
+                            <div style={{ display: "flex", gap: "0.5rem" }}>
+                                {[
+                                    { id: "all", label: "전체" },
+                                    { id: "new", label: "신곡" },
+                                    { id: "old", label: "구곡" },
+                                ].map((opt) => (
+                                    <button
+                                        key={opt.id}
+                                        type="button"
+                                        className={`btn btn-outline ${distNewFilter === opt.id ? "active" : ""}`}
+                                        style={{
+                                            flex: 1,
+                                            padding: "0.45rem",
+                                            fontSize: "0.8rem",
+                                            borderColor: distNewFilter === opt.id && opt.id === "new" ? "#ffd200" : "",
+                                            color: distNewFilter === opt.id && opt.id === "new" ? "#ffd200" : "",
+                                        }}
+                                        onClick={() => setDistNewFilter(opt.id)}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>

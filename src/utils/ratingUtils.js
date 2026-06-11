@@ -1,4 +1,4 @@
-export const getRelativePercentages = (valA, valB) => {
+export const getRelativePercentages = (valA, valB, isPotential = false) => {
     if (valA === 0 && valB === 0) return { pctA: 50, pctB: 50 };
     if (valA === 0) return { pctA: 0, pctB: 100 };
     if (valB === 0) return { pctA: 100, pctB: 0 };
@@ -7,9 +7,11 @@ export const getRelativePercentages = (valA, valB) => {
 
     if (diff === 0) return { pctA: 50, pctB: 50 };
 
-    // If difference is 1600 or less, treat total bar scale as 2000.
-    // If difference is greater than 1600, scale the bar dynamically (diff + 400) to ensure smooth transitions.
-    const scale = diff <= 1600 ? 2000 : diff + 400;
+    // Scale differently depending on whether it's Potential (range ~40) or B39 rating (range ~4000)
+    const scale = isPotential
+        ? (diff <= 8 ? 10 : diff + 2)
+        : (diff <= 1600 ? 2000 : diff + 400);
+
     const offset = (diff / scale) * 50;
 
     if (valA > valB) {

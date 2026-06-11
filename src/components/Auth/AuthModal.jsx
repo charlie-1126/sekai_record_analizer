@@ -93,6 +93,7 @@ export default function AuthModal({ isOpen, onClose, setCurrentUser, syncScoresT
                         marginBottom: "1rem",
                         background: "linear-gradient(135deg, var(--color-cyan) 0%, var(--color-pink) 100%)",
                         WebkitBackgroundClip: "text",
+                        backgroundClip: "text",
                         WebkitTextFillColor: "transparent",
                         textAlign: "center",
                     }}

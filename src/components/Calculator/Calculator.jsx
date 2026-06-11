@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from "react";
-import { Calculator as CalcIcon, Search } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Calculator as CalcIcon, Search, Sparkles } from "lucide-react";
 import { JacketImage } from "../Common/JacketImage";
 import { calculateRating, getConstant } from "../../utils/ratingUtils";
+import { calculateSongPotential, computePotentialRating, isNewSong } from "../../utils/potentialUtils";
 
 export const Calculator = ({
     songs,
@@ -12,6 +13,9 @@ export const Calculator = ({
     allRatings,
     appendRatings,
     settingsTitleLang,
+    ratingMode = "b39",
+    potentialData,
+    userScoresMap,
 }) => {
     // --- States ---
     const [calcSongSearch, setCalcSongSearch] = useState("");
@@ -19,6 +23,12 @@ export const Calculator = ({
     const [calcDiff, setCalcDiff] = useState("master");
     const [calcGoal, setCalcGoal] = useState("full_perfect");
     const [showCalcDropdown, setShowCalcDropdown] = useState(false);
+
+    useEffect(() => {
+        if (ratingMode === "potential" && calcGoal === "clear") {
+            setCalcGoal("full_combo");
+        }
+    }, [ratingMode, calcGoal]);
 
     const getSongTitle = (song) => {
         if (!song) return "";
@@ -172,10 +182,85 @@ export const Calculator = ({
         appendB15List,
     ]);
 
+    // --- Potential Result calculation ---
+    const potentialCalcResult = useMemo(() => {
+        if (!calcSelectedSong || ratingMode !== "potential" || !potentialData || !userScoresMap) return null;
+
+        const hasLevel = calcSelectedSong.levels[calcDiff];
+        if (!hasLevel) return { valid: false, message: "해당 난이도가 없는 곡입니다." };
+
+        const newPotential = calculateSongPotential(calcSelectedSong, calcDiff, calcGoal);
+        if (newPotential <= 0) return { valid: false, message: "이 설정은 Potential이 0 이하입니다." };
+
+        const constant = getConstant(calcSelectedSong, calcDiff, calcGoal);
+        const songIsNew = isNewSong(calcSelectedSong);
+
+        // Simulate adding this song to the appropriate list
+        // Build a modified userScoresMap
+        const simMap = new Map(userScoresMap);
+        const existingSong = simMap.get(String(calcSelectedSong.id)) || {};
+        simMap.set(String(calcSelectedSong.id), { ...existingSong, [calcDiff]: calcGoal });
+
+        const simResult = computePotentialRating(songs, simMap);
+        const newPotential4 = simResult.potential4;
+        const newPotential2 = simResult.potential2;
+        const gain4 = newPotential4 - potentialData.potential4;
+        const gain2 = newPotential2 - potentialData.potential2;
+
+        // Find rank in new list
+        const combinedNew = [...simResult.oldBest30, ...simResult.newBest10];
+        const myIdx = combinedNew.findIndex((e) => e.song.id === calcSelectedSong.id && e.diff === calcDiff);
+        const inNewBest10 = simResult.newBest10.some((e) => e.song.id === calcSelectedSong.id && e.diff === calcDiff);
+        const inOldBest30 = simResult.oldBest30.some((e) => e.song.id === calcSelectedSong.id && e.diff === calcDiff);
+
+        const cutOld = potentialData.oldBest30.length === 30 ? potentialData.oldBest30[29].potential : null;
+        const cutNew = potentialData.newBest10.length === 10 ? potentialData.newBest10[9].potential : null;
+        const relevantCut = songIsNew ? cutNew : cutOld;
+        const willEnter = songIsNew ? inNewBest10 : inOldBest30;
+
+        const rankInList = (songIsNew ? simResult.newBest10 : simResult.oldBest30).findIndex(
+            (e) => e.song.id === calcSelectedSong.id && e.diff === calcDiff,
+        );
+        const estimatedRank = rankInList !== -1 ? rankInList + 1 : null;
+
+        return {
+            valid: true,
+            newPotential,
+            constant,
+            songIsNew,
+            willEnter,
+            estimatedRank,
+            newPotential4,
+            newPotential2,
+            gain4,
+            gain2,
+            cutLine: relevantCut,
+            listType: songIsNew ? "New Best 10" : "Old Best 30",
+        };
+    }, [calcSelectedSong, calcDiff, calcGoal, ratingMode, potentialData, userScoresMap, songs]);
+
     return (
         <section className="glass-panel calculator-panel">
             <h2 className="section-title" style={{ justifyContent: "center", marginBottom: "1.5rem" }}>
-                <CalcIcon size={22} style={{ color: "var(--color-cyan)" }} /> Music R 계산기
+                {ratingMode === "potential" ? (
+                    <>
+                        <CalcIcon size={22} style={{ color: "#c77dff" }} />
+                        <span
+                            style={{
+                                background: "linear-gradient(135deg, #c77dff, #87ceeb)",
+                                WebkitBackgroundClip: "text",
+                                backgroundClip: "text",
+                                WebkitTextFillColor: "transparent",
+                            }}
+                        >
+                            Potential 계산기
+                        </span>
+                    </>
+                ) : (
+                    <>
+                        <CalcIcon size={22} style={{ color: "var(--color-cyan)" }} /> Music R 계산기
+                    </>
+                )}
             </h2>
 
             <div className="calc-container-layout">
@@ -261,34 +346,22 @@ export const Calculator = ({
                                         onChange={(e) => setCalcDiff(e.target.value)}
                                     >
                                         {calcSelectedSong.levels.easy && (
-                                            <option value="easy">
-                                                EASY ({calcSelectedSong.levels.easy})
-                                            </option>
+                                            <option value="easy">EASY ({calcSelectedSong.levels.easy})</option>
                                         )}
                                         {calcSelectedSong.levels.normal && (
-                                            <option value="normal">
-                                                NORMAL ({calcSelectedSong.levels.normal})
-                                            </option>
+                                            <option value="normal">NORMAL ({calcSelectedSong.levels.normal})</option>
                                         )}
                                         {calcSelectedSong.levels.hard && (
-                                            <option value="hard">
-                                                HARD ({calcSelectedSong.levels.hard})
-                                            </option>
+                                            <option value="hard">HARD ({calcSelectedSong.levels.hard})</option>
                                         )}
                                         {calcSelectedSong.levels.expert && (
-                                            <option value="expert">
-                                                EXPERT ({calcSelectedSong.levels.expert})
-                                            </option>
+                                            <option value="expert">EXPERT ({calcSelectedSong.levels.expert})</option>
                                         )}
                                         {calcSelectedSong.levels.master && (
-                                            <option value="master">
-                                                MASTER ({calcSelectedSong.levels.master})
-                                            </option>
+                                            <option value="master">MASTER ({calcSelectedSong.levels.master})</option>
                                         )}
                                         {calcSelectedSong.levels.append && (
-                                            <option value="append">
-                                                APPEND ({calcSelectedSong.levels.append})
-                                            </option>
+                                            <option value="append">APPEND ({calcSelectedSong.levels.append})</option>
                                         )}
                                     </select>
                                 </div>
@@ -300,9 +373,18 @@ export const Calculator = ({
                                         value={calcGoal}
                                         onChange={(e) => setCalcGoal(e.target.value)}
                                     >
-                                        <option value="full_perfect">AP [8.0]</option>
-                                        <option value="full_combo">FC [7.5]</option>
-                                        <option value="clear">Clear [5.0]</option>
+                                        {ratingMode === "potential" ? (
+                                            <>
+                                                <option value="full_perfect">AP [보면상수 + 2.0]</option>
+                                                <option value="full_combo">FC [보면상수 + 0.0]</option>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <option value="full_perfect">AP [보면상수 * 8.0]</option>
+                                                <option value="full_combo">FC [보면상수 * 7.5]</option>
+                                                <option value="clear">Clear [보면상수 * 5.0]</option>
+                                            </>
+                                        )}
                                     </select>
                                 </div>
                             </div>
@@ -313,72 +395,136 @@ export const Calculator = ({
                 {/* RIGHT COLUMN: Results and simulations */}
                 <div>
                     {calcSelectedSong ? (
-                        calcResult &&
-                        calcResult.valid && (
-                            <div className="calc-result-box glow-cyan">
-                                <div
-                                    style={{
-                                        textAlign: "center",
-                                        fontSize: "0.85rem",
-                                        color: "var(--text-secondary)",
-                                    }}
-                                >
-                                    Music R
-                                </div>
-
-                                <div
-                                    className="calc-rating-large"
-                                    style={{
-                                        color: calcResult.isAppend ? "var(--color-append)" : "inherit",
-                                    }}
-                                >
-                                    {calcResult.rating} 점
-                                </div>
-
-                                <div
-                                    style={{
-                                        margin: "0.75rem 0",
-                                        borderTop: "1px solid rgba(255,255,255,0.08)",
-                                    }}
-                                ></div>
-
-                                {calcResult.willEnter ? (
+                        ratingMode === "potential" ? (
+                            potentialCalcResult && potentialCalcResult.valid ? (
+                                <div className="calc-result-box glow-potential">
                                     <div
-                                        className="calc-compare-badge calc-compare-enter"
                                         style={{
-                                            whiteSpace: "pre-line",
-                                            fontFamily: "monospace",
+                                            textAlign: "center",
                                             fontSize: "0.85rem",
-                                            padding: "1rem",
-                                            lineHeight: "1.6",
-                                            textAlign: "left",
+                                            color: "var(--text-secondary)",
                                         }}
                                     >
-                                        {calcResult.isAppend ? "B15" : "B39"} #{calcResult.estimatedRank}
-                                        {"\n"}
-                                        종합 {calcResult.isAppend ? "어펜드" : "일반"} 레이팅:{" "}
-                                        {calcResult.isAppend ? playerAppendRating : playerRating} →{" "}
-                                        {calcResult.newPlayerRating} (
-                                        {calcResult.netGain > 0 ? `+${calcResult.netGain}` : "0"})
+                                        Potential
                                     </div>
-                                ) : (
                                     <div
-                                        className="calc-compare-badge calc-compare-fail"
+                                        className="calc-rating-large"
                                         style={{
-                                            whiteSpace: "pre-line",
-                                            fontFamily: "monospace",
-                                            fontSize: "0.85rem",
-                                            padding: "1rem",
-                                            lineHeight: "1.6",
-                                            textAlign: "left",
+                                            background: "linear-gradient(135deg, #c77dff, #87ceeb)",
+                                            WebkitBackgroundClip: "text",
+                                            backgroundClip: "text",
+                                            WebkitTextFillColor: "transparent",
                                         }}
                                     >
-                                        {calcResult.isAppend ? "B15" : "B39"} 진입 불가 (커트라인:{" "}
-                                        {calcResult.lastB39Rating}){"\n"}
-                                        필요 점수: +{calcResult.lastB39Rating - calcResult.rating}
+                                        {potentialCalcResult.newPotential.toFixed(1)}
                                     </div>
-                                )}
-                            </div>
+                                    <div
+                                        style={{ margin: "0.75rem 0", borderTop: "1px solid rgba(255,255,255,0.08)" }}
+                                    />
+                                    {potentialCalcResult.willEnter ? (
+                                        <div
+                                            className="calc-compare-badge calc-compare-enter"
+                                            style={{
+                                                whiteSpace: "pre-line",
+                                                fontFamily: "monospace",
+                                                fontSize: "0.85rem",
+                                                padding: "1rem",
+                                                lineHeight: "1.6",
+                                                textAlign: "left",
+                                            }}
+                                        >
+                                            {potentialCalcResult.songIsNew ? "NB" : "OB"} #
+                                            {potentialCalcResult.estimatedRank}
+                                            {"\n"}
+                                            Potential: {potentialCalcResult.newPotential2.toFixed(1)} (
+                                            {potentialCalcResult.gain2 >= 0 ? "+" : ""}
+                                            {potentialCalcResult.gain2.toFixed(2)})
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className="calc-compare-badge calc-compare-fail"
+                                            style={{
+                                                whiteSpace: "pre-line",
+                                                fontFamily: "monospace",
+                                                fontSize: "0.85rem",
+                                                padding: "1rem",
+                                                lineHeight: "1.6",
+                                                textAlign: "left",
+                                            }}
+                                        >
+                                            {potentialCalcResult.songIsNew ? "NB" : "OB"} 진입 불가 (커트라인:{" "}
+                                            {potentialCalcResult.cutLine !== null
+                                                ? potentialCalcResult.cutLine.toFixed(1)
+                                                : "없음"}
+                                            ){"\n"} 현재 Potential: {potentialCalcResult.newPotential.toFixed(1)}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : potentialCalcResult && !potentialCalcResult.valid ? (
+                                <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>
+                                    {potentialCalcResult.message}
+                                </div>
+                            ) : null
+                        ) : (
+                            calcResult &&
+                            calcResult.valid && (
+                                <div className="calc-result-box glow-cyan">
+                                    <div
+                                        style={{
+                                            textAlign: "center",
+                                            fontSize: "0.85rem",
+                                            color: "var(--text-secondary)",
+                                        }}
+                                    >
+                                        Music R
+                                    </div>
+                                    <div
+                                        className="calc-rating-large"
+                                        style={{ color: calcResult.isAppend ? "var(--color-append)" : "inherit" }}
+                                    >
+                                        {calcResult.rating}
+                                    </div>
+                                    <div
+                                        style={{ margin: "0.75rem 0", borderTop: "1px solid rgba(255,255,255,0.08)" }}
+                                    />
+                                    {calcResult.willEnter ? (
+                                        <div
+                                            className="calc-compare-badge calc-compare-enter"
+                                            style={{
+                                                whiteSpace: "pre-line",
+                                                fontFamily: "monospace",
+                                                fontSize: "0.85rem",
+                                                padding: "1rem",
+                                                lineHeight: "1.6",
+                                                textAlign: "left",
+                                            }}
+                                        >
+                                            {calcResult.isAppend ? "B15" : "B39"} #{calcResult.estimatedRank}
+                                            {"\n"}
+                                            종합 {calcResult.isAppend ? "어펜드" : "일반"} 레이팅:{" "}
+                                            {calcResult.isAppend ? playerAppendRating : playerRating} →{" "}
+                                            {calcResult.newPlayerRating} (
+                                            {calcResult.netGain > 0 ? `+${calcResult.netGain}` : "0"})
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className="calc-compare-badge calc-compare-fail"
+                                            style={{
+                                                whiteSpace: "pre-line",
+                                                fontFamily: "monospace",
+                                                fontSize: "0.85rem",
+                                                padding: "1rem",
+                                                lineHeight: "1.6",
+                                                textAlign: "left",
+                                            }}
+                                        >
+                                            {calcResult.isAppend ? "B15" : "B39"} 진입 불가 (커트라인:{" "}
+                                            {calcResult.lastB39Rating}){"\n"}
+                                            필요 점수: +{calcResult.lastB39Rating - calcResult.rating}
+                                        </div>
+                                    )}
+                                </div>
+                            )
                         )
                     ) : (
                         <div

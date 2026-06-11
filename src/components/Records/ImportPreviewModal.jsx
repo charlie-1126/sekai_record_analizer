@@ -44,20 +44,6 @@ export default function ImportPreviewModal({
                 onClick={(e) => e.stopPropagation()}
                 style={{ maxWidth: "550px", width: "100%", padding: "2rem" }}
             >
-                <h3
-                    style={{
-                        fontSize: "1.5rem",
-                        marginBottom: "1.5rem",
-                        background: "linear-gradient(135deg, var(--color-cyan) 0%, var(--color-purple) 100%)",
-                        WebkitBackgroundClip: "text",
-                        WebkitTextFillColor: "transparent",
-                        textAlign: "center",
-                        fontWeight: 800,
-                    }}
-                >
-                    📊 불러오기 적용 미리보기
-                </h3>
-
                 <div
                     className="preview-comparison-grid"
                     style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem" }}
@@ -152,7 +138,7 @@ export default function ImportPreviewModal({
                                     fontWeight: 700,
                                 }}
                             >
-                                ALL PERFECT
+                                AP
                             </div>
                             <div
                                 style={{
@@ -186,7 +172,7 @@ export default function ImportPreviewModal({
                                     fontWeight: 700,
                                 }}
                             >
-                                FULL COMBO
+                                FC
                             </div>
                             <div
                                 style={{
@@ -220,7 +206,7 @@ export default function ImportPreviewModal({
                                     fontWeight: 700,
                                 }}
                             >
-                                CLEAR
+                                C
                             </div>
                             <div
                                 style={{
@@ -234,10 +220,7 @@ export default function ImportPreviewModal({
                                 }}
                             >
                                 <span>{previewCalculatedData.stats.clearCount}개</span>
-                                {renderDelta(
-                                    previewCalculatedData.stats.clearCount - overallStats.clearCount,
-                                    true,
-                                )}
+                                {renderDelta(previewCalculatedData.stats.clearCount - overallStats.clearCount, true)}
                             </div>
                         </div>
                     </div>
@@ -247,11 +230,7 @@ export default function ImportPreviewModal({
                     <button className="btn btn-outline" style={{ flex: 1 }} onClick={onCancel}>
                         취소
                     </button>
-                    <button
-                        className="btn btn-primary animate-glow"
-                        style={{ flex: 1 }}
-                        onClick={onConfirm}
-                    >
+                    <button className="btn btn-primary animate-glow" style={{ flex: 1 }} onClick={onConfirm}>
                         적용하기
                     </button>
                 </div>

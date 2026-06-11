@@ -15,6 +15,8 @@ export default function Settings({
     settingsMessage,
     setSettingsMessage,
     handleLogout,
+    ratingMode,
+    toggleRatingMode,
 }) {
     const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
@@ -23,6 +25,60 @@ export default function Settings({
             <h2 className="section-title" style={{ marginBottom: "2rem" }}>
                 <User size={22} style={{ color: "var(--color-cyan)", marginRight: "0.5rem" }} /> 환경 설정
             </h2>
+
+            {/* Rating Mode selection */}
+            <div
+                className="filter-group"
+                style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}
+            >
+                <label className="filter-label" style={{ fontWeight: 700 }}>
+                    레이팅 모드
+                </label>
+                <div style={{ display: "flex", gap: "1rem", marginTop: "0.25rem" }}>
+                    <label
+                        className={`checkbox-label ${ratingMode === "b39" ? "active-played" : ""}`}
+                        style={{
+                            flex: 1,
+                            justifyContent: "center",
+                            padding: "0.75rem",
+                            cursor: "pointer",
+                        }}
+                    >
+                        <input
+                            type="radio"
+                            name="ratingMode"
+                            value="b39"
+                            checked={ratingMode === "b39"}
+                            onChange={toggleRatingMode}
+                            style={{ marginRight: "0.5rem" }}
+                        />
+                        B39
+                    </label>
+                    <label
+                        className={`checkbox-label ${ratingMode === "potential" ? "active-ap" : ""}`}
+                        style={{
+                            flex: 1,
+                            justifyContent: "center",
+                            padding: "0.75rem",
+                            cursor: "pointer",
+                            borderColor: ratingMode === "potential" ? "#c77dff" : "",
+                            background: ratingMode === "potential" ? "rgba(199,125,255,0.08)" : "",
+                        }}
+                    >
+                        <input
+                            type="radio"
+                            name="ratingMode"
+                            value="potential"
+                            checked={ratingMode === "potential"}
+                            onChange={toggleRatingMode}
+                            style={{ marginRight: "0.5rem" }}
+                        />
+                        Potential
+                    </label>
+                </div>
+            </div>
+
+            <div style={{ margin: "1.5rem 0", borderTop: "1px solid var(--border-color)" }} />
 
             {!currentUser ? (
                 <div style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--text-muted)" }}>
@@ -36,10 +92,7 @@ export default function Settings({
             ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
                     {/* Nickname modification */}
-                    <div
-                        className="filter-group"
-                        style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
-                    >
+                    <div className="filter-group" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                         <label className="filter-label" style={{ fontWeight: 700 }}>
                             대시보드 닉네임 변경
                         </label>
@@ -59,10 +112,7 @@ export default function Settings({
                     </div>
 
                     {/* Language option for song titles */}
-                    <div
-                        className="filter-group"
-                        style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
-                    >
+                    <div className="filter-group" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                         <label className="filter-label" style={{ fontWeight: 700 }}>
                             곡 명 표시 설정
                         </label>
@@ -167,9 +217,7 @@ export default function Settings({
                                 borderRadius: "8px",
                                 fontSize: "0.85rem",
                                 fontWeight: "700",
-                                color: settingsMessage.startsWith("⚠")
-                                    ? "var(--color-danger)"
-                                    : "var(--color-success)",
+                                color: settingsMessage.startsWith("⚠") ? "var(--color-danger)" : "var(--color-success)",
                                 borderLeft: `4px solid ${settingsMessage.startsWith("⚠") ? "var(--color-danger)" : "var(--color-success)"}`,
                             }}
                         >
@@ -178,53 +226,55 @@ export default function Settings({
                     )}
 
                     {/* Password change section */}
-                    <div
-                        style={{
-                            marginTop: "1.25rem",
-                            borderTop: "1px solid var(--border-color)",
-                            paddingTop: "1.25rem",
-                        }}
-                    >
-                        <button
-                            type="button"
-                            className="btn btn-outline"
+                    <div>
+                        <div
                             style={{
-                                width: "100%",
-                                padding: "0.75rem",
-                                borderColor: "var(--color-cyan)",
-                                color: "var(--color-cyan)",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: "0.5rem",
+                                marginTop: "1.25rem",
+                                borderTop: "1px solid var(--border-color)",
+                                paddingTop: "1.25rem",
                             }}
-                            onClick={() => setShowChangePasswordModal(true)}
                         >
-                            <Lock size={16} /> 비밀번호 변경
-                        </button>
-                    </div>
+                            <button
+                                type="button"
+                                className="btn btn-outline"
+                                style={{
+                                    width: "100%",
+                                    padding: "0.75rem",
+                                    borderColor: "var(--color-cyan)",
+                                    color: "var(--color-cyan)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "0.5rem",
+                                }}
+                                onClick={() => setShowChangePasswordModal(true)}
+                            >
+                                <Lock size={16} /> 비밀번호 변경
+                            </button>
+                        </div>
 
-                    {/* Logout Area */}
-                    <div
-                        style={{
-                            display: "flex",
-                            gap: "1rem",
-                            marginTop: "0.75rem",
-                            paddingTop: "0",
-                        }}
-                    >
-                        <button
-                            type="button"
-                            className="btn btn-outline"
+                        {/* Logout Area */}
+                        <div
                             style={{
-                                flex: 1,
-                                borderColor: "var(--color-danger)",
-                                color: "var(--color-danger)",
+                                display: "flex",
+                                gap: "1rem",
+                                marginTop: "0.75rem",
+                                paddingTop: "0",
                             }}
-                            onClick={handleLogout}
                         >
-                            <LogOut size={16} /> 로그아웃
-                        </button>
+                            <button
+                                type="button"
+                                className="btn btn-outline"
+                                style={{
+                                    flex: 1,
+                                    borderColor: "var(--color-danger)",
+                                    color: "var(--color-danger)",
+                                }}
+                                onClick={handleLogout}
+                            >
+                                <LogOut size={16} /> 로그아웃
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

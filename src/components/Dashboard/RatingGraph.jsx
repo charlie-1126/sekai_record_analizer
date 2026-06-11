@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { TrendingUp } from "lucide-react";
 
-export const RatingGraph = ({ effectiveUser }) => {
+export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
     // --- Graph Filters & Hover States ---
     const [graphRangeType, setGraphRangeType] = useState("all"); // 7d, 1m, 6m, 1y, all, custom
     const [graphCustomStart, setGraphCustomStart] = useState("");
@@ -63,6 +63,51 @@ export const RatingGraph = ({ effectiveUser }) => {
         return data.filter((d) => d.total > 0);
     }, [effectiveUser]);
 
+    // --- Process daily potential history ---
+    const dailyPotentialHistoryData = useMemo(() => {
+        if (!effectiveUser || !effectiveUser.rating_history) return [];
+        const history = effectiveUser.rating_history;
+        const sortedDates = Object.keys(history).sort();
+        if (sortedDates.length === 0) return [];
+
+        const firstDateStr = sortedDates[0];
+        const formatter = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Seoul",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+        });
+        const todayStr = formatter.format(new Date());
+        const startUTC = new Date(firstDateStr + "T00:00:00Z");
+        const endUTC = new Date(todayStr + "T00:00:00Z");
+
+        const data = [];
+        let lastPotential = 0;
+
+        const curr = new Date(startUTC);
+        while (curr <= endUTC) {
+            const year = curr.getUTCFullYear();
+            const month = String(curr.getUTCMonth() + 1).padStart(2, "0");
+            const day = String(curr.getUTCDate()).padStart(2, "0");
+            const dateStr = `${year}-${month}-${day}`;
+
+            const val = history[dateStr];
+            if (val !== undefined && val !== null && typeof val === "object") {
+                const p = Number(val.potential) || 0;
+                if (p > 0) lastPotential = p;
+            }
+
+            data.push({
+                date: dateStr,
+                potential: lastPotential,
+            });
+
+            curr.setUTCDate(curr.getUTCDate() + 1);
+        }
+
+        return data.filter((d) => d.potential > 0);
+    }, [effectiveUser]);
+
     if (!effectiveUser) {
         return (
             <div
@@ -85,7 +130,11 @@ export const RatingGraph = ({ effectiveUser }) => {
         );
     }
 
-    if (dailyRatingHistoryData.length === 0) {
+    const activeHistoryData = useMemo(() => {
+        return mode === "potential" ? dailyPotentialHistoryData : dailyRatingHistoryData;
+    }, [mode, dailyPotentialHistoryData, dailyRatingHistoryData]);
+
+    if (activeHistoryData.length === 0) {
         return (
             <div
                 style={{
@@ -102,7 +151,9 @@ export const RatingGraph = ({ effectiveUser }) => {
                     textAlign: "center",
                 }}
             >
-                📈 등록된 레이팅 히스토리가 없습니다. 기록 저장 시 그래프가 생성됩니다.
+                {mode === "potential"
+                    ? "📈 등록된 Potential 히스토리가 없습니다. 기록 저장 시 그래프가 생성됩니다."
+                    : "📈 등록된 레이팅 히스토리가 없습니다. 기록 저장 시 그래프가 생성됩니다."}
             </div>
         );
     }
@@ -139,13 +190,13 @@ export const RatingGraph = ({ effectiveUser }) => {
     } else if (graphRangeType === "custom") {
         minTime = graphCustomStart
             ? new Date(graphCustomStart + "T00:00:00Z").getTime()
-            : Math.min(...dailyRatingHistoryData.map((d) => new Date(d.date + "T00:00:00Z").getTime()));
+            : Math.min(...activeHistoryData.map((d) => new Date(d.date + "T00:00:00Z").getTime()));
         maxTime = graphCustomEnd
             ? new Date(graphCustomEnd + "T00:00:00Z").getTime()
-            : Math.max(...dailyRatingHistoryData.map((d) => new Date(d.date + "T00:00:00Z").getTime()));
+            : Math.max(...activeHistoryData.map((d) => new Date(d.date + "T00:00:00Z").getTime()));
     } else {
         // "all"
-        const times = dailyRatingHistoryData.map((d) => new Date(d.date + "T00:00:00Z").getTime());
+        const times = activeHistoryData.map((d) => new Date(d.date + "T00:00:00Z").getTime());
         minTime = Math.min(...times);
         maxTime = todayUTCMs;
     }
@@ -156,12 +207,12 @@ export const RatingGraph = ({ effectiveUser }) => {
 
     const timeRange = maxTime - minTime || 1;
 
-    const insidePoints = dailyRatingHistoryData.filter((d) => {
+    const insidePoints = activeHistoryData.filter((d) => {
         const t = new Date(d.date + "T00:00:00Z").getTime();
         return t >= minTime && t <= maxTime;
     });
 
-    const beforePoints = dailyRatingHistoryData.filter((d) => {
+    const beforePoints = activeHistoryData.filter((d) => {
         const t = new Date(d.date + "T00:00:00Z").getTime();
         return t < minTime;
     });
@@ -184,6 +235,7 @@ export const RatingGraph = ({ effectiveUser }) => {
                 normal: lastPointBefore.normal,
                 append: lastPointBefore.append,
                 total: lastPointBefore.total,
+                potential: lastPointBefore.potential,
                 isVirtual: true,
             });
         }
@@ -198,6 +250,7 @@ export const RatingGraph = ({ effectiveUser }) => {
                 normal: latest.normal,
                 append: latest.append,
                 total: latest.total,
+                potential: latest.potential,
                 isVirtual: true,
             });
         }
@@ -212,6 +265,7 @@ export const RatingGraph = ({ effectiveUser }) => {
                 normal: p.normal,
                 append: p.append,
                 total: p.total,
+                potential: p.potential,
                 isVirtual: true,
             });
         }
@@ -221,12 +275,16 @@ export const RatingGraph = ({ effectiveUser }) => {
                 normal: p.normal,
                 append: p.append,
                 total: p.total,
+                potential: p.potential,
                 isVirtual: true,
             });
         }
     }
 
     const renderGraphControls = () => {
+        const activeColor = mode === "potential" ? "#c77dff" : "var(--color-cyan)";
+        const activeBg = mode === "potential" ? "rgba(199, 125, 255, 0.08)" : "rgba(0, 242, 254, 0.08)";
+
         return (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1rem" }}>
                 <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
@@ -256,9 +314,9 @@ export const RatingGraph = ({ effectiveUser }) => {
                                 padding: "0.25rem 0.6rem",
                                 fontSize: "0.8rem",
                                 borderRadius: "6px",
-                                borderColor: graphRangeType === btn.id ? "var(--color-cyan)" : "var(--border-color)",
-                                background: graphRangeType === btn.id ? "rgba(0, 242, 254, 0.08)" : "transparent",
-                                color: graphRangeType === btn.id ? "var(--color-cyan)" : "var(--text-secondary)",
+                                borderColor: graphRangeType === btn.id ? activeColor : "var(--border-color)",
+                                background: graphRangeType === btn.id ? activeBg : "transparent",
+                                color: graphRangeType === btn.id ? activeColor : "var(--text-secondary)",
                             }}
                             onClick={() => setGraphRangeType(btn.id)}
                         >
@@ -317,60 +375,92 @@ export const RatingGraph = ({ effectiveUser }) => {
         );
     }
 
-    const totals = showTotalLine ? activeDataList.map((d) => d.total) : [];
-    const normals = showNormalLine ? activeDataList.map((d) => d.normal) : [];
-    const appends = showAppendLine ? activeDataList.map((d) => d.append) : [];
-    const allVals = [...totals, ...normals, ...appends].filter((v) => v > 0);
-
-    const maxVal = allVals.length > 0 ? Math.max(...allVals) : 10000;
-    const minVal = allVals.length > 0 ? Math.min(...allVals) : 0;
+    let maxVal, minVal;
+    if (mode === "potential") {
+        const potentials = activeDataList.map((d) => d.potential).filter((v) => v > 0);
+        maxVal = potentials.length > 0 ? Math.max(...potentials) : 40.0;
+        minVal = potentials.length > 0 ? Math.min(...potentials) : 0.0;
+    } else {
+        const totals = showTotalLine ? activeDataList.map((d) => d.total) : [];
+        const normals = showNormalLine ? activeDataList.map((d) => d.normal) : [];
+        const appends = showAppendLine ? activeDataList.map((d) => d.append) : [];
+        const allVals = [...totals, ...normals, ...appends].filter((v) => v > 0);
+        maxVal = allVals.length > 0 ? Math.max(...allVals) : 10000;
+        minVal = allVals.length > 0 ? Math.min(...allVals) : 0;
+    }
     const range = maxVal - minVal;
 
-    const yMin = range === 0 ? minVal - 50 : minVal - Math.max(30, Math.round(range * 0.05));
-    const yMax = range === 0 ? maxVal + 50 : maxVal + Math.max(30, Math.round(range * 0.05));
+    let yMin, yMax;
+    if (mode === "potential") {
+        yMin = range === 0 ? minVal - 0.5 : minVal - Math.max(0.2, range * 0.05);
+        yMax = range === 0 ? maxVal + 0.5 : maxVal + Math.max(0.2, range * 0.05);
+    } else {
+        yMin = range === 0 ? minVal - 50 : minVal - Math.max(30, Math.round(range * 0.05));
+        yMax = range === 0 ? maxVal + 50 : maxVal + Math.max(30, Math.round(range * 0.05));
+    }
     const yRange = yMax - yMin === 0 ? 1 : yMax - yMin;
 
     const points = activeDataList.map((d) => {
         const t = new Date(d.date + "T00:00:00Z").getTime();
         const x = paddingX + ((t - minTime) / timeRange) * (width - 2 * paddingX);
-        const yTotal = height - paddingY - (((d.total || 0) - yMin) / yRange) * (height - 2 * paddingY);
-        const yNormal = height - paddingY - (((d.normal || 0) - yMin) / yRange) * (height - 2 * paddingY);
-        const yAppend =
-            d.append > 0
-                ? height - paddingY - (((d.append || 0) - yMin) / yRange) * (height - 2 * paddingY)
-                : height - paddingY;
-        return { x, yTotal, yNormal, yAppend, ...d };
+        if (mode === "potential") {
+            const yPotential = height - paddingY - (((d.potential || 0) - yMin) / yRange) * (height - 2 * paddingY);
+            return { x, yPotential, ...d };
+        } else {
+            const yTotal = height - paddingY - (((d.total || 0) - yMin) / yRange) * (height - 2 * paddingY);
+            const yNormal = height - paddingY - (((d.normal || 0) - yMin) / yRange) * (height - 2 * paddingY);
+            const yAppend =
+                d.append > 0
+                    ? height - paddingY - (((d.append || 0) - yMin) / yRange) * (height - 2 * paddingY)
+                    : height - paddingY;
+            return { x, yTotal, yNormal, yAppend, ...d };
+        }
     });
 
     let linePathTotal = "";
     let linePathNormal = "";
     let linePathAppend = "";
+    let linePathPotential = "";
 
     if (points.length > 0) {
-        linePathTotal = `M ${points[0].x} ${points[0].yTotal}`;
-        linePathNormal = `M ${points[0].x} ${points[0].yNormal}`;
+        if (mode === "potential") {
+            linePathPotential = `M ${points[0].x} ${points[0].yPotential}`;
+            for (let i = 1; i < points.length; i++) {
+                const prev = points[i - 1];
+                const curr = points[i];
+                linePathPotential += ` L ${curr.x} ${prev.yPotential} L ${curr.x} ${curr.yPotential}`;
+            }
+        } else {
+            linePathTotal = `M ${points[0].x} ${points[0].yTotal}`;
+            linePathNormal = `M ${points[0].x} ${points[0].yNormal}`;
 
-        for (let i = 1; i < points.length; i++) {
-            const prev = points[i - 1];
-            const curr = points[i];
-            linePathTotal += ` L ${curr.x} ${prev.yTotal} L ${curr.x} ${curr.yTotal}`;
-            linePathNormal += ` L ${curr.x} ${prev.yNormal} L ${curr.x} ${curr.yNormal}`;
-        }
+            for (let i = 1; i < points.length; i++) {
+                const prev = points[i - 1];
+                const curr = points[i];
+                linePathTotal += ` L ${curr.x} ${prev.yTotal} L ${curr.x} ${curr.yTotal}`;
+                linePathNormal += ` L ${curr.x} ${prev.yNormal} L ${curr.x} ${curr.yNormal}`;
+            }
 
-        const appendPoints = points.filter((p) => p.append > 0);
-        if (appendPoints.length > 0) {
-            linePathAppend = `M ${appendPoints[0].x} ${appendPoints[0].yAppend}`;
-            for (let i = 1; i < appendPoints.length; i++) {
-                const prev = appendPoints[i - 1];
-                const curr = appendPoints[i];
-                linePathAppend += ` L ${curr.x} ${prev.yAppend} L ${curr.x} ${curr.yAppend}`;
+            const appendPoints = points.filter((p) => p.append > 0);
+            if (appendPoints.length > 0) {
+                linePathAppend = `M ${appendPoints[0].x} ${appendPoints[0].yAppend}`;
+                for (let i = 1; i < appendPoints.length; i++) {
+                    const prev = appendPoints[i - 1];
+                    const curr = appendPoints[i];
+                    linePathAppend += ` L ${curr.x} ${prev.yAppend} L ${curr.x} ${curr.yAppend}`;
+                }
             }
         }
     }
 
     const areaPathTotal =
-        points.length > 1 && linePathTotal
+        mode !== "potential" && points.length > 1 && linePathTotal
             ? `${linePathTotal} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z`
+            : "";
+
+    const areaPathPotential =
+        mode === "potential" && points.length > 1 && linePathPotential
+            ? `${linePathPotential} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z`
             : "";
 
     const labelTicks = [];
@@ -408,52 +498,69 @@ export const RatingGraph = ({ effectiveUser }) => {
                             <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.1" />
                             <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.0" />
                         </linearGradient>
+                        <linearGradient id="potentialLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#c77dff" />
+                            <stop offset="100%" stopColor="#8b5cf6" />
+                        </linearGradient>
+                        <linearGradient id="potentialAreaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#c77dff" stopOpacity="0.15" />
+                            <stop offset="100%" stopColor="#c77dff" stopOpacity="0.0" />
+                        </linearGradient>
                     </defs>
 
                     {/* Legend with click triggers */}
-                    <g transform={`translate(${paddingX}, 12)`} fontSize="9" fontWeight="700">
-                        <g
-                            style={{
-                                cursor: "pointer",
-                                opacity: showTotalLine ? 1 : 0.4,
-                                transition: "opacity 0.2s",
-                            }}
-                            onClick={() => setShowTotalLine(!showTotalLine)}
-                        >
-                            <circle cx="5" cy="5" r="4" fill="#fbbf24" />
+                    {mode === "potential" ? (
+                        <g transform={`translate(${paddingX}, 12)`} fontSize="9" fontWeight="700">
+                            <circle cx="5" cy="5" r="4" fill="#c77dff" />
                             <text x="15" y="8" fill="var(--text-primary)">
-                                Total R
+                                Potential
                             </text>
                         </g>
+                    ) : (
+                        <g transform={`translate(${paddingX}, 12)`} fontSize="9" fontWeight="700">
+                            <g
+                                style={{
+                                    cursor: "pointer",
+                                    opacity: showTotalLine ? 1 : 0.4,
+                                    transition: "opacity 0.2s",
+                                }}
+                                onClick={() => setShowTotalLine(!showTotalLine)}
+                            >
+                                <circle cx="5" cy="5" r="4" fill="#fbbf24" />
+                                <text x="15" y="8" fill="var(--text-primary)">
+                                    Total R
+                                </text>
+                            </g>
 
-                        <g
-                            style={{
-                                cursor: "pointer",
-                                opacity: showNormalLine ? 1 : 0.4,
-                                transition: "opacity 0.2s",
-                            }}
-                            onClick={() => setShowNormalLine(!showNormalLine)}
-                        >
-                            <circle cx="85" cy="5" r="4" fill="#22d3ee" />
-                            <text x="95" y="8" fill="var(--text-primary)">
-                                Player R
-                            </text>
-                        </g>
+                            <g
+                                style={{
+                                    cursor: "pointer",
+                                    opacity: showNormalLine ? 1 : 0.4,
+                                    transition: "opacity 0.2s",
+                                }}
+                                onClick={() => setShowNormalLine(!showNormalLine)}
+                            >
+                                <circle cx="85" cy="5" r="4" fill="#22d3ee" />
+                                <text x="95" y="8" fill="var(--text-primary)">
+                                    Player R
+                                </text>
+                            </g>
 
-                        <g
-                            style={{
-                                cursor: "pointer",
-                                opacity: showAppendLine ? 1 : 0.4,
-                                transition: "opacity 0.2s",
-                            }}
-                            onClick={() => setShowAppendLine(!showAppendLine)}
-                        >
-                            <circle cx="165" cy="5" r="4" fill="#f472b6" />
-                            <text x="175" y="8" fill="var(--text-primary)">
-                                Append R
-                            </text>
+                            <g
+                                style={{
+                                    cursor: "pointer",
+                                    opacity: showAppendLine ? 1 : 0.4,
+                                    transition: "opacity 0.2s",
+                                }}
+                                onClick={() => setShowAppendLine(!showAppendLine)}
+                            >
+                                <circle cx="165" cy="5" r="4" fill="#f472b6" />
+                                <text x="175" y="8" fill="var(--text-primary)">
+                                    Append R
+                                </text>
+                            </g>
                         </g>
-                    </g>
+                    )}
 
                     {/* Y-Axis Horizontal Grid lines */}
                     <line
@@ -507,36 +614,54 @@ export const RatingGraph = ({ effectiveUser }) => {
                     ))}
 
                     {/* Area & Lines */}
-                    {showTotalLine && areaPathTotal && <path d={areaPathTotal} fill="url(#areaGrad)" />}
-                    {showAppendLine && linePathAppend && (
-                        <path
-                            d={linePathAppend}
-                            fill="none"
-                            stroke="url(#appendLineGrad)"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        />
-                    )}
-                    {showNormalLine && linePathNormal && (
-                        <path
-                            d={linePathNormal}
-                            fill="none"
-                            stroke="url(#normalLineGrad)"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        />
-                    )}
-                    {showTotalLine && linePathTotal && (
-                        <path
-                            d={linePathTotal}
-                            fill="none"
-                            stroke="url(#totalLineGrad)"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        />
+                    {mode === "potential" ? (
+                        <>
+                            {areaPathPotential && <path d={areaPathPotential} fill="url(#potentialAreaGrad)" />}
+                            {linePathPotential && (
+                                <path
+                                    d={linePathPotential}
+                                    fill="none"
+                                    stroke="url(#potentialLineGrad)"
+                                    strokeWidth="3"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            {showTotalLine && areaPathTotal && <path d={areaPathTotal} fill="url(#areaGrad)" />}
+                            {showAppendLine && linePathAppend && (
+                                <path
+                                    d={linePathAppend}
+                                    fill="none"
+                                    stroke="url(#appendLineGrad)"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            )}
+                            {showNormalLine && linePathNormal && (
+                                <path
+                                    d={linePathNormal}
+                                    fill="none"
+                                    stroke="url(#normalLineGrad)"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            )}
+                            {showTotalLine && linePathTotal && (
+                                <path
+                                    d={linePathTotal}
+                                    fill="none"
+                                    stroke="url(#totalLineGrad)"
+                                    strokeWidth="3"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            )}
+                        </>
                     )}
 
                     {hoveredPoint && (
@@ -550,35 +675,48 @@ export const RatingGraph = ({ effectiveUser }) => {
                                 strokeWidth="1.5"
                                 strokeDasharray="3 3"
                             />
-                            {showAppendLine && hoveredPoint.append > 0 && (
+                            {mode === "potential" ? (
                                 <circle
                                     cx={hoveredPoint.x}
-                                    cy={hoveredPoint.yAppend}
-                                    r="5"
-                                    fill="#111827"
-                                    stroke="#f472b6"
-                                    strokeWidth="2.5"
-                                />
-                            )}
-                            {showNormalLine && (
-                                <circle
-                                    cx={hoveredPoint.x}
-                                    cy={hoveredPoint.yNormal}
-                                    r="5"
-                                    fill="#111827"
-                                    stroke="#22d3ee"
-                                    strokeWidth="2.5"
-                                />
-                            )}
-                            {showTotalLine && (
-                                <circle
-                                    cx={hoveredPoint.x}
-                                    cy={hoveredPoint.yTotal}
+                                    cy={hoveredPoint.yPotential}
                                     r="5.5"
                                     fill="#111827"
-                                    stroke="#fbbf24"
+                                    stroke="#c77dff"
                                     strokeWidth="2.5"
                                 />
+                            ) : (
+                                <>
+                                    {showAppendLine && hoveredPoint.append > 0 && (
+                                        <circle
+                                            cx={hoveredPoint.x}
+                                            cy={hoveredPoint.yAppend}
+                                            r="5"
+                                            fill="#111827"
+                                            stroke="#f472b6"
+                                            strokeWidth="2.5"
+                                        />
+                                    )}
+                                    {showNormalLine && (
+                                        <circle
+                                            cx={hoveredPoint.x}
+                                            cy={hoveredPoint.yNormal}
+                                            r="5"
+                                            fill="#111827"
+                                            stroke="#22d3ee"
+                                            strokeWidth="2.5"
+                                        />
+                                    )}
+                                    {showTotalLine && (
+                                        <circle
+                                            cx={hoveredPoint.x}
+                                            cy={hoveredPoint.yTotal}
+                                            r="5.5"
+                                            fill="#111827"
+                                            stroke="#fbbf24"
+                                            strokeWidth="2.5"
+                                        />
+                                    )}
+                                </>
                             )}
                         </g>
                     )}
@@ -605,7 +743,7 @@ export const RatingGraph = ({ effectiveUser }) => {
                         textAnchor="end"
                         fontWeight="600"
                     >
-                        {Math.round(yMax)}
+                        {mode === "potential" ? yMax.toFixed(1) : Math.round(yMax)}
                     </text>
                     <text
                         x={paddingX - 8}
@@ -615,7 +753,7 @@ export const RatingGraph = ({ effectiveUser }) => {
                         textAnchor="end"
                         fontWeight="600"
                     >
-                        {Math.round((yMax + yMin) / 2)}
+                        {mode === "potential" ? ((yMax + yMin) / 2).toFixed(1) : Math.round((yMax + yMin) / 2)}
                     </text>
                     <text
                         x={paddingX - 8}
@@ -625,7 +763,7 @@ export const RatingGraph = ({ effectiveUser }) => {
                         textAnchor="end"
                         fontWeight="600"
                     >
-                        {Math.round(yMin)}
+                        {mode === "potential" ? yMin.toFixed(1) : Math.round(yMin)}
                     </text>
                 </svg>
 
@@ -643,11 +781,13 @@ export const RatingGraph = ({ effectiveUser }) => {
                             tooltipTransformX = "-100%";
                         }
 
-                        const activeY = showTotalLine
-                            ? hoveredPoint.yTotal
-                            : showNormalLine
-                              ? hoveredPoint.yNormal
-                              : hoveredPoint.yAppend;
+                        const activeY = mode === "potential"
+                            ? hoveredPoint.yPotential
+                            : (showTotalLine
+                                ? hoveredPoint.yTotal
+                                : showNormalLine
+                                  ? hoveredPoint.yNormal
+                                  : hoveredPoint.yAppend);
                         const yPercent = (activeY / height) * 100;
                         const isUpperHalf = yPercent < 50;
 
@@ -697,20 +837,28 @@ export const RatingGraph = ({ effectiveUser }) => {
                                         textAlign: "left",
                                     }}
                                 >
-                                    {showTotalLine && (
-                                        <div style={{ fontWeight: "800", color: "#fbbf24" }}>
-                                            Total R: {Math.round(hoveredPoint.total)}
+                                    {mode === "potential" ? (
+                                        <div style={{ fontWeight: "800", color: "#c77dff" }}>
+                                            Potential: {(Math.floor(hoveredPoint.potential * 100) / 100).toFixed(2)}
                                         </div>
-                                    )}
-                                    {showNormalLine && (
-                                        <div style={{ fontSize: "0.7rem", color: "#22d3ee", fontWeight: "700" }}>
-                                            Player R: {Math.round(hoveredPoint.normal)}
-                                        </div>
-                                    )}
-                                    {showAppendLine && (
-                                        <div style={{ fontSize: "0.7rem", color: "#f472b6", fontWeight: "700" }}>
-                                            Append R: {Math.round(hoveredPoint.append)}
-                                        </div>
+                                    ) : (
+                                        <>
+                                            {showTotalLine && (
+                                                <div style={{ fontWeight: "800", color: "#fbbf24" }}>
+                                                    Total R: {Math.round(hoveredPoint.total)}
+                                                </div>
+                                            )}
+                                            {showNormalLine && (
+                                                <div style={{ fontSize: "0.7rem", color: "#22d3ee", fontWeight: "700" }}>
+                                                    Player R: {Math.round(hoveredPoint.normal)}
+                                                </div>
+                                            )}
+                                            {showAppendLine && (
+                                                <div style={{ fontSize: "0.7rem", color: "#f472b6", fontWeight: "700" }}>
+                                                    Append R: {Math.round(hoveredPoint.append)}
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </div>

@@ -672,7 +672,8 @@ app.get('/api/scores/user/:username', async (req, res) => {
 });
 
 app.post('/api/scores', async (req, res) => {
-  const { username, scores, rating } = req.body;
+  const { username, scores, rating: ratingDestructured, ratings } = req.body;
+  const rating = ratingDestructured || ratings;
   if (!username) {
     return res.status(400).json({ error: '유저 계정명이 누락되었습니다.' });
   }
@@ -856,9 +857,12 @@ app.get('/api/friends/list/:username', async (req, res) => {
       return res.json([]);
     }
 
+    const songsList = dbSongs.read();
+    const songsMap = new Map(songsList.map(s => [String(s.id), s]));
+
     const placeholders = friendsList.map(() => '?').join(',');
     const friendsInfo = await dbQuery.all(
-      `SELECT username, nickname, rating_history FROM users WHERE username IN (${placeholders})`,
+      `SELECT username, nickname, rating_history, scores FROM users WHERE username IN (${placeholders})`,
       friendsList
     );
 
@@ -883,6 +887,26 @@ app.get('/api/friends/list/:username', async (req, res) => {
           potentialRating = 0;
         }
       }
+
+      let scoresArray = [];
+      try {
+        scoresArray = JSON.parse(f.scores || '[]');
+      } catch (e) {
+        console.error('Error parsing scores for friend', f.username, e);
+      }
+
+      if ((normalRating === 0 || potentialRating === 0) && scoresArray.length > 0) {
+        const computed = calculateRatingsOnServer(scoresArray, songsMap);
+        if (normalRating === 0) normalRating = computed.normal;
+        if (appendRating === 0) appendRating = computed.append;
+        if (potentialRating === 0) potentialRating = computed.potential;
+        totalRating = normalRating + appendRating;
+      }
+
+      if (potentialRating === 0 && normalRating > 0) {
+        potentialRating = normalRating / 292.5;
+      }
+
       return {
         username: f.username,
         nickname: f.nickname,
@@ -1007,8 +1031,7 @@ function calculateNewRatingServer(song, diff, status) {
     const constant = getConstantForRatingServer(song, diff, 'full_combo');
     return constant + 0.0;
   } else if (status === 'clear') {
-    const level = song.levels?.[diff] || 0;
-    return level - 4.0;
+    return 0;
   }
   return 0;
 }
@@ -1050,6 +1073,16 @@ function calculateRatingsOnServer(scoresArray, songsMap) {
       const rating = calculateRatingServer(song, 'append', appendStatus);
       if (rating > 0) {
         appendRatings.push(rating);
+      }
+
+      const newRating = calculateNewRatingServer(song, 'append', appendStatus);
+      if (newRating > 0) {
+        const isNew = isNewSongServer(song);
+        if (isNew) {
+          newList.push(newRating);
+        } else {
+          oldList.push(newRating);
+        }
       }
     }
   });
@@ -1140,6 +1173,13 @@ app.get('/api/rankings', async (req, res) => {
           else if (s[d] === 'clear') clearCount++;
         });
       });
+
+      if (apCount === 0 && fcCount === 0 && clearCount === 0) {
+        normalRating = 0;
+        appendRating = 0;
+        totalRating = 0;
+        potentialRating = 0.0;
+      }
 
       return {
         username: row.username,

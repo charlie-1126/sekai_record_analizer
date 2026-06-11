@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Target, XCircle, CheckCircle2 } from "lucide-react";
 import { JacketImage } from "../Common/JacketImage";
+import { isNewSong } from "../../utils/potentialUtils";
 
 export const Tour = ({
     songs,
@@ -13,6 +14,7 @@ export const Tour = ({
     const [tourMinLevel, setTourMinLevel] = useState(30);
     const [tourMaxLevel, setTourMaxLevel] = useState(30);
     const [tourGoal, setTourGoal] = useState("fc");
+    const [tourNewFilter, setTourNewFilter] = useState("all"); // "all", "new", "old"
     const [tourRemainingVisibleCount, setTourRemainingVisibleCount] = useState(30);
     const [tourCompletedVisibleCount, setTourCompletedVisibleCount] = useState(30);
     const [isTourFilterExpanded, setIsTourFilterExpanded] = useState(true);
@@ -50,7 +52,7 @@ export const Tour = ({
     useEffect(() => {
         setTourRemainingVisibleCount(30);
         setTourCompletedVisibleCount(30);
-    }, [tourDiffs, tourMinLevel, tourMaxLevel, tourGoal]);
+    }, [tourDiffs, tourMinLevel, tourMaxLevel, tourGoal, tourNewFilter]);
 
     // --- Map scores list to a Map for fast lookups ---
     const userScoresMap = useMemo(() => {
@@ -106,6 +108,10 @@ export const Tour = ({
     const tourCharts = useMemo(() => {
         const charts = [];
         songs.forEach((song) => {
+            const songNew = isNewSong(song);
+            if (tourNewFilter === "new" && !songNew) return;
+            if (tourNewFilter === "old" && songNew) return;
+
             tourDiffs.forEach((diff) => {
                 const lvl = song.levels[diff];
                 if (lvl && lvl >= tourMinLevel && lvl <= tourMaxLevel) {
@@ -119,7 +125,7 @@ export const Tour = ({
             const titleB = b.song.title_ko || b.song.title_jp || "";
             return titleA.localeCompare(titleB);
         });
-    }, [tourDiffs, tourMinLevel, tourMaxLevel, songs]);
+    }, [tourDiffs, tourMinLevel, tourMaxLevel, tourNewFilter, songs]);
 
     // --- Compute statistics ---
     const tourStats = useMemo(() => {
@@ -324,7 +330,33 @@ export const Tour = ({
                                 </div>
                             </div>
 
-                            <div className="tour-stat-circle" style={{ margin: "1rem auto" }}>
+                            <div className="filter-group">
+                                <label className="filter-label">신곡 여부</label>
+                                <div style={{ display: "flex", gap: "0.5rem" }}>
+                                    {[
+                                        { id: "all", label: "전체" },
+                                        { id: "new", label: "신곡" },
+                                        { id: "old", label: "구곡" },
+                                    ].map((opt) => (
+                                        <button
+                                            key={opt.id}
+                                            className={`btn btn-outline ${tourNewFilter === opt.id ? "active" : ""}`}
+                                            style={{
+                                                flex: 1,
+                                                padding: "0.4rem",
+                                                fontSize: "0.8rem",
+                                                borderColor: tourNewFilter === opt.id && opt.id === "new" ? "#ffd200" : "",
+                                                color: tourNewFilter === opt.id && opt.id === "new" ? "#ffd200" : "",
+                                            }}
+                                            onClick={() => setTourNewFilter(opt.id)}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="tour-stat-circle" style={{ margin: "1.5rem auto 1rem auto" }}>
                                 <svg className="tour-gauge-svg" viewBox="0 0 100 100">
                                     <defs>
                                         <linearGradient

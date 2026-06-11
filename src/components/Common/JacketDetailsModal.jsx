@@ -1,6 +1,7 @@
 import React from "react";
 import { JacketImage } from "./JacketImage";
 import { getSongTitle, getConstant } from "../../utils/ratingUtils";
+import { isNewSong, formatPublishedDate } from "../../utils/potentialUtils";
 
 export default function JacketDetailsModal({
     selectedJacketSong,
@@ -22,7 +23,7 @@ export default function JacketDetailsModal({
                 <div style={{ display: "flex", gap: "1.5rem", marginBottom: "1.5rem", alignItems: "center" }}>
                     <JacketImage
                         songId={song.id}
-                        size={120}
+                        size={140}
                         style={{ borderRadius: "8px", boxShadow: "0 4px 15px rgba(0,0,0,0.3)" }}
                     />
                     <div
@@ -75,15 +76,41 @@ export default function JacketDetailsModal({
                             </span>
                         </div>
                         <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                            기본 레벨:{" "}
-                            <strong>{song.levels[diff] || "-"}</strong>
+                            레벨: <strong>{song.levels[diff] || "-"}</strong>
                         </div>
                         <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                            상수:{" "}
-                            <strong>
-                                {getConstant(song, diff, status).toFixed(1)}
-                            </strong>
+                            상수: <strong>{getConstant(song, diff, status).toFixed(1)}</strong>
                         </div>
+                        {/* 출시일 정보 */}
+                        {song.publishedAt && (
+                            <div
+                                style={{
+                                    fontSize: "0.85rem",
+                                    color: "var(--text-secondary)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "0.4rem",
+                                }}
+                            >
+                                출시일: <strong>{formatPublishedDate(song.publishedAt)}</strong>
+                                {isNewSong(song) && (
+                                    <span
+                                        style={{
+                                            display: "inline-block",
+                                            background: "linear-gradient(135deg, #ff4545ed, #f42516)",
+                                            color: "#000",
+                                            fontWeight: 800,
+                                            fontSize: "0.6rem",
+                                            padding: "0.1rem 0.35rem",
+                                            borderRadius: "4px",
+                                            letterSpacing: "0.05em",
+                                        }}
+                                    >
+                                        NEW
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -95,28 +122,28 @@ export default function JacketDetailsModal({
                         {[
                             {
                                 value: "none",
-                                label: "미플레이 (NC)",
+                                label: "NC",
                                 color: "var(--text-muted)",
                                 bg: "rgba(255,255,255,0.05)",
                                 border: "var(--border-color)",
                             },
                             {
                                 value: "clear",
-                                label: "클리어 (C)",
+                                label: "C",
                                 color: "var(--color-clear)",
                                 bg: "rgba(251, 191, 36, 0.1)",
                                 border: "rgba(251, 191, 36, 0.3)",
                             },
                             {
                                 value: "full_combo",
-                                label: "풀콤보 (FC)",
+                                label: "FC",
                                 color: "var(--color-fc)",
                                 bg: "rgba(192, 132, 252, 0.1)",
                                 border: "rgba(192, 132, 252, 0.3)",
                             },
                             {
                                 value: "full_perfect",
-                                label: "퍼펙트 (AP)",
+                                label: "AP",
                                 color: "var(--color-ap)",
                                 bg: "rgba(56, 189, 248, 0.1)",
                                 border: "rgba(56, 189, 248, 0.3)",

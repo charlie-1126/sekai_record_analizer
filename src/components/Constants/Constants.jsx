@@ -2,13 +2,9 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { Layers, Filter, Search } from "lucide-react";
 import { JacketImage } from "../Common/JacketImage";
 import { getConstant, hasExplicitConstant } from "../../utils/ratingUtils";
+import { isNewSong } from "../../utils/potentialUtils";
 
-export const Constants = ({
-    songs,
-    scores,
-    onJacketClick,
-    settingsTitleLang,
-}) => {
+export const Constants = ({ songs, scores, onJacketClick, settingsTitleLang }) => {
     // --- States ---
     const [isConstFilterExpanded, setIsConstFilterExpanded] = useState(true);
     const [constSearchInput, setConstSearchInput] = useState("");
@@ -21,6 +17,7 @@ export const Constants = ({
     const [constMinLevel, setConstMinLevel] = useState("");
     const [constMaxLevel, setConstMaxLevel] = useState("");
     const [constType, setConstType] = useState("fc"); // "fc", "ap"
+    const [constNewFilter, setConstNewFilter] = useState("all"); // "all", "new", "old"
 
     // --- Debounce Search Term ---
     useEffect(() => {
@@ -147,6 +144,11 @@ export const Constants = ({
                     if (!matchesText) return;
                 }
 
+                // 신곡 필터
+                const songNew = isNewSong(song);
+                if (constNewFilter === "new" && !songNew) return;
+                if (constNewFilter === "old" && songNew) return;
+
                 allChartsList.push({
                     song,
                     diff,
@@ -196,6 +198,7 @@ export const Constants = ({
         constMinLevel,
         constMaxLevel,
         constType,
+        constNewFilter,
         settingsTitleLang,
     ]);
 
@@ -334,10 +337,7 @@ export const Constants = ({
                                 };
                                 const isActive = constDiffFilters.includes(diff);
                                 return (
-                                    <label
-                                        key={diff}
-                                        className={`checkbox-label ${isActive ? `active-${diff}` : ""}`}
-                                    >
+                                    <label key={diff} className={`checkbox-label ${isActive ? `active-${diff}` : ""}`}>
                                         <input
                                             type="checkbox"
                                             checked={isActive}
@@ -398,6 +398,33 @@ export const Constants = ({
                             </button>
                         </div>
                     </div>
+
+                    {/* Row 5: 신곡 필터 */}
+                    <div className="filter-group" style={{ marginTop: "0.5rem" }}>
+                        <label className="filter-label">신곡 여부</label>
+                        <div style={{ display: "flex", gap: "0.5rem", maxWidth: "280px" }}>
+                            {[
+                                { id: "all", label: "전체" },
+                                { id: "new", label: "신곡" },
+                                { id: "old", label: "구곡" },
+                            ].map((opt) => (
+                                <button
+                                    key={opt.id}
+                                    className={`btn btn-outline ${constNewFilter === opt.id ? "active" : ""}`}
+                                    style={{
+                                        flex: 1,
+                                        padding: "0.4rem",
+                                        fontSize: "0.8rem",
+                                        borderColor: constNewFilter === opt.id && opt.id === "new" ? "#ffd200" : "",
+                                        color: constNewFilter === opt.id && opt.id === "new" ? "#ffd200" : "",
+                                    }}
+                                    onClick={() => setConstNewFilter(opt.id)}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -419,9 +446,7 @@ export const Constants = ({
                                     <div
                                         key={`${chart.song.id}-${chart.diff}`}
                                         className="jacket-chart-card"
-                                        onClick={() =>
-                                            onJacketClick(chart.song, chart.diff, chart.status)
-                                        }
+                                        onClick={() => onJacketClick(chart.song, chart.diff, chart.status)}
                                     >
                                         {/* Jacket wrapper with difficulty border */}
                                         <div
@@ -429,6 +454,26 @@ export const Constants = ({
                                             style={{ position: "relative" }}
                                         >
                                             <JacketImage songId={chart.song.id} size={85} />
+                                            {/* NEW badge */}
+                                            {isNewSong(chart.song) && (
+                                                <span
+                                                    style={{
+                                                        position: "absolute",
+                                                        top: "2px",
+                                                        left: "2px",
+                                                        background: "linear-gradient(135deg, #ff4545ed, #f42516)",
+                                                        color: "#000",
+                                                        fontWeight: 800,
+                                                        fontSize: "0.55rem",
+                                                        padding: "0.1rem 0.3rem",
+                                                        borderRadius: "3px",
+                                                        zIndex: 2,
+                                                        letterSpacing: "0.05em",
+                                                    }}
+                                                >
+                                                    NEW
+                                                </span>
+                                            )}
                                             {!chart.hasConstant && (
                                                 <span
                                                     className="no-constant-badge"

@@ -2,15 +2,15 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Trophy, Search } from "lucide-react";
 
-export const Ranking = ({ currentUser }) => {
+export const Ranking = ({ currentUser, ratingMode = "b39" }) => {
     const navigate = useNavigate();
 
     // --- State ---
     const [rankings, setRankings] = useState([]);
     const [isRankingsLoading, setIsRankingsLoading] = useState(false);
     const [rankingsSearch, setRankingsSearch] = useState("");
-    const [rankingsSortBy, setRankingsSortBy] = useState("total"); // total, normal, append, ap, fc
-    const [rankingsSortOrder, setRankingsSortOrder] = useState("desc"); // desc, asc
+    const [rankingsSortBy, setRankingsSortBy] = useState(ratingMode === "potential" ? "potential" : "total"); // total, normal, append, ap, fc, potential
+    const [rankingsSortOrder, setRankingsSortOrder] = useState("desc");
 
     // --- Fetch Rankings ---
     useEffect(() => {
@@ -51,6 +51,9 @@ export const Ranking = ({ currentUser }) => {
             } else if (rankingsSortBy === "append") {
                 valA = a.appendRating || 0;
                 valB = b.appendRating || 0;
+            } else if (rankingsSortBy === "potential") {
+                valA = a.potentialRating || 0;
+                valB = b.potentialRating || 0;
             } else if (rankingsSortBy === "ap") {
                 valA = a.apCount || 0;
                 valB = b.apCount || 0;
@@ -141,12 +144,23 @@ export const Ranking = ({ currentUser }) => {
                             value={rankingsSortBy}
                             onChange={(e) => setRankingsSortBy(e.target.value)}
                         >
-                            <option value="total">Total R</option>
-                            <option value="normal">Player R</option>
-                            <option value="append">Append R</option>
-                            <option value="ap">AP 수</option>
-                            <option value="fc">FC 수</option>
-                            <option value="clear">C 수</option>
+                            {ratingMode === "potential" ? (
+                                <>
+                                    <option value="potential">Potential</option>
+                                    <option value="ap">AP 수</option>
+                                    <option value="fc">FC 수</option>
+                                    <option value="clear">C 수</option>
+                                </>
+                            ) : (
+                                <>
+                                    <option value="total">Total R</option>
+                                    <option value="normal">Player R</option>
+                                    <option value="append">Append R</option>
+                                    <option value="ap">AP 수</option>
+                                    <option value="fc">FC 수</option>
+                                    <option value="clear">C 수</option>
+                                </>
+                            )}
                         </select>
                     </div>
 
@@ -158,9 +172,7 @@ export const Ranking = ({ currentUser }) => {
                             type="button"
                             className="btn btn-outline"
                             style={{ height: "42px", padding: "0 1rem" }}
-                            onClick={() =>
-                                setRankingsSortOrder(rankingsSortOrder === "desc" ? "asc" : "desc")
-                            }
+                            onClick={() => setRankingsSortOrder(rankingsSortOrder === "desc" ? "asc" : "desc")}
                         >
                             {rankingsSortOrder === "desc" ? "내림차순 ↓" : "올림차순 ↑"}
                         </button>
@@ -196,21 +208,28 @@ export const Ranking = ({ currentUser }) => {
                                     fontWeight: "700",
                                 }}
                             >
-                                <th style={{ padding: "1rem" }}>순위</th>
-                                <th style={{ padding: "1rem" }}>닉네임</th>
-                                <th style={{ padding: "1rem", textAlign: "right" }}>Total R</th>
-                                <th style={{ padding: "1rem", textAlign: "right" }}>Player R</th>
-                                <th style={{ padding: "1rem", textAlign: "right" }}>Append R</th>
-                                <th style={{ padding: "1rem", textAlign: "center" }}>AP</th>
-                                <th style={{ padding: "1rem", textAlign: "center" }}>FC</th>
-                                <th style={{ padding: "1rem", textAlign: "center" }}>C</th>
+                                <th style={{ padding: "1rem", textAlign: "center" }}>순위</th>
+                                <th style={{ padding: "1rem", textAlign: "left" }}>닉네임</th>
+                                {ratingMode === "potential" ? (
+                                    <th style={{ padding: "1rem 0.75rem", textAlign: "center", color: "#c77dff" }}>
+                                        Potential
+                                    </th>
+                                ) : (
+                                    <>
+                                        <th style={{ padding: "1rem 0rem", textAlign: "center" }}>Total R</th>
+                                        <th style={{ padding: "1rem 0rem", textAlign: "center" }}>Player R</th>
+                                        <th style={{ padding: "1rem 0rem", textAlign: "center" }}>Append R</th>
+                                    </>
+                                )}
+                                <th style={{ padding: "1rem 0.5rem 1rem 2.5rem", textAlign: "center" }}>AP</th>
+                                <th style={{ padding: "1rem 0.5rem", textAlign: "center" }}>FC</th>
+                                <th style={{ padding: "1rem 1.5rem 1rem 0.5rem", textAlign: "center" }}>C</th>
                             </tr>
                         </thead>
                         <tbody>
                             {sortedAndFilteredRankings.map((user) => {
                                 const isMe =
-                                    currentUser &&
-                                    currentUser.username.toLowerCase() === user.username.toLowerCase();
+                                    currentUser && currentUser.username.toLowerCase() === user.username.toLowerCase();
                                 return (
                                     <tr
                                         key={user.username}
@@ -225,7 +244,7 @@ export const Ranking = ({ currentUser }) => {
                                         onClick={() => navigate(`/dashboard/${user.username}`)}
                                         title={`${user.nickname}님의 대시보드 보기`}
                                     >
-                                        <td style={{ padding: "1rem" }}>
+                                        <td style={{ padding: "1rem", textAlign: "center" }}>
                                             {user.absoluteRank === 1 ? (
                                                 <span
                                                     style={{
@@ -257,14 +276,8 @@ export const Ranking = ({ currentUser }) => {
                                                 `#${user.absoluteRank}`
                                             )}
                                         </td>
-                                        <td style={{ padding: "1rem" }}>
-                                            <div
-                                                style={{
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "0.5rem",
-                                                }}
-                                            >
+                                        <td style={{ padding: "1rem", textAlign: "left" }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                                 {isMe && (
                                                     <span
                                                         className="diff-badge diff-easy"
@@ -279,48 +292,66 @@ export const Ranking = ({ currentUser }) => {
                                                 )}
                                                 <span
                                                     style={{
-                                                        color: isMe
-                                                            ? "var(--color-cyan)"
-                                                            : "var(--text-primary)",
+                                                        color: isMe ? "var(--color-cyan)" : "var(--text-primary)",
                                                     }}
                                                 >
                                                     {user.nickname}
                                                 </span>
                                             </div>
                                         </td>
+                                        {ratingMode === "potential" ? (
+                                            <td
+                                                style={{
+                                                    padding: "1rem 0.75rem",
+                                                    textAlign: "center",
+                                                    fontWeight: "800",
+                                                    background: "linear-gradient(135deg, #c77dff, #87ceeb)",
+                                                    WebkitBackgroundClip: "text",
+                                                    backgroundClip: "text",
+                                                    WebkitTextFillColor: "transparent",
+                                                }}
+                                            >
+                                                {user.potentialRating
+                                                    ? (Math.floor(user.potentialRating * 100) / 100).toFixed(2)
+                                                    : "0.00"}
+                                            </td>
+                                        ) : (
+                                            <>
+                                                <td
+                                                    style={{
+                                                        padding: "1rem 0.75rem",
+                                                        textAlign: "center",
+                                                        fontWeight: "800",
+                                                        color: "var(--text-primary)",
+                                                    }}
+                                                >
+                                                    {Math.round(user.totalRating)}
+                                                </td>
+                                                <td
+                                                    style={{
+                                                        padding: "1rem 0.75rem",
+                                                        textAlign: "center",
+                                                        color: "var(--color-cyan)",
+                                                        fontWeight: "700",
+                                                    }}
+                                                >
+                                                    {Math.round(user.normalRating)}
+                                                </td>
+                                                <td
+                                                    style={{
+                                                        padding: "1rem 0.75rem",
+                                                        textAlign: "center",
+                                                        color: "var(--color-append)",
+                                                        fontWeight: "700",
+                                                    }}
+                                                >
+                                                    {Math.round(user.appendRating)}
+                                                </td>
+                                            </>
+                                        )}
                                         <td
                                             style={{
-                                                padding: "1rem",
-                                                textAlign: "right",
-                                                fontWeight: "800",
-                                                color: "var(--text-primary)",
-                                            }}
-                                        >
-                                            {Math.round(user.totalRating)}
-                                        </td>
-                                        <td
-                                            style={{
-                                                padding: "1rem",
-                                                textAlign: "right",
-                                                color: "var(--color-cyan)",
-                                                fontWeight: "700",
-                                            }}
-                                        >
-                                            {Math.round(user.normalRating)}
-                                        </td>
-                                        <td
-                                            style={{
-                                                padding: "1rem",
-                                                textAlign: "right",
-                                                color: "var(--color-append)",
-                                                fontWeight: "700",
-                                            }}
-                                        >
-                                            {Math.round(user.appendRating)}
-                                        </td>
-                                        <td
-                                            style={{
-                                                padding: "1rem",
+                                                padding: "1rem 0.5rem 1rem 2.5rem",
                                                 textAlign: "center",
                                                 color: "var(--color-ap)",
                                                 fontWeight: "700",
@@ -330,7 +361,7 @@ export const Ranking = ({ currentUser }) => {
                                         </td>
                                         <td
                                             style={{
-                                                padding: "1rem",
+                                                padding: "1rem 0.5rem",
                                                 textAlign: "center",
                                                 color: "var(--color-fc)",
                                                 fontWeight: "700",
@@ -340,7 +371,7 @@ export const Ranking = ({ currentUser }) => {
                                         </td>
                                         <td
                                             style={{
-                                                padding: "1rem",
+                                                padding: "1rem 1.5rem 1rem 0.5rem",
                                                 textAlign: "center",
                                                 color: "var(--color-clear)",
                                                 fontWeight: "700",

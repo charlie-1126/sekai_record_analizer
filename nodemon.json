@@ -1,0 +1,12 @@
+{
+  "verbose": true,
+  "ext": "js,json,cjs",
+  "ignore": [
+    "node_modules/**",
+    "db/**",
+    "src/**",
+    "public/**",
+    "songs_data.json",
+    "package-lock.json"
+  ]
+}

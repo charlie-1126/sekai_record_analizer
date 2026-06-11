@@ -1609,7 +1609,7 @@ input[type="number"] {
 
 .distributions-filters-grid {
     display: grid;
-    grid-template-columns: 1.2fr 1.2fr 1fr;
+    grid-template-columns: 1.2fr 1.2fr 1fr 1fr;
     gap: 1rem;
 }
 
@@ -1810,9 +1810,11 @@ input[type="number"] {
     }
 
     .record-mobile-meta .diff-badge.mini {
-        padding: 0.1rem 0.3rem;
+        padding: 0.1rem 0;
         font-size: 0.65rem;
         border-radius: 4px;
+        width: 52px;
+        justify-content: center;
     }
 
     .record-mobile-meta .meta-constant {
