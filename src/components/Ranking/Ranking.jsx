@@ -2,7 +2,16 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Trophy, Search } from "lucide-react";
 
-export const Ranking = ({ currentUser, ratingMode = "b39" }) => {
+export const Ranking = ({
+    currentUser,
+    ratingMode = "b39",
+    myNormalRating,
+    myAppendRating,
+    myPotentialRating,
+    myApCount,
+    myFcCount,
+    myClearCount,
+}) => {
     const navigate = useNavigate();
 
     // --- State ---
@@ -34,9 +43,23 @@ export const Ranking = ({ currentUser, ratingMode = "b39" }) => {
         fetchRankings();
     }, []);
 
-    // --- Memoized sorting and filtering ---
     const sortedAndFilteredRankings = useMemo(() => {
-        let list = [...rankings];
+        let list = rankings.map((user) => {
+            const isMe = currentUser && currentUser.username.toLowerCase() === user.username.toLowerCase();
+            if (isMe) {
+                return {
+                    ...user,
+                    normalRating: myNormalRating ?? user.normalRating,
+                    appendRating: myAppendRating ?? user.appendRating,
+                    potentialRating: myPotentialRating ?? user.potentialRating,
+                    totalRating: (myNormalRating ?? user.normalRating) + (myAppendRating ?? user.appendRating),
+                    apCount: myApCount ?? user.apCount,
+                    fcCount: myFcCount ?? user.fcCount,
+                    clearCount: myClearCount ?? user.clearCount,
+                };
+            }
+            return user;
+        });
 
         // Sort dynamically
         list.sort((a, b) => {
@@ -85,7 +108,19 @@ export const Ranking = ({ currentUser, ratingMode = "b39" }) => {
         }
 
         return rankedList;
-    }, [rankings, rankingsSearch, rankingsSortBy, rankingsSortOrder]);
+    }, [
+        rankings,
+        rankingsSearch,
+        rankingsSortBy,
+        rankingsSortOrder,
+        currentUser,
+        myNormalRating,
+        myAppendRating,
+        myPotentialRating,
+        myApCount,
+        myFcCount,
+        myClearCount,
+    ]);
 
     return (
         <section className="glass-panel" style={{ padding: "2rem" }}>

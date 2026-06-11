@@ -1197,7 +1197,18 @@ function App() {
                         />
                     ))}
 
-                {activeTab === "ranking" && <Ranking currentUser={currentUser} ratingMode={ratingMode} />}
+                {activeTab === "ranking" && (
+                    <Ranking
+                        currentUser={currentUser}
+                        ratingMode={ratingMode}
+                        myNormalRating={playerRating}
+                        myAppendRating={playerAppendRating}
+                        myPotentialRating={potentialData.potential4}
+                        myApCount={overallStats.apCount}
+                        myFcCount={overallStats.fcCount}
+                        myClearCount={overallStats.clearCount}
+                    />
+                )}
 
                 {activeTab === "records" && (
                     <Records
