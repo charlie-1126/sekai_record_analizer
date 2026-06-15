@@ -279,32 +279,32 @@ export const Constants = ({
             const extra = constType === "ap" ? 2.0 : 0.0;
 
             const ob1Groups = groupedConstants.filter(
-                (g) => cutoffs.cutoffOB1 > 0 && g.constantValue + extra >= cutoffs.cutoffOB1,
+                (g) => cutoffs.cutoffOB1 > 0 && g.charts.some((c) => !isNewSong(c.song)) && g.constantValue + extra >= cutoffs.cutoffOB1,
             );
             if (ob1Groups.length > 0) result.ob1 = ob1Groups[ob1Groups.length - 1].constantValue;
 
             const ob15Groups = groupedConstants.filter(
-                (g) => cutoffs.cutoffOB15 > 0 && g.constantValue + extra >= cutoffs.cutoffOB15,
+                (g) => cutoffs.cutoffOB15 > 0 && g.charts.some((c) => !isNewSong(c.song)) && g.constantValue + extra >= cutoffs.cutoffOB15,
             );
             if (ob15Groups.length > 0) result.ob15 = ob15Groups[ob15Groups.length - 1].constantValue;
 
             const ob30Groups = groupedConstants.filter(
-                (g) => cutoffs.cutoffOB30 > 0 && g.constantValue + extra >= cutoffs.cutoffOB30,
+                (g) => cutoffs.cutoffOB30 > 0 && g.charts.some((c) => !isNewSong(c.song)) && g.constantValue + extra >= cutoffs.cutoffOB30,
             );
             if (ob30Groups.length > 0) result.ob30 = ob30Groups[ob30Groups.length - 1].constantValue;
 
             const nb1Groups = groupedConstants.filter(
-                (g) => cutoffs.cutoffNB1 > 0 && g.constantValue + extra >= cutoffs.cutoffNB1,
+                (g) => cutoffs.cutoffNB1 > 0 && g.charts.some((c) => isNewSong(c.song)) && g.constantValue + extra >= cutoffs.cutoffNB1,
             );
             if (nb1Groups.length > 0) result.nb1 = nb1Groups[nb1Groups.length - 1].constantValue;
 
             const nb5Groups = groupedConstants.filter(
-                (g) => cutoffs.cutoffNB5 > 0 && g.constantValue + extra >= cutoffs.cutoffNB5,
+                (g) => cutoffs.cutoffNB5 > 0 && g.charts.some((c) => isNewSong(c.song)) && g.constantValue + extra >= cutoffs.cutoffNB5,
             );
             if (nb5Groups.length > 0) result.nb5 = nb5Groups[nb5Groups.length - 1].constantValue;
 
             const nb10Groups = groupedConstants.filter(
-                (g) => cutoffs.cutoffNB10 > 0 && g.constantValue + extra >= cutoffs.cutoffNB10,
+                (g) => cutoffs.cutoffNB10 > 0 && g.charts.some((c) => isNewSong(c.song)) && g.constantValue + extra >= cutoffs.cutoffNB10,
             );
             if (nb10Groups.length > 0) result.nb10 = nb10Groups[nb10Groups.length - 1].constantValue;
         }
