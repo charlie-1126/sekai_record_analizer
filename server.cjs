@@ -430,7 +430,7 @@ app.post('/api/auth/change-password', async (req, res) => {
 // --- Dynamic Config Parsing ---
 let CONFIG = {
   songsApiUrl: 'https://api.rilaksekai.com/api/songs',
-  syncIntervalMs: 3 * 60 * 60 * 1000
+  syncIntervalMs: 1 * 60 * 60 * 1000
 };
 
 const configPath = path.join(__dirname, 'config.json');
@@ -609,9 +609,168 @@ async function syncSongsInternal(targetUrl = SONGS_API_URL) {
   }
 }
 
-app.get('/api/songs', (req, res) => {
-  const songs = dbSongs.read();
-  res.json(songs);
+const TRAINER_CACHE_PATH = path.join(DB_DIR, 'trainer_songs.json');
+let lastTrainerSyncTime = 0;
+let cachedTrainerSongs = null;
+
+// Scraping trainer site data and caching
+async function fetchTrainerSongs() {
+  const now = Date.now();
+
+  // 1. Return in-memory cache if it exists and is less than 1 hour old
+  if (cachedTrainerSongs && (now - lastTrainerSyncTime < 1 * 60 * 60 * 1000)) {
+    return cachedTrainerSongs;
+  }
+
+  // 2. If memory cache doesn't exist or is expired, check if disk cache exists and is fresh
+  try {
+    if (!cachedTrainerSongs && fs.existsSync(TRAINER_CACHE_PATH)) {
+      const stats = fs.statSync(TRAINER_CACHE_PATH);
+      const cacheAge = now - stats.mtimeMs;
+      if (cacheAge < 1 * 60 * 60 * 1000) {
+        console.log('[Trainer] Loading from disk cache...');
+        const data = fs.readFileSync(TRAINER_CACHE_PATH, 'utf-8');
+        cachedTrainerSongs = JSON.parse(data);
+        lastTrainerSyncTime = stats.mtimeMs; // Align sync time to file's mtime
+        return cachedTrainerSongs;
+      }
+    }
+  } catch (err) {
+    console.error('[Trainer] Error reading cache file:', err.message);
+  }
+
+  // 3. Otherwise, perform scraping
+  console.log('[Trainer] Scraping trainer data from proseka-trainer.com...');
+  try {
+    const htmlRes = await fetch("https://proseka-trainer.com/", {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    if (!htmlRes.ok) throw new Error(`HTML fetch failed: ${htmlRes.status}`);
+    const html = await htmlRes.text();
+    
+    const scriptRegex = /<script[^>]*src="([^"]*static\/js\/main[^"]*)"/i;
+    const match = html.match(scriptRegex);
+    if (!match) throw new Error("No main script found in HTML");
+    
+    const scriptUrl = new URL(match[1], "https://proseka-trainer.com/").toString();
+    console.log("[Trainer] Fetching JS from:", scriptUrl);
+    
+    const jsRes = await fetch(scriptUrl);
+    if (!jsRes.ok) throw new Error(`JS fetch failed: ${jsRes.status}`);
+    const jsText = await jsRes.text();
+    
+    const target = "S=[{";
+    const startIndex = jsText.indexOf(target);
+    if (startIndex === -1) throw new Error("Could not find 'S=[{' in JS");
+    
+    const arrayStartIndex = startIndex + 2; // index of '['
+    
+    let bracketCount = 1;
+    let index = arrayStartIndex + 1;
+    let insideString = false;
+    let stringChar = null;
+    
+    while (bracketCount > 0 && index < jsText.length) {
+      const char = jsText[index];
+      if (insideString) {
+        if (char === stringChar && jsText[index - 1] !== '\\') {
+          insideString = false;
+          stringChar = null;
+        }
+      } else {
+        if (char === '"' || char === "'" || char === '`') {
+          insideString = true;
+          stringChar = char;
+        } else if (char === '[') {
+          bracketCount++;
+        } else if (char === ']') {
+          bracketCount--;
+        }
+      }
+      index++;
+    }
+    
+    const arrayString = jsText.substring(arrayStartIndex, index);
+    
+    const vm = require('vm');
+    const sandbox = {};
+    const context = vm.createContext(sandbox);
+    const parsedArray = vm.runInContext(arrayString, context);
+    
+    if (Array.isArray(parsedArray)) {
+      fs.writeFileSync(TRAINER_CACHE_PATH, JSON.stringify(parsedArray, null, 2), 'utf-8');
+      cachedTrainerSongs = parsedArray;
+      lastTrainerSyncTime = Date.now();
+      console.log(`[Trainer] Successfully crawled and cached ${parsedArray.length} songs from trainer.`);
+      return parsedArray;
+    } else {
+      throw new Error("Parsed data is not an array");
+    }
+  } catch (error) {
+    console.error("[Trainer] Scraping failed, fallback to cache if available:", error.message);
+    if (fs.existsSync(TRAINER_CACHE_PATH)) {
+      try {
+        const data = fs.readFileSync(TRAINER_CACHE_PATH, 'utf-8');
+        cachedTrainerSongs = JSON.parse(data);
+        lastTrainerSyncTime = Date.now(); // Postpone next attempt by 1 hour
+        return cachedTrainerSongs;
+      } catch (e) {
+        console.error('[Trainer] Fallback cache read failed:', e.message);
+      }
+    }
+    return cachedTrainerSongs || [];
+  }
+}
+
+function normalizeSongName(name) {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .replace(/[\s\-\_\,\.\!\?\'\"\`\’\“\”\：\:\；\;\~\(\)\[\]\※]/g, '')
+    .replace(/[\uFF01-\uFF5E]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0));
+}
+
+function findTrainerSong(song, trainerSongs) {
+  const titleJpNormal = normalizeSongName(song.title_jp);
+  const titleKoNormal = normalizeSongName(song.title_ko);
+  
+  let match = trainerSongs.find(ts => {
+    const tsNormal = normalizeSongName(ts.songName);
+    return tsNormal === titleJpNormal || tsNormal === titleKoNormal;
+  });
+  
+  if (match) return match;
+  
+  const titleHangulNormal = normalizeSongName(song.title_hangul);
+  match = trainerSongs.find(ts => {
+    const tsNormal = normalizeSongName(ts.songName);
+    return tsNormal === titleHangulNormal;
+  });
+  
+  return match || null;
+}
+
+app.get('/api/songs', async (req, res) => {
+  try {
+    const songs = dbSongs.read();
+    const trainerSongs = await fetchTrainerSongs();
+    
+    const mergedSongs = songs.map(song => {
+      const trainerSong = findTrainerSong(song, trainerSongs);
+      return {
+        ...song,
+        videoIds: trainerSong ? trainerSong.videoIds : null
+      };
+    });
+    
+    res.json(mergedSongs);
+  } catch (error) {
+    console.error('[Songs API] Error sending songs with trainer data:', error);
+    res.json(dbSongs.read());
+  }
+
   if (Date.now() - lastSyncTime > SYNC_INTERVAL) {
     syncSongsInternal(SONGS_API_URL).catch(err => {
       console.error('[Auto Sync] Background auto-sync failed:', err);
@@ -1355,5 +1514,10 @@ app.listen(PORT, () => {
   syncSongsInternal().catch(err => {
     console.error('[Startup] Initial song sync failed on startup (this is normal if offline):', err.message);
     prefetchJacketsBackground(dbSongs.read());
+  });
+
+  console.log('[Startup] Fetching trainer songs data...');
+  fetchTrainerSongs().catch(err => {
+    console.error('[Startup] Failed to fetch trainer songs data on startup:', err.message);
   });
 });

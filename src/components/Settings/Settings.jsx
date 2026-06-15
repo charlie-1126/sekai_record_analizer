@@ -19,6 +19,8 @@ export default function Settings({
     toggleRatingMode,
     showUnreleased,
     toggleShowUnreleased,
+    trainerSpeed,
+    setTrainerSpeed,
 }) {
     const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
@@ -132,6 +134,76 @@ export default function Settings({
                 </div>
             </div>
 
+            {/* Trainer Speed selection */}
+            <div
+                className="filter-group"
+                style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}
+            >
+                <label className="filter-label" style={{ fontWeight: 700 }}>
+                    채보 속도
+                </label>
+                <div style={{ display: "flex", gap: "1rem", marginTop: "0.25rem" }}>
+                    <label
+                        className={`checkbox-label ${trainerSpeed === "10.5" ? "active-played" : ""}`}
+                        style={{
+                            flex: 1,
+                            justifyContent: "center",
+                            padding: "0.75rem",
+                            cursor: "pointer",
+                        }}
+                    >
+                        <input
+                            type="radio"
+                            name="trainerSpeed"
+                            value="10.5"
+                            checked={trainerSpeed === "10.5"}
+                            onChange={() => {
+                                setTrainerSpeed("10.5");
+                                handleSaveSettings(
+                                    settingsNickname,
+                                    settingsTitleLang,
+                                    ratingMode,
+                                    showUnreleased,
+                                    "10.5",
+                                );
+                            }}
+                            style={{ marginRight: "0.5rem" }}
+                        />
+                        10.5
+                    </label>
+                    <label
+                        className={`checkbox-label ${trainerSpeed === "10.0" ? "active-ap" : ""}`}
+                        style={{
+                            flex: 1,
+                            justifyContent: "center",
+                            padding: "0.75rem",
+                            cursor: "pointer",
+                            borderColor: trainerSpeed === "10.0" ? "#c77dff" : "",
+                            background: trainerSpeed === "10.0" ? "rgba(199,125,255,0.08)" : "",
+                        }}
+                    >
+                        <input
+                            type="radio"
+                            name="trainerSpeed"
+                            value="10.0"
+                            checked={trainerSpeed === "10.0"}
+                            onChange={() => {
+                                setTrainerSpeed("10.0");
+                                handleSaveSettings(
+                                    settingsNickname,
+                                    settingsTitleLang,
+                                    ratingMode,
+                                    showUnreleased,
+                                    "10.0",
+                                );
+                            }}
+                            style={{ marginRight: "0.5rem" }}
+                        />
+                        10.0
+                    </label>
+                </div>
+            </div>
+
             <div style={{ margin: "1.5rem 0", borderTop: "1px solid var(--border-color)" }} />
 
             {!currentUser ? (
@@ -216,50 +288,6 @@ export default function Settings({
                                 한국어 번역제목 우선
                             </label>
                         </div>
-                    </div>
-
-                    {/* Song sync section */}
-                    <div
-                        className="filter-group"
-                        style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "0.5rem",
-                            marginTop: "0.5rem",
-                        }}
-                    >
-                        <label className="filter-label" style={{ fontWeight: 700 }}>
-                            곡 데이터 동기화
-                        </label>
-                        <button
-                            className="btn btn-secondary animate-glow"
-                            disabled={isLoadingSongs}
-                            onClick={async () => {
-                                setSettingsMessage("곡 정보 동기화 진행 중...");
-                                try {
-                                    const res = await fetch("/api/songs/sync");
-                                    const data = await res.json();
-                                    if (data.success) {
-                                        setSettingsMessage(data.message || "곡 정보 동기화 성공!");
-                                        // Refresh songs list
-                                        fetchSongsFromServer();
-                                    } else {
-                                        setSettingsMessage(`⚠ ${data.message || "동기화 실패"}`);
-                                    }
-                                } catch (err) {
-                                    setSettingsMessage("⚠ 서버 동기화 실패");
-                                }
-                            }}
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: "0.5rem",
-                                padding: "0.75rem",
-                            }}
-                        >
-                            곡 정보 동기화
-                        </button>
                     </div>
 
                     {/* Status message feedback */}

@@ -9,10 +9,34 @@ export default function JacketDetailsModal({
     setSelectedJacketSong,
     settingsTitleLang,
     handleScoreChange,
+    trainerSpeed = "10.5",
 }) {
     if (!selectedJacketSong) return null;
 
     const { song, diff, status } = selectedJacketSong;
+
+    const diffLower = diff.toLowerCase();
+    const isEasyOrNormal = diffLower === "easy" || diffLower === "normal";
+
+    let isTrainerAvailable = false;
+    let trainerUrl = "";
+    let trainerLabel = "트레이너";
+    let youtubeVideoId = "";
+
+    if (!isEasyOrNormal && song.videoIds && Array.isArray(song.videoIds)) {
+        const diffIndexMap = { hard: 0, expert: 1, master: 2, append: 3 };
+        let videoIndex = diffIndexMap[diffLower];
+        if (trainerSpeed === "10.0") {
+            videoIndex += 4;
+        }
+
+        const videoId = song.videoIds[videoIndex];
+        if (videoId && videoId.trim() !== "") {
+            isTrainerAvailable = true;
+            trainerUrl = `https://proseka-trainer.com/${videoId}`;
+            youtubeVideoId = videoId;
+        }
+    }
 
     return (
         <div className="modal-backdrop" onClick={() => setSelectedJacketSong(null)}>
@@ -175,20 +199,100 @@ export default function JacketDetailsModal({
                             );
                         })}
                     </div>
-                    <a
-                        href={`https://asset.rilaksekai.com/charts/${String(song.id).padStart(3, "0")}/${diff.toLowerCase()}.html`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-outline"
-                        style={{
-                            width: "100%",
-                            textDecoration: "none",
-                            boxSizing: "border-box",
-                            marginTop: "0.25rem",
-                        }}
-                    >
-                        <span>채보</span>
-                    </a>
+                    <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem" }}>
+                        <a
+                            href={`https://asset.rilaksekai.com/charts/${String(song.id).padStart(3, "0")}/${diff.toLowerCase()}.html`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-outline"
+                            style={{
+                                flex: 1,
+                                textDecoration: "none",
+                                boxSizing: "border-box",
+                                textAlign: "center",
+                                display: "inline-block",
+                            }}
+                        >
+                            <span>채보</span>
+                        </a>
+                        {isTrainerAvailable ? (
+                            <>
+                                <a
+                                    href={trainerUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-outline"
+                                    style={{
+                                        flex: 1,
+                                        textDecoration: "none",
+                                        boxSizing: "border-box",
+                                        textAlign: "center",
+                                        display: "inline-block",
+                                        borderColor: "var(--color-cyan)",
+                                        color: "var(--color-cyan)",
+                                        boxShadow: "0 0 10px rgba(56, 189, 248, 0.15)",
+                                        textOverflow: "ellipsis",
+                                        overflow: "hidden",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    <span>트레이너</span>
+                                </a>
+                                <a
+                                    href={`https://www.youtube.com/watch?v=${youtubeVideoId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-outline"
+                                    style={{
+                                        flex: 1,
+                                        textDecoration: "none",
+                                        boxSizing: "border-box",
+                                        textAlign: "center",
+                                        display: "inline-block",
+                                        borderColor: "#ff0000",
+                                        color: "#ff0000",
+                                        boxShadow: "0 0 10px rgba(255, 0, 0, 0.15)",
+                                        textOverflow: "ellipsis",
+                                        overflow: "hidden",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    <span>유튜브</span>
+                                </a>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    className="btn btn-outline"
+                                    disabled
+                                    style={{
+                                        flex: 1,
+                                        boxSizing: "border-box",
+                                        opacity: 0.4,
+                                        cursor: "not-allowed",
+                                        borderColor: "var(--border-color)",
+                                        color: "var(--text-muted)",
+                                    }}
+                                >
+                                    <span>트레이너</span>
+                                </button>
+                                <button
+                                    className="btn btn-outline"
+                                    disabled
+                                    style={{
+                                        flex: 1,
+                                        boxSizing: "border-box",
+                                        opacity: 0.4,
+                                        cursor: "not-allowed",
+                                        borderColor: "var(--border-color)",
+                                        color: "var(--text-muted)",
+                                    }}
+                                >
+                                    <span>유튜브</span>
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

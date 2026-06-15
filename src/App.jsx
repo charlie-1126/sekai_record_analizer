@@ -154,6 +154,9 @@ function App() {
     const [friendsList, setFriendsList] = useState([]);
     const [settingsNickname, setSettingsNickname] = useState("");
     const [settingsTitleLang, setSettingsTitleLang] = useState("jp");
+    const [trainerSpeed, setTrainerSpeed] = useState(() => {
+        return localStorage.getItem("pjsk_trainer_speed") || "10.5";
+    });
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [settingsMessage, setSettingsMessage] = useState("");
 
@@ -319,14 +322,20 @@ function App() {
     };
 
     // --- Profile & Settings Saver Handler ---
-    const handleSaveSettings = async (newNickname, newTitleLang, newRatingMode, newShowUnreleased) => {
+    const handleSaveSettings = async (newNickname, newTitleLang, newRatingMode, newShowUnreleased, newTrainerSpeed) => {
         const nicknameToSave = newNickname !== undefined ? newNickname : settingsNickname;
         const langToSave = newTitleLang !== undefined ? newTitleLang : settingsTitleLang;
         const ratingModeToSave = newRatingMode !== undefined ? newRatingMode : ratingMode;
         const showUnreleasedToSave = newShowUnreleased !== undefined ? newShowUnreleased : showUnreleased;
+        const trainerSpeedToSave = newTrainerSpeed !== undefined ? newTrainerSpeed : trainerSpeed;
+
+        if (newTrainerSpeed !== undefined) {
+            setTrainerSpeed(newTrainerSpeed);
+            localStorage.setItem("pjsk_trainer_speed", newTrainerSpeed);
+        }
 
         if (!currentUser) {
-            setSettingsMessage("⚠ 로그인 세션이 없습니다.");
+            // Local state updates are already done above
             return;
         }
 
@@ -343,6 +352,7 @@ function App() {
                 songTitleLang: langToSave,
                 ratingMode: ratingModeToSave,
                 showUnreleased: showUnreleasedToSave,
+                trainerSpeed: trainerSpeedToSave,
             };
             const res = await fetch("/api/user/settings", {
                 method: "POST",
@@ -512,6 +522,9 @@ function App() {
                             setSettingsTitleLang(data.user.settings?.songTitleLang || "jp");
                             setRatingMode(data.user.settings?.ratingMode || "b39");
                             setShowUnreleased(data.user.settings?.showUnreleased !== false);
+                            const speed = data.user.settings?.trainerSpeed || "10.5";
+                            setTrainerSpeed(speed);
+                            localStorage.setItem("pjsk_trainer_speed", speed);
                             fetchFriendsList(data.user.username);
                         } else {
                             // Invalid token
@@ -539,11 +552,15 @@ function App() {
             setSettingsTitleLang(currentUser.settings?.songTitleLang || "jp");
             setRatingMode(currentUser.settings?.ratingMode || "b39");
             setShowUnreleased(currentUser.settings?.showUnreleased !== false);
+            const speed = currentUser.settings?.trainerSpeed || "10.5";
+            setTrainerSpeed(speed);
+            localStorage.setItem("pjsk_trainer_speed", speed);
         } else {
             setRatingMode(localStorage.getItem("pjsk_rating_mode") || "b39");
             const savedUnreleased = localStorage.getItem("pjsk_show_unreleased");
             setShowUnreleased(savedUnreleased === null ? true : savedUnreleased === "true");
             setSettingsTitleLang("jp");
+            setTrainerSpeed(localStorage.getItem("pjsk_trainer_speed") || "10.5");
 
             const saved = localStorage.getItem("pjsk_user_scores");
             if (saved) {
@@ -1196,6 +1213,7 @@ function App() {
                 setSelectedJacketSong={setSelectedJacketSong}
                 settingsTitleLang={settingsTitleLang}
                 handleScoreChange={handleScoreChange}
+                trainerSpeed={trainerSpeed}
             />
 
             <AuthModal
@@ -1324,6 +1342,8 @@ function App() {
                         toggleRatingMode={toggleRatingMode}
                         showUnreleased={showUnreleased}
                         toggleShowUnreleased={toggleShowUnreleased}
+                        trainerSpeed={trainerSpeed}
+                        setTrainerSpeed={setTrainerSpeed}
                     />
                 )}
 
