@@ -248,6 +248,7 @@ app.post('/api/auth/login', async (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     await dbQuery.run('UPDATE users SET token = ? WHERE LOWER(username) = LOWER(?)', [token, username]);
 
+    const updatedHistory = await updateUserRatingHistoryIfNeeded(user.username, user);
     res.json({
       message: '로그인 성공!',
       token,
@@ -256,7 +257,7 @@ app.post('/api/auth/login', async (req, res) => {
         nickname: user.nickname,
         friends: JSON.parse(user.friends || '[]'),
         settings: JSON.parse(user.settings || '{"songTitleLang": "jp"}'),
-        rating_history: JSON.parse(user.rating_history || '{}'),
+        rating_history: updatedHistory || JSON.parse(user.rating_history || '{}'),
         scores: JSON.parse(user.scores || '[]')
       }
     });
@@ -285,13 +286,14 @@ app.get('/api/auth/me', async (req, res) => {
       return res.status(401).json({ error: '유효하지 않거나 만료된 토큰입니다.' });
     }
 
+    const updatedHistory = await updateUserRatingHistoryIfNeeded(user.username, user);
     res.json({
       user: {
         username: user.username,
         nickname: user.nickname,
         friends: JSON.parse(user.friends || '[]'),
         settings: JSON.parse(user.settings || '{"songTitleLang": "jp"}'),
-        rating_history: JSON.parse(user.rating_history || '{}'),
+        rating_history: updatedHistory || JSON.parse(user.rating_history || '{}'),
         scores: JSON.parse(user.scores || '[]')
       }
     });
@@ -570,6 +572,9 @@ function processAndSaveSongs(songsArray, releaseDates = {}) {
   dbSongs.write(updatedList);
   lastSyncTime = Date.now();
   prefetchJacketsBackground(updatedList);
+  syncAllUsersRatingHistory().catch(err => {
+    console.error('[Auto Sync] Failed to run syncAllUsersRatingHistory in background:', err);
+  });
 
   return { success: true, addedCount, updatedCount, totalCount: updatedList.length };
 }
@@ -678,11 +683,12 @@ app.get('/api/scores/user/:username', async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: '해당 유저를 찾을 수 없습니다.' });
     }
+    const updatedHistory = await updateUserRatingHistoryIfNeeded(user.username, user);
     res.json({
       username: user.username,
       nickname: user.nickname,
       scores: JSON.parse(user.scores || '[]'),
-      rating_history: JSON.parse(user.rating_history || '{}')
+      rating_history: updatedHistory || JSON.parse(user.rating_history || '{}')
     });
   } catch (err) {
     console.error(err);
@@ -1128,6 +1134,111 @@ function calculateRatingsOnServer(scoresArray, songsMap) {
     potential
   };
 }
+
+async function updateUserRatingHistoryIfNeeded(username, userRecord = null, songsMap = null) {
+  try {
+    let user = userRecord;
+    if (!user) {
+      user = await dbQuery.get('SELECT username, scores, rating_history FROM users WHERE LOWER(username) = LOWER(?)', [username]);
+    }
+    if (!user) return null;
+
+    const scoresArray = JSON.parse(user.scores || '[]');
+    const ratingHistory = JSON.parse(user.rating_history || '{}');
+
+    if (!songsMap) {
+      const songsList = dbSongs.read();
+      songsMap = new Map(songsList.map(s => [String(s.id), s]));
+    }
+
+    const computed = calculateRatingsOnServer(scoresArray, songsMap);
+    const newNormal = computed.normal;
+    const newAppend = computed.append;
+    const newPotential = Math.floor(computed.potential * 10000) / 10000;
+
+    const sortedDates = Object.keys(ratingHistory).sort();
+    let lastNormal = 0;
+    let lastAppend = 0;
+    let lastPotential = 0;
+
+    if (sortedDates.length > 0) {
+      const lastEntry = ratingHistory[sortedDates[sortedDates.length - 1]];
+      if (typeof lastEntry === 'object' && lastEntry !== null) {
+        lastNormal = lastEntry.normal || 0;
+        lastAppend = lastEntry.append || 0;
+        lastPotential = lastEntry.potential || 0;
+      } else if (typeof lastEntry === 'number') {
+        lastNormal = lastEntry;
+      }
+    }
+
+    const today = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' });
+    const todayStr = formatter.format(today);
+
+    let needsUpdate = false;
+
+    if (ratingHistory[todayStr]) {
+      const todayEntry = ratingHistory[todayStr];
+      const todayNormal = typeof todayEntry === 'object' ? (todayEntry.normal || 0) : todayEntry;
+      const todayAppend = typeof todayEntry === 'object' ? (todayEntry.append || 0) : 0;
+      const todayPotential = typeof todayEntry === 'object' ? (todayEntry.potential || 0) : 0;
+
+      if (newNormal !== todayNormal || newAppend !== todayAppend || newPotential !== todayPotential) {
+        needsUpdate = true;
+      }
+    } else {
+      if (sortedDates.length === 0) {
+        if (newNormal > 0 || newAppend > 0 || newPotential > 0) {
+          needsUpdate = true;
+        }
+      } else if (newNormal !== lastNormal || newAppend !== lastAppend || newPotential !== lastPotential) {
+        needsUpdate = true;
+      }
+    }
+
+    if (needsUpdate) {
+      ratingHistory[todayStr] = {
+        normal: newNormal,
+        append: newAppend,
+        potential: newPotential
+      };
+
+      await dbQuery.run(
+        'UPDATE users SET rating_history = ? WHERE LOWER(username) = LOWER(?)',
+        [JSON.stringify(ratingHistory), username]
+      );
+      console.log(`[Auto Update History] Updated rating history for ${username} on ${todayStr} (Normal: ${newNormal}, Append: ${newAppend}, Potential: ${newPotential})`);
+    }
+
+    return ratingHistory;
+  } catch (e) {
+    console.error(`Error updating rating history for ${username}:`, e);
+    return null;
+  }
+}
+
+async function syncAllUsersRatingHistory() {
+  console.log('[Auto Update History] Starting global ratings sync for all users...');
+  try {
+    const songsList = dbSongs.read();
+    const songsMap = new Map(songsList.map(s => [String(s.id), s]));
+
+    const users = await dbQuery.all("SELECT username, scores, rating_history FROM users WHERE LOWER(username) != 'admin'");
+    let updatedCount = 0;
+
+    for (const user of users) {
+      const updated = await updateUserRatingHistoryIfNeeded(user.username, user, songsMap);
+      if (updated) {
+        updatedCount++;
+      }
+    }
+    console.log(`[Auto Update History] Global ratings sync finished. Processed ${users.length} users.`);
+  } catch (e) {
+    console.error('[Auto Update History] Error in global ratings sync:', e);
+  }
+}
+
 
 // 7. Global Rankings API
 app.get('/api/rankings', async (req, res) => {

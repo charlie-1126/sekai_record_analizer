@@ -152,8 +152,8 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
                 }}
             >
                 {mode === "potential"
-                    ? "📈 등록된 Potential 히스토리가 없습니다. 기록 저장 시 그래프가 생성됩니다."
-                    : "📈 등록된 레이팅 히스토리가 없습니다. 기록 저장 시 그래프가 생성됩니다."}
+                    ? "등록된 Potential 히스토리가 없습니다. 기록 저장 시 그래프가 생성됩니다."
+                    : "등록된 레이팅 히스토리가 없습니다. 기록 저장 시 그래프가 생성됩니다."}
             </div>
         );
     }
@@ -477,10 +477,7 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
             {renderGraphControls()}
 
             <div className="chart-scroll-container trend-chart-container" style={{ position: "relative" }}>
-                <svg
-                    viewBox={`0 0 ${width} ${height}`}
-                    style={{ width: "100%", height: "auto", overflow: "visible" }}
-                >
+                <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", overflow: "visible" }}>
                     <defs>
                         <linearGradient id="totalLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                             <stop offset="0%" stopColor="#fbbf24" />
@@ -621,7 +618,7 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
                                 <path
                                     d={linePathPotential}
                                     fill="none"
-                                    stroke="url(#potentialLineGrad)"
+                                    stroke="#c77dff"
                                     strokeWidth="3"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -635,7 +632,7 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
                                 <path
                                     d={linePathAppend}
                                     fill="none"
-                                    stroke="url(#appendLineGrad)"
+                                    stroke="#f472b6"
                                     strokeWidth="2"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -645,7 +642,7 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
                                 <path
                                     d={linePathNormal}
                                     fill="none"
-                                    stroke="url(#normalLineGrad)"
+                                    stroke="#22d3ee"
                                     strokeWidth="2"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -655,7 +652,7 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
                                 <path
                                     d={linePathTotal}
                                     fill="none"
-                                    stroke="url(#totalLineGrad)"
+                                    stroke="#fbbf24"
                                     strokeWidth="3"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -781,13 +778,14 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
                             tooltipTransformX = "-100%";
                         }
 
-                        const activeY = mode === "potential"
-                            ? hoveredPoint.yPotential
-                            : (showTotalLine
-                                ? hoveredPoint.yTotal
-                                : showNormalLine
-                                  ? hoveredPoint.yNormal
-                                  : hoveredPoint.yAppend);
+                        const activeY =
+                            mode === "potential"
+                                ? hoveredPoint.yPotential
+                                : showTotalLine
+                                  ? hoveredPoint.yTotal
+                                  : showNormalLine
+                                    ? hoveredPoint.yNormal
+                                    : hoveredPoint.yAppend;
                         const yPercent = (activeY / height) * 100;
                         const isUpperHalf = yPercent < 50;
 
@@ -849,12 +847,16 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
                                                 </div>
                                             )}
                                             {showNormalLine && (
-                                                <div style={{ fontSize: "0.7rem", color: "#22d3ee", fontWeight: "700" }}>
+                                                <div
+                                                    style={{ fontSize: "0.7rem", color: "#22d3ee", fontWeight: "700" }}
+                                                >
                                                     Player R: {Math.round(hoveredPoint.normal)}
                                                 </div>
                                             )}
                                             {showAppendLine && (
-                                                <div style={{ fontSize: "0.7rem", color: "#f472b6", fontWeight: "700" }}>
+                                                <div
+                                                    style={{ fontSize: "0.7rem", color: "#f472b6", fontWeight: "700" }}
+                                                >
                                                     Append R: {Math.round(hoveredPoint.append)}
                                                 </div>
                                             )}
