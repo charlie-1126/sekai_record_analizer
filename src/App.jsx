@@ -107,12 +107,35 @@ function App() {
         return localStorage.getItem("pjsk_rating_mode") || "b39";
     });
     const toggleRatingMode = () => {
-        setRatingMode((prev) => {
-            const next = prev === "b39" ? "potential" : "b39";
-            localStorage.setItem("pjsk_rating_mode", next);
-            return next;
-        });
+        const next = ratingMode === "b39" ? "potential" : "b39";
+        setRatingMode(next);
+        localStorage.setItem("pjsk_rating_mode", next);
+        if (currentUser) {
+            handleSaveSettings(undefined, undefined, next, undefined);
+        }
     };
+
+    // --- Unreleased Songs Visibility State ---
+    const [showUnreleased, setShowUnreleased] = useState(() => {
+        const saved = localStorage.getItem("pjsk_show_unreleased");
+        return saved === null ? true : saved === "true";
+    });
+    const toggleShowUnreleased = (value) => {
+        setShowUnreleased(value);
+        localStorage.setItem("pjsk_show_unreleased", String(value));
+        if (currentUser) {
+            handleSaveSettings(undefined, undefined, undefined, value);
+        }
+    };
+
+    // --- Filtered songs to exclude unreleased songs if setting is true ---
+    const visibleSongs = useMemo(() => {
+        if (showUnreleased) return songs;
+        return songs.filter((song) => {
+            if (!song.publishedAt) return true;
+            return Number(song.publishedAt) <= Date.now();
+        });
+    }, [songs, showUnreleased]);
 
     // --- Jacket Click Popup State ---
     const [selectedJacketSong, setSelectedJacketSong] = useState(null);
@@ -296,9 +319,11 @@ function App() {
     };
 
     // --- Profile & Settings Saver Handler ---
-    const handleSaveSettings = async (newNickname, newTitleLang) => {
+    const handleSaveSettings = async (newNickname, newTitleLang, newRatingMode, newShowUnreleased) => {
         const nicknameToSave = newNickname !== undefined ? newNickname : settingsNickname;
         const langToSave = newTitleLang !== undefined ? newTitleLang : settingsTitleLang;
+        const ratingModeToSave = newRatingMode !== undefined ? newRatingMode : ratingMode;
+        const showUnreleasedToSave = newShowUnreleased !== undefined ? newShowUnreleased : showUnreleased;
 
         if (!currentUser) {
             setSettingsMessage("⚠ 로그인 세션이 없습니다.");
@@ -316,6 +341,8 @@ function App() {
         try {
             const settingsObj = {
                 songTitleLang: langToSave,
+                ratingMode: ratingModeToSave,
+                showUnreleased: showUnreleasedToSave,
             };
             const res = await fetch("/api/user/settings", {
                 method: "POST",
@@ -483,6 +510,8 @@ function App() {
                             localStorage.setItem("pjsk_user_scores", JSON.stringify(data.user.scores || []));
                             setSettingsNickname(data.user.nickname);
                             setSettingsTitleLang(data.user.settings?.songTitleLang || "jp");
+                            setRatingMode(data.user.settings?.ratingMode || "b39");
+                            setShowUnreleased(data.user.settings?.showUnreleased !== false);
                             fetchFriendsList(data.user.username);
                         } else {
                             // Invalid token
@@ -508,7 +537,14 @@ function App() {
             fetchFriendsList(currentUser.username);
             setSettingsNickname(currentUser.nickname);
             setSettingsTitleLang(currentUser.settings?.songTitleLang || "jp");
+            setRatingMode(currentUser.settings?.ratingMode || "b39");
+            setShowUnreleased(currentUser.settings?.showUnreleased !== false);
         } else {
+            setRatingMode(localStorage.getItem("pjsk_rating_mode") || "b39");
+            const savedUnreleased = localStorage.getItem("pjsk_show_unreleased");
+            setShowUnreleased(savedUnreleased === null ? true : savedUnreleased === "true");
+            setSettingsTitleLang("jp");
+
             const saved = localStorage.getItem("pjsk_user_scores");
             if (saved) {
                 try {
@@ -1212,7 +1248,7 @@ function App() {
 
                 {activeTab === "records" && (
                     <Records
-                        songs={songs}
+                        songs={visibleSongs}
                         scores={scores}
                         updateScores={updateScores}
                         settingsTitleLang={settingsTitleLang}
@@ -1222,7 +1258,7 @@ function App() {
 
                 {activeTab === "constants" && (
                     <Constants
-                        songs={songs}
+                        songs={visibleSongs}
                         scores={scores}
                         onJacketClick={handleJacketClick}
                         settingsTitleLang={settingsTitleLang}
@@ -1232,7 +1268,7 @@ function App() {
 
                 {activeTab === "tour" && (
                     <Tour
-                        songs={songs}
+                        songs={visibleSongs}
                         scores={scores}
                         onJacketClick={handleJacketClick}
                         settingsTitleLang={settingsTitleLang}
@@ -1242,7 +1278,7 @@ function App() {
 
                 {activeTab === "calculator" && (
                     <CalculatorTab
-                        songs={songs}
+                        songs={visibleSongs}
                         playerRating={playerRating}
                         playerAppendRating={playerAppendRating}
                         b39List={b39List}
@@ -1260,7 +1296,7 @@ function App() {
                     <Compare
                         currentUser={currentUser}
                         scores={scores}
-                        songs={songs}
+                        songs={visibleSongs}
                         friendsList={friendsList}
                         fetchFriendsList={fetchFriendsList}
                         settingsTitleLang={settingsTitleLang}
@@ -1284,13 +1320,15 @@ function App() {
                         handleLogout={handleLogout}
                         ratingMode={ratingMode}
                         toggleRatingMode={toggleRatingMode}
+                        showUnreleased={showUnreleased}
+                        toggleShowUnreleased={toggleShowUnreleased}
                     />
                 )}
 
                 {activeTab === "admin" && <Admin currentUser={currentUser} />}
 
                 {activeTab === "distributions" && (
-                    <Distributions songs={songs} userScoresMap={userScoresMap} ratingMode={ratingMode} />
+                    <Distributions songs={visibleSongs} userScoresMap={userScoresMap} ratingMode={ratingMode} />
                 )}
             </main>
         </div>

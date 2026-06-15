@@ -17,6 +17,8 @@ export default function Settings({
     handleLogout,
     ratingMode,
     toggleRatingMode,
+    showUnreleased,
+    toggleShowUnreleased,
 }) {
     const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
@@ -78,6 +80,58 @@ export default function Settings({
                 </div>
             </div>
 
+            {/* Unreleased Songs display selection */}
+            <div
+                className="filter-group"
+                style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}
+            >
+                <label className="filter-label" style={{ fontWeight: 700 }}>
+                    출시 예정곡
+                </label>
+                <div style={{ display: "flex", gap: "1rem", marginTop: "0.25rem" }}>
+                    <label
+                        className={`checkbox-label ${showUnreleased ? "active-ap" : ""}`}
+                        style={{
+                            flex: 1,
+                            justifyContent: "center",
+                            padding: "0.75rem",
+                            cursor: "pointer",
+                            borderColor: showUnreleased ? "var(--color-cyan)" : "",
+                            background: showUnreleased ? "rgba(56, 189, 248, 0.08)" : "",
+                        }}
+                    >
+                        <input
+                            type="radio"
+                            name="showUnreleased"
+                            value="show"
+                            checked={showUnreleased === true}
+                            onChange={() => toggleShowUnreleased(true)}
+                            style={{ marginRight: "0.5rem" }}
+                        />
+                        표시
+                    </label>
+                    <label
+                        className={`checkbox-label ${!showUnreleased ? "active-played" : ""}`}
+                        style={{
+                            flex: 1,
+                            justifyContent: "center",
+                            padding: "0.75rem",
+                            cursor: "pointer",
+                        }}
+                    >
+                        <input
+                            type="radio"
+                            name="showUnreleased"
+                            value="hide"
+                            checked={showUnreleased === false}
+                            onChange={() => toggleShowUnreleased(false)}
+                            style={{ marginRight: "0.5rem" }}
+                        />
+                        숨김
+                    </label>
+                </div>
+            </div>
+
             <div style={{ margin: "1.5rem 0", borderTop: "1px solid var(--border-color)" }} />
 
             {!currentUser ? (
@@ -94,7 +148,7 @@ export default function Settings({
                     {/* Nickname modification */}
                     <div className="filter-group" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                         <label className="filter-label" style={{ fontWeight: 700 }}>
-                            대시보드 닉네임 변경
+                            닉네임
                         </label>
                         <input
                             type="text"

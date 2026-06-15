@@ -79,7 +79,8 @@ export default function JacketDetailsModal({
                             레벨: <strong>{song.levels[diff] || "-"}</strong>
                         </div>
                         <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                            상수: <strong>{getConstant(song, diff, status).toFixed(1)}</strong>
+                            상수: <strong>{getConstant(song, diff, "full_combo").toFixed(1)}</strong>(FC) /{" "}
+                            <strong>{getConstant(song, diff, "full_perfect").toFixed(1)}</strong>(AP)
                         </div>
                         {/* 출시일 정보 */}
                         {song.publishedAt && (
@@ -115,9 +116,6 @@ export default function JacketDetailsModal({
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                    <label className="filter-label" style={{ fontWeight: "700" }}>
-                        성과 설정
-                    </label>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem" }}>
                         {[
                             {
