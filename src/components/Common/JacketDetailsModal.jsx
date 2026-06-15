@@ -1,6 +1,6 @@
 import React from "react";
 import { JacketImage } from "./JacketImage";
-import { getSongTitle, getConstant } from "../../utils/ratingUtils";
+import { getSongTitle, getConstant, hasExplicitConstant } from "../../utils/ratingUtils";
 import { isNewSong, formatPublishedDate } from "../../utils/potentialUtils";
 import { ExternalLink } from "lucide-react";
 
@@ -104,8 +104,8 @@ export default function JacketDetailsModal({
                             레벨: <strong>{song.levels[diff] || "-"}</strong>
                         </div>
                         <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                            상수: <strong>{getConstant(song, diff, "full_combo").toFixed(1)}</strong>(FC) /{" "}
-                            <strong>{getConstant(song, diff, "full_perfect").toFixed(1)}</strong>(AP)
+                            상수: <strong>{getConstant(song, diff, "full_combo").toFixed(1)}{!hasExplicitConstant(song, diff, "full_combo") && "?"}</strong>(FC) /{" "}
+                            <strong>{getConstant(song, diff, "full_perfect").toFixed(1)}{!hasExplicitConstant(song, diff, "full_perfect") && "?"}</strong>(AP)
                         </div>
                         {/* 출시일 정보 */}
                         {song.publishedAt && (
