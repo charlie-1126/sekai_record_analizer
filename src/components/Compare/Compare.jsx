@@ -4,6 +4,7 @@ import { Users, Search, Plus, TrendingUp, XCircle, Sparkles, Filter } from "luci
 import { JacketImage } from "../Common/JacketImage";
 import { calculateRating, getConstant, getRelativePercentages } from "../../utils/ratingUtils";
 import { isNewSong, computePotentialRating, calculateSongPotential } from "../../utils/potentialUtils";
+import { useSessionState } from "../../utils/useSessionState";
 
 export const Compare = ({
     currentUser,
@@ -22,16 +23,16 @@ export const Compare = ({
     const [friendAddSuccess, setFriendAddSuccess] = useState("");
 
     // --- Compare States ---
-    const [compareIncludeClear, setCompareIncludeClear] = useState(true);
-    const [compareTargetId, setCompareTargetId] = useState("");
+    const [compareIncludeClear, setCompareIncludeClear] = useSessionState("pjsk_compare_include_clear", true);
+    const [compareTargetId, setCompareTargetId] = useSessionState("pjsk_compare_target_id", "");
     const [compareData, setCompareData] = useState(null);
     const [compareError, setCompareError] = useState("");
     const [isComparing, setIsComparing] = useState(false);
-    const [compareRatingType, setCompareRatingType] = useState("player"); // "player", "append", "total"
-    const [compareSearchInput, setCompareSearchInput] = useState("");
-    const [compareSearch, setCompareSearch] = useState("");
+    const [compareRatingType, setCompareRatingType] = useSessionState("pjsk_compare_rating_type", "player"); // "player", "append", "total"
+    const [compareSearchInput, setCompareSearchInput] = useSessionState("pjsk_compare_search_input", "");
+    const [compareSearch, setCompareSearch] = useSessionState("pjsk_compare_search", "");
     const [compareVisibleCount, setCompareVisibleCount] = useState(50);
-    const [compareDiffFilters, setCompareDiffFilters] = useState([
+    const [compareDiffFilters, setCompareDiffFilters] = useSessionState("pjsk_compare_diff_filters", [
         "easy",
         "normal",
         "hard",
@@ -39,13 +40,21 @@ export const Compare = ({
         "master",
         "append",
     ]);
-    const [compareResultFilter, setCompareResultFilter] = useState("all"); // "all", "win", "lose", "draw"
-    const [compareMinLevel, setCompareMinLevel] = useState("");
-    const [compareMaxLevel, setCompareMaxLevel] = useState("");
-    const [compareSortBy, setCompareSortBy] = useState("level"); // "level", "gap", "title", "ratingA", "ratingB"
-    const [compareSortOrder, setCompareSortOrder] = useState("desc"); // "asc", "desc"
-    const [compareNewFilter, setCompareNewFilter] = useState("all"); // "all", "new", "old"
-    const [isCompareFilterExpanded, setIsCompareFilterExpanded] = useState(true);
+    const [compareResultFilter, setCompareResultFilter] = useSessionState("pjsk_compare_result_filter", "all"); // "all", "win", "lose", "draw"
+    const [compareMinLevel, setCompareMinLevel] = useSessionState("pjsk_compare_min_level", "");
+    const [compareMaxLevel, setCompareMaxLevel] = useSessionState("pjsk_compare_max_level", "");
+    const [compareSortBy, setCompareSortBy] = useSessionState("pjsk_compare_sort_by", "level"); // "level", "gap", "title", "ratingA", "ratingB"
+    const [compareSortOrder, setCompareSortOrder] = useSessionState("pjsk_compare_sort_order", "desc"); // "asc", "desc"
+    const [compareNewFilter, setCompareNewFilter] = useSessionState("pjsk_compare_new_filter", "all"); // "all", "new", "old"
+    const [isCompareFilterExpanded, setIsCompareFilterExpanded] = useSessionState("pjsk_compare_filter_expanded", true);
+
+    const hasAutoCompared = useRef(false);
+    useEffect(() => {
+        if (compareTargetId && compareTargetId.trim() && scores && scores.length > 0 && !hasAutoCompared.current) {
+            hasAutoCompared.current = true;
+            handleCompareSearch(null, compareTargetId);
+        }
+    }, [scores, compareTargetId]);
 
     // --- Debounce Search Term ---
     useEffect(() => {
@@ -1349,6 +1358,14 @@ export const Compare = ({
                                             {["easy", "normal", "hard", "expert", "master", "append"].map(
                                                 (d) => {
                                                     const isActive = compareDiffFilters.includes(d);
+                                                    const diffColors = {
+                                                        easy: { color: "var(--color-easy)", bg: "rgba(16, 185, 129, 0.08)" },
+                                                        normal: { color: "var(--color-normal)", bg: "rgba(59, 130, 246, 0.08)" },
+                                                        hard: { color: "var(--color-hard)", bg: "rgba(245, 158, 11, 0.08)" },
+                                                        expert: { color: "var(--color-expert)", bg: "rgba(239, 68, 68, 0.08)" },
+                                                        master: { color: "var(--color-master)", bg: "rgba(139, 92, 246, 0.08)" },
+                                                        append: { color: "var(--color-append)", bg: "rgba(255, 105, 180, 0.08)" },
+                                                    };
                                                     return (
                                                         <button
                                                             key={d}
@@ -1359,11 +1376,14 @@ export const Compare = ({
                                                                 fontSize: "0.72rem",
                                                                 borderRadius: "6px",
                                                                 borderColor: isActive
-                                                                    ? "var(--color-cyan)"
+                                                                    ? diffColors[d].color
                                                                     : "var(--border-color)",
                                                                 color: isActive
-                                                                    ? "var(--color-cyan)"
+                                                                    ? diffColors[d].color
                                                                     : "var(--text-secondary)",
+                                                                backgroundColor: isActive
+                                                                    ? diffColors[d].bg
+                                                                    : "transparent",
                                                             }}
                                                             onClick={() => {
                                                                 if (isActive) {

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Award, TrendingUp } from "lucide-react";
 import { JacketImage } from "../Common/JacketImage";
 import { RatingGraph } from "./RatingGraph";
+import { useSessionState } from "../../utils/useSessionState";
 
 export const Dashboard = ({
     effectiveUser,
@@ -17,7 +18,7 @@ export const Dashboard = ({
     settingsTitleLang,
 }) => {
     const navigate = useNavigate();
-    const [dashboardSubTab, setDashboardSubTab] = useState("b39"); // b39 or b15
+    const [dashboardSubTab, setDashboardSubTab] = useSessionState("pjsk_dashboard_sub_tab", "b39"); // b39 or b15
 
     const getSongTitle = (song) => {
         if (!song) return "";

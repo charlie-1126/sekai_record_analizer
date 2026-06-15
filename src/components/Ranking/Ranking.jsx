@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Trophy, Search } from "lucide-react";
+import { useSessionState } from "../../utils/useSessionState";
 
 export const Ranking = ({
     currentUser,
@@ -17,9 +18,9 @@ export const Ranking = ({
     // --- State ---
     const [rankings, setRankings] = useState([]);
     const [isRankingsLoading, setIsRankingsLoading] = useState(false);
-    const [rankingsSearch, setRankingsSearch] = useState("");
-    const [rankingsSortBy, setRankingsSortBy] = useState(ratingMode === "potential" ? "potential" : "total"); // total, normal, append, ap, fc, potential
-    const [rankingsSortOrder, setRankingsSortOrder] = useState("desc");
+    const [rankingsSearch, setRankingsSearch] = useSessionState("pjsk_rankings_search", "");
+    const [rankingsSortBy, setRankingsSortBy] = useSessionState("pjsk_rankings_sort_by", ratingMode === "potential" ? "potential" : "total"); // total, normal, append, ap, fc, potential
+    const [rankingsSortOrder, setRankingsSortOrder] = useSessionState("pjsk_rankings_sort_order", "desc");
 
     // --- Fetch Rankings ---
     useEffect(() => {

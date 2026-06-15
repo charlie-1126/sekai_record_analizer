@@ -3,14 +3,15 @@ import { ClipboardList, Filter, Search } from "lucide-react";
 import { JacketImage } from "../Common/JacketImage";
 import { calculateRating, getConstant, hasExplicitConstant } from "../../utils/ratingUtils";
 import { isNewSong, calculateSongPotential } from "../../utils/potentialUtils";
+import { useSessionState } from "../../utils/useSessionState";
 
 export const Records = ({ songs, scores, updateScores, settingsTitleLang, ratingMode = "b39" }) => {
     // --- States ---
-    const [isRecordFilterExpanded, setIsRecordFilterExpanded] = useState(true);
-    const [recordSearchInput, setRecordSearchInput] = useState("");
-    const [recordSearch, setRecordSearch] = useState("");
+    const [isRecordFilterExpanded, setIsRecordFilterExpanded] = useSessionState("pjsk_record_filter_expanded", true);
+    const [recordSearchInput, setRecordSearchInput] = useSessionState("pjsk_record_search_input", "");
+    const [recordSearch, setRecordSearch] = useSessionState("pjsk_record_search", "");
     const [recordVisibleCount, setRecordVisibleCount] = useState(50);
-    const [recordDiffFilters, setRecordDiffFilters] = useState([
+    const [recordDiffFilters, setRecordDiffFilters] = useSessionState("pjsk_record_diff_filters", [
         "easy",
         "normal",
         "hard",
@@ -18,16 +19,16 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
         "master",
         "append",
     ]);
-    const [recordPlayFilters, setRecordPlayFilters] = useState(["unplayed", "played", "fc", "ap"]);
-    const [recordMinFcConstInput, setRecordMinFcConstInput] = useState("");
-    const [recordMaxFcConstInput, setRecordMaxFcConstInput] = useState("");
-    const [recordMinApConstInput, setRecordMinApConstInput] = useState("");
-    const [recordMaxApConstInput, setRecordMaxApConstInput] = useState("");
-    const [recordMinLevel, setRecordMinLevel] = useState("");
-    const [recordMaxLevel, setRecordMaxLevel] = useState("");
-    const [recordSortBy, setRecordSortBy] = useState("level"); // title, status, level, constant
-    const [recordSortOrder, setRecordSortOrder] = useState("desc"); // asc, desc
-    const [recordNewFilter, setRecordNewFilter] = useState("all"); // "all", "new", "old"
+    const [recordPlayFilters, setRecordPlayFilters] = useSessionState("pjsk_record_play_filters", ["unplayed", "played", "fc", "ap"]);
+    const [recordMinFcConstInput, setRecordMinFcConstInput] = useSessionState("pjsk_record_min_fc_const_input", "");
+    const [recordMaxFcConstInput, setRecordMaxFcConstInput] = useSessionState("pjsk_record_max_fc_const_input", "");
+    const [recordMinApConstInput, setRecordMinApConstInput] = useSessionState("pjsk_record_min_ap_const_input", "");
+    const [recordMaxApConstInput, setRecordMaxApConstInput] = useSessionState("pjsk_record_max_ap_const_input", "");
+    const [recordMinLevel, setRecordMinLevel] = useSessionState("pjsk_record_min_level", "");
+    const [recordMaxLevel, setRecordMaxLevel] = useSessionState("pjsk_record_max_level", "");
+    const [recordSortBy, setRecordSortBy] = useSessionState("pjsk_record_sort_by", "level"); // title, status, level, constant
+    const [recordSortOrder, setRecordSortOrder] = useSessionState("pjsk_record_sort_order", "desc"); // asc, desc
+    const [recordNewFilter, setRecordNewFilter] = useSessionState("pjsk_record_new_filter", "all"); // "all", "new", "old"
 
     // --- Debounce Search Term ---
     useEffect(() => {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { Target, XCircle, CheckCircle2 } from "lucide-react";
 import { JacketImage } from "../Common/JacketImage";
 import { isNewSong } from "../../utils/potentialUtils";
+import { useSessionState } from "../../utils/useSessionState";
 
 export const Tour = ({
     songs,
@@ -10,14 +11,14 @@ export const Tour = ({
     settingsTitleLang,
 }) => {
     // --- States ---
-    const [tourDiffs, setTourDiffs] = useState(["master"]);
-    const [tourMinLevel, setTourMinLevel] = useState(30);
-    const [tourMaxLevel, setTourMaxLevel] = useState(30);
-    const [tourGoal, setTourGoal] = useState("fc");
-    const [tourNewFilter, setTourNewFilter] = useState("all"); // "all", "new", "old"
+    const [tourDiffs, setTourDiffs] = useSessionState("pjsk_tour_diffs", ["master"]);
+    const [tourMinLevel, setTourMinLevel] = useSessionState("pjsk_tour_min_level", 30);
+    const [tourMaxLevel, setTourMaxLevel] = useSessionState("pjsk_tour_max_level", 30);
+    const [tourGoal, setTourGoal] = useSessionState("pjsk_tour_goal", "fc");
+    const [tourNewFilter, setTourNewFilter] = useSessionState("pjsk_tour_new_filter", "all"); // "all", "new", "old"
     const [tourRemainingVisibleCount, setTourRemainingVisibleCount] = useState(30);
     const [tourCompletedVisibleCount, setTourCompletedVisibleCount] = useState(30);
-    const [isTourFilterExpanded, setIsTourFilterExpanded] = useState(true);
+    const [isTourFilterExpanded, setIsTourFilterExpanded] = useSessionState("pjsk_tour_filter_expanded", true);
 
     // --- Infinite scroll observers ---
     const tourRemainingObserver = useRef(null);

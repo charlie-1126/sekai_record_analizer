@@ -3,6 +3,7 @@ import { Layers, Filter, Search } from "lucide-react";
 import { JacketImage } from "../Common/JacketImage";
 import { getConstant, hasExplicitConstant } from "../../utils/ratingUtils";
 import { isNewSong } from "../../utils/potentialUtils";
+import { useSessionState } from "../../utils/useSessionState";
 
 export const Constants = ({
     songs,
@@ -14,18 +15,18 @@ export const Constants = ({
     potentialData = null,
 }) => {
     // --- States ---
-    const [isConstFilterExpanded, setIsConstFilterExpanded] = useState(true);
-    const [constSearchInput, setConstSearchInput] = useState("");
-    const [constSearch, setConstSearch] = useState("");
+    const [isConstFilterExpanded, setIsConstFilterExpanded] = useSessionState("pjsk_const_filter_expanded", true);
+    const [constSearchInput, setConstSearchInput] = useSessionState("pjsk_const_search_input", "");
+    const [constSearch, setConstSearch] = useSessionState("pjsk_const_search", "");
     const [constVisibleCount, setConstVisibleCount] = useState(15);
-    const [constDiffFilters, setConstDiffFilters] = useState(["master"]);
-    const [constPlayFilters, setConstPlayFilters] = useState(["unplayed", "played", "fc", "ap"]);
-    const [constMinLevelInput, setConstMinLevelInput] = useState("");
-    const [constMaxLevelInput, setConstMaxLevelInput] = useState("");
-    const [constMinLevel, setConstMinLevel] = useState("");
-    const [constMaxLevel, setConstMaxLevel] = useState("");
-    const [constType, setConstType] = useState("fc"); // "fc", "ap"
-    const [constNewFilter, setConstNewFilter] = useState("all"); // "all", "new", "old"
+    const [constDiffFilters, setConstDiffFilters] = useSessionState("pjsk_const_diff_filters", ["master"]);
+    const [constPlayFilters, setConstPlayFilters] = useSessionState("pjsk_const_play_filters", ["unplayed", "played", "fc", "ap"]);
+    const [constMinLevelInput, setConstMinLevelInput] = useSessionState("pjsk_const_min_level_input", "");
+    const [constMaxLevelInput, setConstMaxLevelInput] = useSessionState("pjsk_const_max_level_input", "");
+    const [constMinLevel, setConstMinLevel] = useSessionState("pjsk_const_min_level", "");
+    const [constMaxLevel, setConstMaxLevel] = useSessionState("pjsk_const_max_level", "");
+    const [constType, setConstType] = useSessionState("pjsk_const_type", "fc"); // "fc", "ap"
+    const [constNewFilter, setConstNewFilter] = useSessionState("pjsk_const_new_filter", "all"); // "all", "new", "old"
 
     // --- Debounce Search Term ---
     useEffect(() => {

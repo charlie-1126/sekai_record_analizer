@@ -2,17 +2,18 @@ import React, { useState, useMemo, useRef } from "react";
 import { BarChart3, Filter } from "lucide-react";
 import { getConstant } from "../../utils/ratingUtils";
 import { isNewSong } from "../../utils/potentialUtils";
+import { useSessionState } from "../../utils/useSessionState";
 
 export default function Distributions({ songs, userScoresMap }) {
-    const [isDistFilterExpanded, setIsDistFilterExpanded] = useState(true);
-    const [distTab, setDistTab] = useState("level"); // level, constant, diff, unit
-    const [distDiffs, setDistDiffs] = useState(["master", "expert", "append"]);
-    const [distMinLevelInput, setDistMinLevelInput] = useState("");
-    const [distMaxLevelInput, setDistMaxLevelInput] = useState("");
-    const [distMinConstInput, setDistMinConstInput] = useState("");
-    const [distMaxConstInput, setDistMaxConstInput] = useState("");
-    const [distDisplayType, setDistDisplayType] = useState("count"); // count, percent
-    const [distNewFilter, setDistNewFilter] = useState("all"); // all, new, old
+    const [isDistFilterExpanded, setIsDistFilterExpanded] = useSessionState("pjsk_dist_filter_expanded", true);
+    const [distTab, setDistTab] = useSessionState("pjsk_dist_tab", "level"); // level, constant, diff, unit
+    const [distDiffs, setDistDiffs] = useSessionState("pjsk_dist_diffs", ["master", "expert", "append"]);
+    const [distMinLevelInput, setDistMinLevelInput] = useSessionState("pjsk_dist_min_level_input", "");
+    const [distMaxLevelInput, setDistMaxLevelInput] = useSessionState("pjsk_dist_max_level_input", "");
+    const [distMinConstInput, setDistMinConstInput] = useSessionState("pjsk_dist_min_const_input", "");
+    const [distMaxConstInput, setDistMaxConstInput] = useSessionState("pjsk_dist_max_const_input", "");
+    const [distDisplayType, setDistDisplayType] = useSessionState("pjsk_dist_display_type", "count"); // count, percent
+    const [distNewFilter, setDistNewFilter] = useSessionState("pjsk_dist_new_filter", "all"); // all, new, old
 
     const handleDistDiffFilterToggle = (diff) => {
         if (distDiffs.includes(diff)) {
