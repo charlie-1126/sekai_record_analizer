@@ -222,7 +222,14 @@ async function downloadJacket(songId) {
           console.log(`Successfully downloaded jacket for song ${songId}`);
           resolve(`/jackets/jacket_s_${paddedId}.webp`);
         });
+        // [Fix L-2] Handle write-stream errors to avoid unhandled exception crashes
+        fileStream.on('error', (writeErr) => {
+          console.error(`Error writing jacket file for song ${songId}:`, writeErr.message);
+          fs.unlink(jacketPath, () => {}); // Remove partial file
+          resolve(null);
+        });
       } else {
+        res.resume(); // Drain the response to free up memory
         resolve(null);
       }
     }).on('error', (err) => {
@@ -309,16 +316,19 @@ app.post('/api/auth/login', async (req, res) => {
     await dbQuery.run('UPDATE users SET token = ? WHERE LOWER(username) = LOWER(?)', [tokenStr, username]);
 
     const updatedHistory = await updateUserRatingHistoryIfNeeded(user.username, user);
+    // [Fix M-3] Wrap JSON.parse calls to prevent 500 crashes on malformed DB data
+    const safeParseArray = (str) => { try { return JSON.parse(str || '[]'); } catch { return []; } };
+    const safeParseObj = (str, def) => { try { return JSON.parse(str || def); } catch { return JSON.parse(def); } };
     res.json({
       message: '로그인 성공!',
       token,
       user: {
         username: user.username,
         nickname: user.nickname,
-        friends: JSON.parse(user.friends || '[]'),
-        settings: JSON.parse(user.settings || '{"songTitleLang": "jp"}'),
-        rating_history: updatedHistory || JSON.parse(user.rating_history || '{}'),
-        scores: JSON.parse(user.scores || '[]')
+        friends: safeParseArray(user.friends),
+        settings: safeParseObj(user.settings, '{"songTitleLang": "jp"}'),
+        rating_history: updatedHistory || safeParseObj(user.rating_history, '{}'),
+        scores: safeParseArray(user.scores)
       }
     });
   } catch (err) {
@@ -347,14 +357,17 @@ app.get('/api/auth/me', async (req, res) => {
     }
 
     const updatedHistory = await updateUserRatingHistoryIfNeeded(user.username, user);
+    // [Fix M-3] Safe JSON parse wrappers
+    const safeParseArray = (str) => { try { return JSON.parse(str || '[]'); } catch { return []; } };
+    const safeParseObj = (str, def) => { try { return JSON.parse(str || def); } catch { return JSON.parse(def); } };
     res.json({
       user: {
         username: user.username,
         nickname: user.nickname,
-        friends: JSON.parse(user.friends || '[]'),
-        settings: JSON.parse(user.settings || '{"songTitleLang": "jp"}'),
-        rating_history: updatedHistory || JSON.parse(user.rating_history || '{}'),
-        scores: JSON.parse(user.scores || '[]')
+        friends: safeParseArray(user.friends),
+        settings: safeParseObj(user.settings, '{"songTitleLang": "jp"}'),
+        rating_history: updatedHistory || safeParseObj(user.rating_history, '{}'),
+        scores: safeParseArray(user.scores)
       }
     });
   } catch (err) {
@@ -362,6 +375,38 @@ app.get('/api/auth/me', async (req, res) => {
     res.status(500).json({ error: '서버 에러가 발생했습니다.' });
   }
 });
+
+// --- Shared Auth Middleware ---
+// [Fix H-1/H-2/H-3] All write APIs that touch user data now require a valid token.
+// The authenticated user's username is stored in req.user.username so endpoints
+// can verify that the requester owns the resource they're modifying.
+const requireAuth = async (req, res, next) => {
+  let token = req.headers.authorization;
+  if (token && token.startsWith('Bearer ')) {
+    token = token.slice(7);
+  } else {
+    token = req.query.token || req.body?.token;
+  }
+
+  if (!token) {
+    return res.status(401).json({ error: '인증 토큰이 없습니다.' });
+  }
+
+  try {
+    const user = await dbQuery.get(
+      'SELECT * FROM users WHERE token = ? OR token LIKE ?',
+      [token, '%,' + token + ',%']
+    );
+    if (!user) {
+      return res.status(401).json({ error: '유효하지 않거나 만료된 토큰입니다.' });
+    }
+    req.user = user;
+    next();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '서버 에러가 발생했습니다.' });
+  }
+};
 
 // --- Admin APIs ---
 const adminAuth = async (req, res, next) => {
@@ -758,10 +803,34 @@ async function fetchTrainerSongs() {
     
     const arrayString = jsText.substring(arrayStartIndex, index);
     
-    const vm = require('vm');
-    const sandbox = {};
-    const context = vm.createContext(sandbox);
-    const parsedArray = vm.runInContext(arrayString, context);
+    // [Fix H-5] Replace vm.runInContext with a safe JSON.parse approach.
+    // Node's vm module is NOT a secure sandbox; executing remote JS from a
+    // third-party site risks server compromise if the site is ever hijacked.
+    // Instead we convert the JS literal array to valid JSON:
+    //   1. Quote unquoted keys  (e.g.  id:  → "id":)
+    //   2. Replace 'single-quoted' strings with "double-quoted" ones
+    //   3. Drop trailing commas that are invalid in JSON
+    //   4. Replace undefined/Infinity/NaN values with null
+    let jsonCandidate = arrayString
+      // Replace undefined, Infinity, NaN with null
+      .replace(/\bundefined\b/g, 'null')
+      .replace(/\bInfinity\b/g, 'null')
+      .replace(/\bNaN\b/g, 'null')
+      // Quote unquoted object keys: word chars followed by colon (not already quoted)
+      .replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)(\s*:)/g, '$1"$2"$3')
+      // Convert single-quoted strings to double-quoted (basic, handles escaped \' )
+      .replace(/'((?:[^'\\]|\\.)*)'/g, (_, inner) =>
+        '"' + inner.replace(/\\'/g, "'").replace(/"/g, '\\"') + '"'
+      )
+      // Remove trailing commas before ] or }
+      .replace(/,(\s*[}\]])/g, '$1');
+
+    let parsedArray;
+    try {
+      parsedArray = JSON.parse(jsonCandidate);
+    } catch (parseErr) {
+      throw new Error(`JSON.parse failed after conversion: ${parseErr.message}`);
+    }
     
     if (Array.isArray(parsedArray)) {
       fs.writeFileSync(TRAINER_CACHE_PATH, JSON.stringify(parsedArray, null, 2), 'utf-8');
@@ -919,10 +988,17 @@ app.get('/api/scores/user/:username', async (req, res) => {
   }
 });
 
-app.post('/api/scores', async (req, res) => {
+// [Fix H-1] requireAuth ensures only the token owner can write their scores.
+// Ownership check: token's username must match the requested username.
+app.post('/api/scores', requireAuth, async (req, res) => {
   const { username, scores, rating: ratingDestructured, ratings, modifications, replace } = req.body;
   if (!username) {
     return res.status(400).json({ error: '유저 계정명이 누락되었습니다.' });
+  }
+
+  // [Fix H-1] Ownership check: requester can only modify their own data
+  if (req.user.username.toLowerCase() !== username.toLowerCase()) {
+    return res.status(403).json({ error: '다른 유저의 데이터를 수정할 권한이 없습니다.' });
   }
 
   try {
@@ -976,12 +1052,14 @@ app.post('/api/scores', async (req, res) => {
     );
 
     const updatedHistory = await updateUserRatingHistoryIfNeeded(username);
+    // [Fix M-3] Safe parse for stale rating_history fallback
+    const safeParseObj = (str, def) => { try { return JSON.parse(str || def); } catch { return JSON.parse(def); } };
 
     res.json({
       success: true,
       message: '플레이 기록과 레이팅이 성공적으로 저장되었습니다!',
       scores: finalScores,
-      rating_history: updatedHistory || JSON.parse(user.rating_history || '{}')
+      rating_history: updatedHistory || safeParseObj(user.rating_history, '{}')
     });
   } catch (err) {
     console.error(err);
@@ -1022,10 +1100,16 @@ app.get('/api/scores/compare', async (req, res) => {
 });
 
 // 5. Friends APIs
-app.post('/api/friends/add', async (req, res) => {
+// [Fix H-2] requireAuth + ownership check for friends/add
+app.post('/api/friends/add', requireAuth, async (req, res) => {
   const { username, friendUsername } = req.body;
   if (!username || !friendUsername) {
     return res.status(400).json({ error: '필수 파라미터가 누락되었습니다.' });
+  }
+
+  // Ownership check
+  if (req.user.username.toLowerCase() !== username.toLowerCase()) {
+    return res.status(403).json({ error: '다른 유저의 데이터를 수정할 권한이 없습니다.' });
   }
 
   if (username.toLowerCase() === friendUsername.toLowerCase()) {
@@ -1043,7 +1127,8 @@ app.post('/api/friends/add', async (req, res) => {
       return res.status(404).json({ error: '유저 정보를 찾을 수 없습니다.' });
     }
 
-    let friendsList = JSON.parse(user.friends || '[]');
+    let friendsList = [];
+    try { friendsList = JSON.parse(user.friends || '[]'); } catch { friendsList = []; }
     if (friendsList.includes(friend.username)) {
       return res.status(400).json({ error: '이미 추가된 친구입니다.' });
     }
@@ -1062,10 +1147,16 @@ app.post('/api/friends/add', async (req, res) => {
   }
 });
 
-app.post('/api/friends/remove', async (req, res) => {
+// [Fix H-2] requireAuth + ownership check for friends/remove
+app.post('/api/friends/remove', requireAuth, async (req, res) => {
   const { username, friendUsername } = req.body;
   if (!username || !friendUsername) {
     return res.status(400).json({ error: '필수 파라미터가 누락되었습니다.' });
+  }
+
+  // Ownership check
+  if (req.user.username.toLowerCase() !== username.toLowerCase()) {
+    return res.status(403).json({ error: '다른 유저의 데이터를 수정할 권한이 없습니다.' });
   }
 
   try {
@@ -1074,7 +1165,8 @@ app.post('/api/friends/remove', async (req, res) => {
       return res.status(404).json({ error: '유저 정보를 찾을 수 없습니다.' });
     }
 
-    let friendsList = JSON.parse(user.friends || '[]');
+    let friendsList = [];
+    try { friendsList = JSON.parse(user.friends || '[]'); } catch { friendsList = []; }
     friendsList = friendsList.filter(f => f.toLowerCase() !== friendUsername.toLowerCase());
     
     await dbQuery.run('UPDATE users SET friends = ? WHERE LOWER(username) = LOWER(?)', [JSON.stringify(friendsList), username]);
@@ -1170,12 +1262,19 @@ app.get('/api/friends/list/:username', async (req, res) => {
   }
 });
 
+// [Fix H-3] requireAuth + ownership check for user/settings
 // 6. User Settings & Profile API
-app.post('/api/user/settings', async (req, res) => {
+app.post('/api/user/settings', requireAuth, async (req, res) => {
   const { username, nickname, settings } = req.body;
   if (!username) {
     return res.status(400).json({ error: '유저 계정명이 누락되었습니다.' });
   }
+
+  // Ownership check
+  if (req.user.username.toLowerCase() !== username.toLowerCase()) {
+    return res.status(403).json({ error: '다른 유저의 설정을 변경할 권한이 없습니다.' });
+  }
+
   if (!nickname || nickname.trim() === '') {
     return res.status(400).json({ error: '닉네임은 비워둘 수 없습니다.' });
   }

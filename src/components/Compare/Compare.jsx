@@ -121,7 +121,11 @@ export const Compare = ({
         try {
             const res = await fetch("/api/friends/add", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    // [Fix H-2] Send token for requireAuth middleware
+                    "Authorization": `Bearer ${currentUser.token}`,
+                },
                 body: JSON.stringify({
                     username: currentUser.username,
                     friendUsername: friendInputId.trim(),
@@ -148,7 +152,11 @@ export const Compare = ({
         try {
             const res = await fetch("/api/friends/remove", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    // [Fix H-2] Send token for requireAuth middleware
+                    "Authorization": `Bearer ${currentUser.token}`,
+                },
                 body: JSON.stringify({
                     username: currentUser.username,
                     friendUsername,

@@ -53,6 +53,7 @@ import JacketDetailsModal from "./components/Common/JacketDetailsModal";
 
 // Rating Utils
 import { calculateRating, getConstant, hasExplicitConstant, calculateTempRatings } from "./utils/ratingUtils";
+import { mergeScores } from "./utils/scoreUtils";
 import {
     computePotentialRating,
     calculateTempPotential,
@@ -141,9 +142,16 @@ function App() {
     const [selectedJacketSong, setSelectedJacketSong] = useState(null);
 
     // --- Auth States ---
+    // [Fix M-4] Wrap JSON.parse to prevent app crash if localStorage is corrupted
     const [currentUser, setCurrentUser] = useState(() => {
-        const saved = localStorage.getItem("pjsk_auth") || sessionStorage.getItem("pjsk_auth");
-        return saved ? JSON.parse(saved) : null;
+        try {
+            const saved = localStorage.getItem("pjsk_auth") || sessionStorage.getItem("pjsk_auth");
+            return saved ? JSON.parse(saved) : null;
+        } catch {
+            localStorage.removeItem("pjsk_auth");
+            sessionStorage.removeItem("pjsk_auth");
+            return null;
+        }
     });
 
     const effectiveScores = activeTab === "dashboard" && viewedScores ? viewedScores : scores;
@@ -167,6 +175,9 @@ function App() {
 
     const fileInputRef = useRef(null);
     const skipNextFetch = useRef(false);
+    // [Fix C-2] Track whether a score-save is in-flight to prevent polling from
+    // overwriting a score change that hasn't been persisted to the server yet.
+    const isSyncingScores = useRef(false);
 
     // --- Fetch Songs from Server DB ---
     const fetchSongsFromServer = async () => {
@@ -263,6 +274,8 @@ function App() {
             };
         }
 
+        // [Fix C-2] Mark as syncing before the request starts
+        isSyncingScores.current = true;
         try {
             const payload = {
                 username: userObj.username,
@@ -279,7 +292,11 @@ function App() {
 
             const res = await fetch("/api/scores", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    // [Fix H-1] Send token so requireAuth middleware can authenticate
+                    "Authorization": `Bearer ${userObj.token}`,
+                },
                 body: JSON.stringify(payload),
             });
             if (res.ok) {
@@ -306,6 +323,9 @@ function App() {
             }
         } catch (e) {
             console.error("Failed to sync scores to server:", e);
+        } finally {
+            // [Fix C-2] Always clear the flag after completion or error
+            isSyncingScores.current = false;
         }
     };
 
@@ -399,7 +419,11 @@ function App() {
             };
             const res = await fetch("/api/user/settings", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    // [Fix H-3] Send token for requireAuth middleware
+                    "Authorization": `Bearer ${currentUser.token}`,
+                },
                 body: JSON.stringify({
                     username: currentUser.username,
                     nickname: nicknameToSave.trim(),
@@ -560,25 +584,55 @@ function App() {
     // --- Auto Login Session Recovery & Initialization ---
     useEffect(() => {
         const initAuth = async () => {
-            const saved = localStorage.getItem("pjsk_auth") || sessionStorage.getItem("pjsk_auth");
+            let saved;
+            try {
+                // [Fix M-4] Safe parse of stored auth
+                const raw = localStorage.getItem("pjsk_auth") || sessionStorage.getItem("pjsk_auth");
+                saved = raw ? JSON.parse(raw) : null;
+            } catch {
+                localStorage.removeItem("pjsk_auth");
+                sessionStorage.removeItem("pjsk_auth");
+                saved = null;
+            }
             if (saved) {
                 try {
-                    const parsed = JSON.parse(saved);
-                    if (parsed && parsed.token) {
-                        const res = await fetch(`/api/auth/me?token=${parsed.token}`);
+                    if (saved && saved.token) {
+                        const res = await fetch(`/api/auth/me?token=${saved.token}`);
                         if (res.ok) {
                             const data = await res.json();
                             const userObj = {
                                 username: data.user.username,
                                 nickname: data.user.nickname,
-                                token: parsed.token,
+                                token: saved.token,
                                 friends: data.user.friends || [],
                                 settings: data.user.settings || { songTitleLang: "jp" },
                                 rating_history: data.user.rating_history || {},
                             };
                             setCurrentUser(userObj);
-                            setScores(data.user.scores || []);
-                            localStorage.setItem("pjsk_user_scores", JSON.stringify(data.user.scores || []));
+
+                            // [Fix C-3] Merge local (possibly-offline-edited) scores with server scores
+                            // using "best status wins" strategy, so offline edits are never silently lost.
+                            const serverScores = data.user.scores || [];
+                            let localScores = [];
+                            try {
+                                const localRaw = localStorage.getItem("pjsk_user_scores");
+                                localScores = localRaw ? JSON.parse(localRaw) : [];
+                            } catch { localScores = []; }
+
+                            // Only attempt merge if there are meaningful local scores to consider
+                            let finalScores = serverScores;
+                            if (localScores.length > 0) {
+                                finalScores = mergeScores(localScores, serverScores);
+                                // If the merge produced something different from the server, push it back
+                                if (JSON.stringify(finalScores) !== JSON.stringify(serverScores)) {
+                                    console.log('[initAuth] Local scores differ from server — pushing merged result.');
+                                    // Fire-and-forget: push merged scores to server in background
+                                    syncScoresToServer(userObj, finalScores, null, null, true);
+                                }
+                            }
+
+                            setScores(finalScores);
+                            localStorage.setItem("pjsk_user_scores", JSON.stringify(finalScores));
                             setSettingsNickname(data.user.nickname);
                             setSettingsTitleLang(data.user.settings?.songTitleLang || "jp");
                             setRatingMode(data.user.settings?.ratingMode || "b39");
@@ -637,6 +691,9 @@ function App() {
         if (!currentUser) return;
 
         const syncData = () => {
+            // [Fix C-2] Skip polling if a save is currently in-flight to prevent
+            // stale server data from overwriting a freshly-changed local score.
+            if (isSyncingScores.current) return;
             if (document.visibilityState === "visible") {
                 fetchScoresFromServer(currentUser.username);
                 fetchFriendsList(currentUser.username);
@@ -651,7 +708,6 @@ function App() {
             document.removeEventListener("visibilitychange", syncData);
         };
     }, [currentUser]);
-
     // Redirect / to /dashboard
     useEffect(() => {
         if (location.pathname === "/" || location.pathname === "") {
