@@ -694,7 +694,7 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                                                     top: "0px",
                                                     left: "0px",
                                                     background: "linear-gradient(135deg, #ff4545ed, #f42516)",
-                                                    color: "#000",
+                                                    color: "#ffffff",
                                                     fontWeight: 800,
                                                     fontSize: "0.5rem",
                                                     padding: "0.1rem 0.25rem",

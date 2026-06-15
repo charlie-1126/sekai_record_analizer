@@ -326,7 +326,7 @@ export const PotentialDashboard = ({
                                                 top: "6px",
                                                 right: "6px",
                                                 background: "linear-gradient(135deg, #ff4545ed, #f42516)",
-                                                color: "#000",
+                                                color: "#ffffff",
                                                 fontWeight: 800,
                                                 fontSize: "0.6rem",
                                                 padding: "0.15rem 0.35rem",

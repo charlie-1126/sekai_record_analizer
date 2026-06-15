@@ -626,7 +626,7 @@ export const Constants = ({
                                                             top: "2px",
                                                             left: "2px",
                                                             background: "linear-gradient(135deg, #ff4545ed, #f42516)",
-                                                            color: "#000",
+                                                            color: "#ffffff",
                                                             fontWeight: 800,
                                                             fontSize: "0.55rem",
                                                             padding: "0.1rem 0.3rem",

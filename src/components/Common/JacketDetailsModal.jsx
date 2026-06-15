@@ -100,7 +100,7 @@ export default function JacketDetailsModal({
                                         style={{
                                             display: "inline-block",
                                             background: "linear-gradient(135deg, #ff4545ed, #f42516)",
-                                            color: "#000",
+                                            color: "#ffffff",
                                             fontWeight: 800,
                                             fontSize: "0.6rem",
                                             padding: "0.1rem 0.35rem",
