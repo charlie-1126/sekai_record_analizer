@@ -175,18 +175,26 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
     let minTime = null;
     let maxTime = null;
 
+    const firstEntryTime = activeHistoryData.length > 0
+        ? new Date(activeHistoryData[0].date + "T00:00:00Z").getTime()
+        : todayUTCMs;
+
     if (graphRangeType === "7d") {
         minTime = todayUTCMs - 6 * 24 * 60 * 60 * 1000;
         maxTime = todayUTCMs;
+        if (minTime < firstEntryTime) minTime = firstEntryTime;
     } else if (graphRangeType === "1m") {
         minTime = todayUTCMs - 29 * 24 * 60 * 60 * 1000;
         maxTime = todayUTCMs;
+        if (minTime < firstEntryTime) minTime = firstEntryTime;
     } else if (graphRangeType === "6m") {
         minTime = todayUTCMs - 179 * 24 * 60 * 60 * 1000;
         maxTime = todayUTCMs;
+        if (minTime < firstEntryTime) minTime = firstEntryTime;
     } else if (graphRangeType === "1y") {
         minTime = todayUTCMs - 364 * 24 * 60 * 60 * 1000;
         maxTime = todayUTCMs;
+        if (minTime < firstEntryTime) minTime = firstEntryTime;
     } else if (graphRangeType === "custom") {
         minTime = graphCustomStart
             ? new Date(graphCustomStart + "T00:00:00Z").getTime()
@@ -464,12 +472,28 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
             : "";
 
     const labelTicks = [];
-    const tickCount = 4;
-    for (let i = 0; i <= tickCount; i++) {
-        const t = minTime + (i / tickCount) * timeRange;
-        const x = paddingX + (i / tickCount) * (width - 2 * paddingX);
-        const dateStr = formatDate(t).substring(5); // MM-DD
-        labelTicks.push({ x, label: dateStr });
+    const dataLen = activeDataList.length;
+    if (dataLen > 0) {
+        const indices = new Set();
+        indices.add(0);
+        indices.add(dataLen - 1);
+        
+        const maxTicks = 7; // Increase max ticks to 7 for better density
+        if (dataLen > 2) {
+            const divisions = Math.min(dataLen - 1, maxTicks - 1);
+            const step = (dataLen - 1) / divisions;
+            for (let i = 1; i < divisions; i++) {
+                indices.add(Math.round(i * step));
+            }
+        }
+        const sortedIndices = Array.from(indices).sort((a, b) => a - b);
+        sortedIndices.forEach((idx) => {
+            const d = activeDataList[idx];
+            const t = new Date(d.date + "T00:00:00Z").getTime();
+            const x = paddingX + ((t - minTime) / timeRange) * (width - 2 * paddingX);
+            const dateStr = d.date.substring(5); // MM-DD
+            labelTicks.push({ x, label: dateStr });
+        });
     }
 
     return (
@@ -587,7 +611,7 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
                     {/* Time-axis Grid Ticks & Labels */}
                     {labelTicks.map((tick, index) => (
                         <g key={index}>
-                            {index > 0 && index < tickCount && (
+                            {index > 0 && index < labelTicks.length - 1 && (
                                 <line
                                     x1={tick.x}
                                     y1={paddingY}
