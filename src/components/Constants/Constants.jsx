@@ -242,9 +242,45 @@ export const Constants = ({
         settingsTitleLang,
     ]);
 
+    // --- Unfiltered constant groups to determine absolute boundary values ---
+    const unfilteredGroupedConstants = useMemo(() => {
+        const allChartsList = [];
+        const difficulties = ["easy", "normal", "hard", "expert", "master", "append"];
+
+        songs.forEach((song) => {
+            difficulties.forEach((diff) => {
+                const lvl = song.levels[diff];
+                if (lvl === null || lvl === undefined) return;
+
+                const queryStatus = constType === "ap" ? "full_perfect" : constType === "fc" ? "full_combo" : "clear";
+                const constant = getConstant(song, diff, queryStatus);
+
+                allChartsList.push({
+                    song,
+                    diff,
+                    constant,
+                });
+            });
+        });
+
+        const groups = {};
+        allChartsList.forEach((chart) => {
+            const key = chart.constant.toFixed(1);
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(chart);
+        });
+
+        const sortedKeys = Object.keys(groups).sort((a, b) => parseFloat(b) - parseFloat(a));
+
+        return sortedKeys.map((key) => ({
+            constantValue: parseFloat(key),
+            charts: groups[key],
+        }));
+    }, [songs, constType]);
+
     // --- Find boundary constant values ---
     const boundaries = useMemo(() => {
-        if (groupedConstants.length === 0) return {};
+        if (unfilteredGroupedConstants.length === 0) return {};
 
         const result = {
             b1: null,
@@ -261,56 +297,56 @@ export const Constants = ({
         const multiplier = constType === "ap" ? 8.0 : 7.5;
 
         if (ratingMode === "b39") {
-            const b1Groups = groupedConstants.filter(
+            const b1Groups = unfilteredGroupedConstants.filter(
                 (g) => cutoffs.cutoffB1 > 0 && Math.round(g.constantValue * multiplier) >= cutoffs.cutoffB1,
             );
             if (b1Groups.length > 0) result.b1 = b1Groups[b1Groups.length - 1].constantValue;
 
-            const b20Groups = groupedConstants.filter(
+            const b20Groups = unfilteredGroupedConstants.filter(
                 (g) => cutoffs.cutoffB20 > 0 && Math.round(g.constantValue * multiplier) >= cutoffs.cutoffB20,
             );
             if (b20Groups.length > 0) result.b20 = b20Groups[b20Groups.length - 1].constantValue;
 
-            const b39Groups = groupedConstants.filter(
+            const b39Groups = unfilteredGroupedConstants.filter(
                 (g) => cutoffs.cutoffB39 > 0 && Math.round(g.constantValue * multiplier) >= cutoffs.cutoffB39,
             );
             if (b39Groups.length > 0) result.b39 = b39Groups[b39Groups.length - 1].constantValue;
         } else {
             const extra = constType === "ap" ? 2.0 : 0.0;
 
-            const ob1Groups = groupedConstants.filter(
+            const ob1Groups = unfilteredGroupedConstants.filter(
                 (g) => cutoffs.cutoffOB1 > 0 && g.charts.some((c) => !isNewSong(c.song)) && g.constantValue + extra >= cutoffs.cutoffOB1,
             );
             if (ob1Groups.length > 0) result.ob1 = ob1Groups[ob1Groups.length - 1].constantValue;
 
-            const ob15Groups = groupedConstants.filter(
+            const ob15Groups = unfilteredGroupedConstants.filter(
                 (g) => cutoffs.cutoffOB15 > 0 && g.charts.some((c) => !isNewSong(c.song)) && g.constantValue + extra >= cutoffs.cutoffOB15,
             );
             if (ob15Groups.length > 0) result.ob15 = ob15Groups[ob15Groups.length - 1].constantValue;
 
-            const ob30Groups = groupedConstants.filter(
+            const ob30Groups = unfilteredGroupedConstants.filter(
                 (g) => cutoffs.cutoffOB30 > 0 && g.charts.some((c) => !isNewSong(c.song)) && g.constantValue + extra >= cutoffs.cutoffOB30,
             );
             if (ob30Groups.length > 0) result.ob30 = ob30Groups[ob30Groups.length - 1].constantValue;
 
-            const nb1Groups = groupedConstants.filter(
+            const nb1Groups = unfilteredGroupedConstants.filter(
                 (g) => cutoffs.cutoffNB1 > 0 && g.charts.some((c) => isNewSong(c.song)) && g.constantValue + extra >= cutoffs.cutoffNB1,
             );
             if (nb1Groups.length > 0) result.nb1 = nb1Groups[nb1Groups.length - 1].constantValue;
 
-            const nb5Groups = groupedConstants.filter(
+            const nb5Groups = unfilteredGroupedConstants.filter(
                 (g) => cutoffs.cutoffNB5 > 0 && g.charts.some((c) => isNewSong(c.song)) && g.constantValue + extra >= cutoffs.cutoffNB5,
             );
             if (nb5Groups.length > 0) result.nb5 = nb5Groups[nb5Groups.length - 1].constantValue;
 
-            const nb10Groups = groupedConstants.filter(
+            const nb10Groups = unfilteredGroupedConstants.filter(
                 (g) => cutoffs.cutoffNB10 > 0 && g.charts.some((c) => isNewSong(c.song)) && g.constantValue + extra >= cutoffs.cutoffNB10,
             );
             if (nb10Groups.length > 0) result.nb10 = nb10Groups[nb10Groups.length - 1].constantValue;
         }
 
         return result;
-    }, [groupedConstants, cutoffs, ratingMode, constType]);
+    }, [unfilteredGroupedConstants, cutoffs, ratingMode, constType]);
 
     const visibleConstants = useMemo(() => {
         return groupedConstants.slice(0, constVisibleCount);
