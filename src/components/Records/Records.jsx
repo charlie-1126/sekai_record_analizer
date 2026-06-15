@@ -5,7 +5,7 @@ import { calculateRating, getConstant, hasExplicitConstant } from "../../utils/r
 import { isNewSong, calculateSongPotential } from "../../utils/potentialUtils";
 import { useSessionState } from "../../utils/useSessionState";
 
-export const Records = ({ songs, scores, updateScores, settingsTitleLang, ratingMode = "b39" }) => {
+export const Records = ({ songs, scores, updateScores, settingsTitleLang, ratingMode = "b39", isLoggedIn = false }) => {
     // --- States ---
     const [isRecordFilterExpanded, setIsRecordFilterExpanded] = useSessionState("pjsk_record_filter_expanded", true);
     const [recordSearchInput, setRecordSearchInput] = useSessionState("pjsk_record_search_input", "");
@@ -19,7 +19,12 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
         "master",
         "append",
     ]);
-    const [recordPlayFilters, setRecordPlayFilters] = useSessionState("pjsk_record_play_filters", ["unplayed", "played", "fc", "ap"]);
+    const [recordPlayFilters, setRecordPlayFilters] = useSessionState("pjsk_record_play_filters", [
+        "unplayed",
+        "played",
+        "fc",
+        "ap",
+    ]);
     const [recordMinFcConstInput, setRecordMinFcConstInput] = useSessionState("pjsk_record_min_fc_const_input", "");
     const [recordMaxFcConstInput, setRecordMaxFcConstInput] = useSessionState("pjsk_record_max_fc_const_input", "");
     const [recordMinApConstInput, setRecordMinApConstInput] = useSessionState("pjsk_record_min_ap_const_input", "");
@@ -140,7 +145,7 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                 append: diff === "append" ? sanitizeStatus(newStatus) : null,
             });
         }
-        updateScores(newScores);
+        updateScores(newScores, [{ id: String(songId), diff, status: sanitizeStatus(newStatus) }]);
     };
 
     // --- Bulk Score Update Handlers ---
@@ -152,6 +157,7 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
         };
 
         let newScores = [...scores];
+        let modifications = [];
 
         filteredAndSortedRecords.forEach((item) => {
             const songId = String(item.song.id);
@@ -174,9 +180,10 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                     append: diff === "append" ? sanitizeStatus(newStatus) : null,
                 });
             }
+            modifications.push({ id: songId, diff, status: sanitizeStatus(newStatus) });
         });
 
-        updateScores(newScores);
+        updateScores(newScores, modifications);
     };
 
     const handleBulkScoreConfirm = (status) => {
@@ -351,6 +358,26 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
 
     return (
         <section className="glass-panel" style={{ padding: "2rem" }}>
+            {!isLoggedIn && (
+                <div
+                    style={{
+                        background: "rgba(239, 68, 68, 0.08)",
+                        border: "1px solid rgba(239, 68, 68, 0.2)",
+                        color: "#fca5a5",
+                        borderRadius: "12px",
+                        padding: "0.85rem",
+                        fontSize: "0.9rem",
+                        fontWeight: "600",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "0.5rem",
+                        marginBottom: "1.5rem",
+                    }}
+                >
+                    플레이 기록을 등록하고 수정하려면 로그인이 필요합니다.
+                </div>
+            )}
             <div className="section-title-bar">
                 <div
                     style={{
@@ -619,16 +646,48 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                     <div className="bulk-control-group">
                         <span className="bulk-label">일괄 성과 입력:</span>
                         <div className="bulk-buttons">
-                            <button className="bulk-btn btn-nc" onClick={() => handleBulkScoreConfirm("none")}>
+                            <button
+                                className="bulk-btn btn-nc"
+                                onClick={() => handleBulkScoreConfirm("none")}
+                                disabled={!isLoggedIn}
+                                style={{
+                                    opacity: isLoggedIn ? 1 : 0.4,
+                                    cursor: isLoggedIn ? "pointer" : "not-allowed",
+                                }}
+                            >
                                 NC
                             </button>
-                            <button className="bulk-btn btn-clear" onClick={() => handleBulkScoreConfirm("clear")}>
+                            <button
+                                className="bulk-btn btn-clear"
+                                onClick={() => handleBulkScoreConfirm("clear")}
+                                disabled={!isLoggedIn}
+                                style={{
+                                    opacity: isLoggedIn ? 1 : 0.4,
+                                    cursor: isLoggedIn ? "pointer" : "not-allowed",
+                                }}
+                            >
                                 C
                             </button>
-                            <button className="bulk-btn btn-fc" onClick={() => handleBulkScoreConfirm("full_combo")}>
+                            <button
+                                className="bulk-btn btn-fc"
+                                onClick={() => handleBulkScoreConfirm("full_combo")}
+                                disabled={!isLoggedIn}
+                                style={{
+                                    opacity: isLoggedIn ? 1 : 0.4,
+                                    cursor: isLoggedIn ? "pointer" : "not-allowed",
+                                }}
+                            >
                                 FC
                             </button>
-                            <button className="bulk-btn btn-ap" onClick={() => handleBulkScoreConfirm("full_perfect")}>
+                            <button
+                                className="bulk-btn btn-ap"
+                                onClick={() => handleBulkScoreConfirm("full_perfect")}
+                                disabled={!isLoggedIn}
+                                style={{
+                                    opacity: isLoggedIn ? 1 : 0.4,
+                                    cursor: isLoggedIn ? "pointer" : "not-allowed",
+                                }}
+                            >
                                 AP
                             </button>
                         </div>
@@ -794,7 +853,12 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                                         <select
                                             className={`record-status-select status-${item.status}`}
                                             value={item.status}
+                                            disabled={!isLoggedIn}
                                             onChange={(e) => handleScoreChange(item.song.id, item.diff, e.target.value)}
+                                            style={{
+                                                opacity: isLoggedIn ? 1 : 0.6,
+                                                cursor: isLoggedIn ? "pointer" : "not-allowed",
+                                            }}
                                         >
                                             <option value="none">NC</option>
                                             <option value="clear">C</option>

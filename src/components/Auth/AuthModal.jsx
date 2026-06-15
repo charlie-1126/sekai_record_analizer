@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export default function AuthModal({ isOpen, onClose, setCurrentUser, syncScoresToServer }) {
+export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
     const [authUsername, setAuthUsername] = useState("");
     const [authPassword, setAuthPassword] = useState("");
     const [authNickname, setAuthNickname] = useState("");
@@ -57,21 +57,11 @@ export default function AuthModal({ isOpen, onClose, setCurrentUser, syncScoresT
                     settings: data.user.settings || { songTitleLang: "jp" },
                     rating_history: data.user.rating_history || {},
                 };
-                setCurrentUser(userObj);
-                if (autoLogin) {
-                    localStorage.setItem("pjsk_auth", JSON.stringify(userObj));
-                } else {
-                    sessionStorage.setItem("pjsk_auth", JSON.stringify(userObj));
-                }
 
-                const localRec = localStorage.getItem("pjsk_user_scores");
-                if (localRec) {
-                    const parsed = JSON.parse(localRec);
-                    if (parsed && parsed.length > 0) {
-                        await syncScoresToServer(userObj, parsed);
-                    }
-                }
+                const serverScores = data.user.scores || [];
 
+                // Complete login immediately
+                onLoginSuccess(userObj, serverScores, autoLogin, false);
                 onClose();
                 resetAuthForm();
             }
@@ -80,8 +70,13 @@ export default function AuthModal({ isOpen, onClose, setCurrentUser, syncScoresT
         }
     };
 
+    const handleClose = () => {
+        onClose();
+        resetAuthForm();
+    };
+
     return (
-        <div className="modal-backdrop" onClick={onClose}>
+        <div className="modal-backdrop" onClick={handleClose}>
             <div
                 className="glass-panel modal-content"
                 onClick={(e) => e.stopPropagation()}
@@ -156,7 +151,7 @@ export default function AuthModal({ isOpen, onClose, setCurrentUser, syncScoresT
                                 alignItems: "center",
                                 gap: "0.5rem",
                                 marginTop: "-0.5rem",
-                                marginBottom: "0.25rem",
+                                  marginBottom: "0.25rem",
                             }}
                         >
                             <input

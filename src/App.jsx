@@ -166,6 +166,7 @@ function App() {
     const [previewCalculatedData, setPreviewCalculatedData] = useState(null);
 
     const fileInputRef = useRef(null);
+    const skipNextFetch = useRef(false);
 
     // --- Fetch Songs from Server DB ---
     const fetchSongsFromServer = async () => {
@@ -214,6 +215,20 @@ function App() {
                     setScores(data.scores);
                     localStorage.setItem("pjsk_user_scores", JSON.stringify(data.scores));
                 }
+                if (data.rating_history) {
+                    setCurrentUser(prev => {
+                        if (!prev) return prev;
+                        if (JSON.stringify(prev.rating_history) === JSON.stringify(data.rating_history)) {
+                            return prev;
+                        }
+                        const updated = {
+                            ...prev,
+                            rating_history: data.rating_history
+                        };
+                        localStorage.setItem("pjsk_auth", JSON.stringify(updated));
+                        return updated;
+                    });
+                }
             }
         } catch (e) {
             console.error("Error fetching user scores from server:", e);
@@ -234,7 +249,7 @@ function App() {
     };
 
     // --- Sync local scores to server ---
-    const syncScoresToServer = async (userObj, currentScores, ratingObj) => {
+    const syncScoresToServer = async (userObj, currentScores, ratingObj, modifications = null, replace = false) => {
         if (!userObj) return;
 
         let ratings = ratingObj;
@@ -249,24 +264,52 @@ function App() {
         }
 
         try {
+            const payload = {
+                username: userObj.username,
+                ratings: ratings,
+            };
+            if (replace) {
+                payload.scores = currentScores;
+                payload.replace = true;
+            } else if (modifications) {
+                payload.modifications = modifications;
+            } else {
+                payload.scores = currentScores;
+            }
+
             const res = await fetch("/api/scores", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    username: userObj.username,
-                    scores: currentScores,
-                    ratings: ratings,
-                }),
+                body: JSON.stringify(payload),
             });
             if (res.ok) {
+                const data = await res.json();
                 console.log("Successfully synced scores to server.");
+                if (data.scores) {
+                    setScores(data.scores);
+                    localStorage.setItem("pjsk_user_scores", JSON.stringify(data.scores));
+                }
+                if (data.rating_history) {
+                    setCurrentUser(prev => {
+                        if (!prev) return prev;
+                        if (JSON.stringify(prev.rating_history) === JSON.stringify(data.rating_history)) {
+                            return prev;
+                        }
+                        const updated = {
+                            ...prev,
+                            rating_history: data.rating_history
+                        };
+                        localStorage.setItem("pjsk_auth", JSON.stringify(updated));
+                        return updated;
+                    });
+                }
             }
         } catch (e) {
             console.error("Failed to sync scores to server:", e);
         }
     };
 
-    const updateScores = (newScores) => {
+    const updateScores = (newScores, modifications = null, replace = false) => {
         setScores(newScores);
         localStorage.setItem("pjsk_user_scores", JSON.stringify(newScores));
         if (currentUser) {
@@ -277,7 +320,7 @@ function App() {
                 append: tempCalc.playerAppendRating,
                 potential: tempPot.potential4,
             };
-            syncScoresToServer(currentUser, newScores, ratingObj);
+            syncScoresToServer(currentUser, newScores, ratingObj, modifications, replace);
         }
     };
 
@@ -314,7 +357,7 @@ function App() {
                 append: diff === "append" ? sanitizeStatus(newStatus) : null,
             });
         }
-        updateScores(newScores);
+        updateScores(newScores, [{ id: String(songId), diff, status: sanitizeStatus(newStatus) }]);
     };
 
     const handleJacketClick = (song, diff, currentStatus) => {
@@ -393,6 +436,24 @@ function App() {
         }
     };
 
+    const handleLoginSuccess = async (userObj, finalScores, autoLogin, shouldSync = false) => {
+        setScores(finalScores);
+        localStorage.setItem("pjsk_user_scores", JSON.stringify(finalScores));
+        
+        skipNextFetch.current = true;
+        
+        setCurrentUser(userObj);
+        if (autoLogin) {
+            localStorage.setItem("pjsk_auth", JSON.stringify(userObj));
+        } else {
+            sessionStorage.setItem("pjsk_auth", JSON.stringify(userObj));
+        }
+
+        if (shouldSync) {
+            await syncScoresToServer(userObj, finalScores);
+        }
+    };
+
     // --- Handle Custom File Upload ---
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
@@ -424,7 +485,7 @@ function App() {
 
     const confirmImport = () => {
         if (pendingImportScores) {
-            updateScores(pendingImportScores);
+            updateScores(pendingImportScores, null, true);
             setShowImportPreview(false);
             setPendingImportScores(null);
             setPreviewCalculatedData(null);
@@ -546,7 +607,11 @@ function App() {
     // Load user scores & details when currentUser changes (e.g. login/register)
     useEffect(() => {
         if (currentUser) {
-            fetchScoresFromServer(currentUser.username);
+            if (skipNextFetch.current) {
+                skipNextFetch.current = false;
+            } else {
+                fetchScoresFromServer(currentUser.username);
+            }
             fetchFriendsList(currentUser.username);
             setSettingsNickname(currentUser.nickname);
             setSettingsTitleLang(currentUser.settings?.songTitleLang || "jp");
@@ -562,35 +627,29 @@ function App() {
             setSettingsTitleLang("jp");
             setTrainerSpeed(localStorage.getItem("pjsk_trainer_speed") || "10.5");
 
-            const saved = localStorage.getItem("pjsk_user_scores");
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    const isDemo =
-                        parsed &&
-                        parsed.length > 0 &&
-                        defaultScores &&
-                        defaultScores.scores &&
-                        parsed.length === defaultScores.scores.length &&
-                        parsed[0] &&
-                        defaultScores.scores[0] &&
-                        parsed[0].id === defaultScores.scores[0].id;
-
-                    if (isDemo) {
-                        localStorage.removeItem("pjsk_user_scores");
-                        setScores([]);
-                    } else {
-                        setScores(parsed);
-                    }
-                } catch (e) {
-                    console.error(e);
-                    setScores([]);
-                }
-            } else {
-                setScores([]);
-            }
+            setScores([]);
             setFriendsList([]);
         }
+    }, [currentUser]);
+
+    // --- Active Tab Syncing for Concurrent Device Sync ---
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const syncData = () => {
+            if (document.visibilityState === "visible") {
+                fetchScoresFromServer(currentUser.username);
+                fetchFriendsList(currentUser.username);
+            }
+        };
+
+        const interval = setInterval(syncData, 15000);
+        document.addEventListener("visibilitychange", syncData);
+
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener("visibilitychange", syncData);
+        };
     }, [currentUser]);
 
     // Redirect / to /dashboard
@@ -878,33 +937,37 @@ function App() {
                             </button>
                         )}
 
-                        <button
-                            className="btn btn-outline"
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "0.25rem",
-                                borderColor: "var(--color-cyan)",
-                                color: "var(--color-cyan)",
-                            }}
-                            onClick={triggerFileInput}
-                        >
-                            <FileUp size={16} /> 불러오기
-                        </button>
+                        {currentUser && (
+                            <>
+                                <button
+                                    className="btn btn-outline"
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "0.25rem",
+                                        borderColor: "var(--color-cyan)",
+                                        color: "var(--color-cyan)",
+                                    }}
+                                    onClick={triggerFileInput}
+                                >
+                                    <FileUp size={16} /> 불러오기
+                                </button>
 
-                        <button
-                            className="btn btn-outline"
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "0.25rem",
-                                borderColor: "var(--color-purple)",
-                                color: "var(--color-purple)",
-                            }}
-                            onClick={handleFileDownload}
-                        >
-                            <Download size={16} /> 내보내기
-                        </button>
+                                <button
+                                    className="btn btn-outline"
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "0.25rem",
+                                        borderColor: "var(--color-purple)",
+                                        color: "var(--color-purple)",
+                                    }}
+                                    onClick={handleFileDownload}
+                                >
+                                    <Download size={16} /> 내보내기
+                                </button>
+                            </>
+                        )}
 
                         {/* Auth section */}
                         <div className="auth-nav-section">
@@ -1159,28 +1222,28 @@ function App() {
                         </div>
 
                         {/* Drawer Actions */}
-                        <div className="drawer-footer-actions">
-                            <button
-                                className="btn btn-outline w-full"
-                                style={{ color: "var(--color-cyan)", borderColor: "rgba(0, 242, 254, 0.3)" }}
-                                onClick={() => {
-                                    triggerFileInput();
-                                    setIsMobileMenuOpen(false);
-                                }}
-                            >
-                                <FileUp size={16} /> 데이터 불러오기
-                            </button>
-                            <button
-                                className="btn btn-outline w-full"
-                                style={{ color: "var(--color-purple)", borderColor: "rgba(139, 92, 246, 0.3)" }}
-                                onClick={() => {
-                                    handleFileDownload();
-                                    setIsMobileMenuOpen(false);
-                                }}
-                            >
-                                <Download size={16} /> 데이터 내보내기
-                            </button>
-                            {currentUser && (
+                        {currentUser && (
+                            <div className="drawer-footer-actions">
+                                <button
+                                    className="btn btn-outline w-full"
+                                    style={{ color: "var(--color-cyan)", borderColor: "rgba(0, 242, 254, 0.3)" }}
+                                    onClick={() => {
+                                        triggerFileInput();
+                                        setIsMobileMenuOpen(false);
+                                    }}
+                                >
+                                    <FileUp size={16} /> 데이터 불러오기
+                                </button>
+                                <button
+                                    className="btn btn-outline w-full"
+                                    style={{ color: "var(--color-purple)", borderColor: "rgba(139, 92, 246, 0.3)" }}
+                                    onClick={() => {
+                                        handleFileDownload();
+                                        setIsMobileMenuOpen(false);
+                                    }}
+                                >
+                                    <Download size={16} /> 데이터 내보내기
+                                </button>
                                 <button
                                     className="btn btn-outline w-full"
                                     style={{ color: "var(--color-danger)", borderColor: "rgba(239, 68, 68, 0.3)" }}
@@ -1191,8 +1254,8 @@ function App() {
                                 >
                                     <LogOut size={16} /> 로그아웃
                                 </button>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -1214,13 +1277,14 @@ function App() {
                 settingsTitleLang={settingsTitleLang}
                 handleScoreChange={handleScoreChange}
                 trainerSpeed={trainerSpeed}
+                isLoggedIn={!!currentUser}
             />
 
             <AuthModal
                 isOpen={showAuthModal}
                 onClose={() => setShowAuthModal(false)}
-                setCurrentUser={setCurrentUser}
-                syncScoresToServer={syncScoresToServer}
+                songs={songs}
+                onLoginSuccess={handleLoginSuccess}
             />
 
             <main className="container" style={{ flex: 1 }}>
@@ -1271,6 +1335,7 @@ function App() {
                         updateScores={updateScores}
                         settingsTitleLang={settingsTitleLang}
                         ratingMode={ratingMode}
+                        isLoggedIn={!!currentUser}
                     />
                 )}
 

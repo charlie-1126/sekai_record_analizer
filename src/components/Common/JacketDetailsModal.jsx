@@ -10,6 +10,7 @@ export default function JacketDetailsModal({
     settingsTitleLang,
     handleScoreChange,
     trainerSpeed = "10.5",
+    isLoggedIn = false,
 }) {
     if (!selectedJacketSong) return null;
 
@@ -104,8 +105,17 @@ export default function JacketDetailsModal({
                             레벨: <strong>{song.levels[diff] || "-"}</strong>
                         </div>
                         <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                            상수: <strong>{getConstant(song, diff, "full_combo").toFixed(1)}{!hasExplicitConstant(song, diff, "full_combo") && "?"}</strong>(FC) /{" "}
-                            <strong>{getConstant(song, diff, "full_perfect").toFixed(1)}{!hasExplicitConstant(song, diff, "full_perfect") && "?"}</strong>(AP)
+                            상수:{" "}
+                            <strong>
+                                {getConstant(song, diff, "full_combo").toFixed(1)}
+                                {!hasExplicitConstant(song, diff, "full_combo") && "?"}
+                            </strong>
+                            (FC) /{" "}
+                            <strong>
+                                {getConstant(song, diff, "full_perfect").toFixed(1)}
+                                {!hasExplicitConstant(song, diff, "full_perfect") && "?"}
+                            </strong>
+                            (AP)
                         </div>
                         {/* 출시일 정보 */}
                         {song.publishedAt && (
@@ -141,6 +151,26 @@ export default function JacketDetailsModal({
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    {!isLoggedIn && (
+                        <div
+                            style={{
+                                background: "rgba(239, 68, 68, 0.08)",
+                                border: "1px solid rgba(239, 68, 68, 0.2)",
+                                color: "#fca5a5",
+                                borderRadius: "8px",
+                                padding: "0.5rem",
+                                fontSize: "0.8rem",
+                                textAlign: "center",
+                                fontWeight: "600",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "0.3rem",
+                            }}
+                        >
+                            성과를 기록하려면 로그인이 필요합니다.
+                        </div>
+                    )}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem" }}>
                         {[
                             {
@@ -177,6 +207,7 @@ export default function JacketDetailsModal({
                                 <button
                                     key={opt.value}
                                     className="btn"
+                                    disabled={!isLoggedIn}
                                     style={{
                                         padding: "0.6rem 0.5rem",
                                         fontSize: "0.85rem",
@@ -185,8 +216,11 @@ export default function JacketDetailsModal({
                                         border: `1px solid ${isActive ? opt.color : opt.border}`,
                                         fontWeight: "700",
                                         boxShadow: isActive ? `0 0 10px ${opt.color}40` : "none",
+                                        opacity: isLoggedIn ? 1 : 0.5,
+                                        cursor: isLoggedIn ? "pointer" : "not-allowed",
                                     }}
                                     onClick={() => {
+                                        if (!isLoggedIn) return;
                                         handleScoreChange(song.id, diff, opt.value);
                                         setSelectedJacketSong({
                                             ...selectedJacketSong,

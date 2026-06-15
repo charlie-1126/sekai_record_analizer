@@ -108,6 +108,10 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
         return data.filter((d) => d.potential > 0);
     }, [effectiveUser]);
 
+    const activeHistoryData = useMemo(() => {
+        return mode === "potential" ? dailyPotentialHistoryData : dailyRatingHistoryData;
+    }, [mode, dailyPotentialHistoryData, dailyRatingHistoryData]);
+
     if (!effectiveUser) {
         return (
             <div
@@ -125,14 +129,10 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
                     textAlign: "center",
                 }}
             >
-                🔒 로그인 시 레이팅 상승 추세 그래프가 이곳에 표시됩니다.
+                로그인 시 레이팅 상승 추세 그래프가 이곳에 표시됩니다.
             </div>
         );
     }
-
-    const activeHistoryData = useMemo(() => {
-        return mode === "potential" ? dailyPotentialHistoryData : dailyRatingHistoryData;
-    }, [mode, dailyPotentialHistoryData, dailyRatingHistoryData]);
 
     if (activeHistoryData.length === 0) {
         return (
@@ -175,9 +175,8 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
     let minTime = null;
     let maxTime = null;
 
-    const firstEntryTime = activeHistoryData.length > 0
-        ? new Date(activeHistoryData[0].date + "T00:00:00Z").getTime()
-        : todayUTCMs;
+    const firstEntryTime =
+        activeHistoryData.length > 0 ? new Date(activeHistoryData[0].date + "T00:00:00Z").getTime() : todayUTCMs;
 
     if (graphRangeType === "7d") {
         minTime = todayUTCMs - 6 * 24 * 60 * 60 * 1000;
@@ -477,7 +476,7 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
         const indices = new Set();
         indices.add(0);
         indices.add(dataLen - 1);
-        
+
         const maxTicks = 7; // Increase max ticks to 7 for better density
         if (dataLen > 2) {
             const divisions = Math.min(dataLen - 1, maxTicks - 1);

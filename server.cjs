@@ -151,6 +151,56 @@ function verifyPassword(password, salt, storedHash) {
   return hash === storedHash;
 }
 
+// --- Helper to merge Guest and Server scores ---
+function mergeScores(localScores, serverScores) {
+  const getStatusRank = (status) => {
+    if (status === 'full_perfect') return 3;
+    if (status === 'full_combo') return 2;
+    if (status === 'clear') return 1;
+    return 0;
+  };
+
+  const getBetterStatus = (s1, s2) => {
+    return getStatusRank(s1) >= getStatusRank(s2) ? s1 : s2;
+  };
+
+  const mergedMap = new Map();
+
+  // Populate map with server scores first
+  if (Array.isArray(serverScores)) {
+    for (const score of serverScores) {
+      if (score && score.id) {
+        mergedMap.set(String(score.id), { ...score });
+      }
+    }
+  }
+
+  // Merge local/guest scores
+  if (Array.isArray(localScores)) {
+    for (const score of localScores) {
+      if (score && score.id) {
+        const idStr = String(score.id);
+        const existing = mergedMap.get(idStr);
+        if (existing) {
+          mergedMap.set(idStr, {
+            id: idStr,
+            easy: getBetterStatus(score.easy, existing.easy),
+            normal: getBetterStatus(score.normal, existing.normal),
+            hard: getBetterStatus(score.hard, existing.hard),
+            expert: getBetterStatus(score.expert, existing.expert),
+            master: getBetterStatus(score.master, existing.master),
+            append: getBetterStatus(score.append, existing.append),
+          });
+        } else {
+          mergedMap.set(idStr, { ...score });
+        }
+      }
+    }
+  }
+
+  return Array.from(mergedMap.values());
+}
+
 // --- Dynamic Jacket Downloader Engine ---
 async function downloadJacket(songId) {
   const paddedId = String(songId).padStart(3, '0');
@@ -246,7 +296,17 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const token = crypto.randomBytes(32).toString('hex');
-    await dbQuery.run('UPDATE users SET token = ? WHERE LOWER(username) = LOWER(?)', [token, username]);
+    let currentTokens = user.token || '';
+    let tokenList = [];
+    if (currentTokens) {
+      tokenList = currentTokens.split(',').map(t => t.trim()).filter(Boolean);
+    }
+    tokenList.push(token);
+    if (tokenList.length > 10) {
+      tokenList = tokenList.slice(-10);
+    }
+    const tokenStr = ',' + tokenList.join(',') + ',';
+    await dbQuery.run('UPDATE users SET token = ? WHERE LOWER(username) = LOWER(?)', [tokenStr, username]);
 
     const updatedHistory = await updateUserRatingHistoryIfNeeded(user.username, user);
     res.json({
@@ -281,7 +341,7 @@ app.get('/api/auth/me', async (req, res) => {
   }
 
   try {
-    const user = await dbQuery.get('SELECT * FROM users WHERE token = ?', [token]);
+    const user = await dbQuery.get('SELECT * FROM users WHERE token = ? OR token LIKE ?', [token, '%,' + token + ',%']);
     if (!user) {
       return res.status(401).json({ error: '유효하지 않거나 만료된 토큰입니다.' });
     }
@@ -317,7 +377,7 @@ const adminAuth = async (req, res, next) => {
   }
 
   try {
-    const user = await dbQuery.get('SELECT * FROM users WHERE token = ?', [token]);
+    const user = await dbQuery.get('SELECT * FROM users WHERE token = ? OR token LIKE ?', [token, '%,' + token + ',%']);
     if (!user) {
       return res.status(401).json({ error: '유효하지 않은 토큰입니다.' });
     }
@@ -408,7 +468,7 @@ app.post('/api/auth/change-password', async (req, res) => {
   }
 
   try {
-    const user = await dbQuery.get('SELECT * FROM users WHERE token = ?', [token]);
+    const user = await dbQuery.get('SELECT * FROM users WHERE token = ? OR token LIKE ?', [token, '%,' + token + ',%']);
     if (!user) {
       return res.status(401).json({ error: '유효하지 않은 토큰입니다.' });
     }
@@ -418,7 +478,11 @@ app.post('/api/auth/change-password', async (req, res) => {
     }
 
     const { salt, hash } = hashPassword(newPassword);
-    await dbQuery.run('UPDATE users SET password_salt = ?, password_hash = ? WHERE token = ?', [salt, hash, token]);
+    const tokenStr = ',' + token + ',';
+    await dbQuery.run(
+      'UPDATE users SET password_salt = ?, password_hash = ?, token = ? WHERE LOWER(username) = LOWER(?)',
+      [salt, hash, tokenStr, user.username]
+    );
 
     res.json({ success: true, message: '비밀번호가 정상적으로 변경되었습니다.' });
   } catch (err) {
@@ -856,70 +920,68 @@ app.get('/api/scores/user/:username', async (req, res) => {
 });
 
 app.post('/api/scores', async (req, res) => {
-  const { username, scores, rating: ratingDestructured, ratings } = req.body;
-  const rating = ratingDestructured || ratings;
+  const { username, scores, rating: ratingDestructured, ratings, modifications, replace } = req.body;
   if (!username) {
     return res.status(400).json({ error: '유저 계정명이 누락되었습니다.' });
   }
 
   try {
-    const user = await dbQuery.get('SELECT rating_history, nickname FROM users WHERE LOWER(username) = LOWER(?)', [username]);
+    const user = await dbQuery.get('SELECT scores, rating_history, nickname FROM users WHERE LOWER(username) = LOWER(?)', [username]);
     if (!user) {
       return res.status(404).json({ error: '해당 유저를 찾을 수 없습니다.' });
     }
 
-    const ratingHistory = JSON.parse(user.rating_history || '{}');
-    const sortedDates = Object.keys(ratingHistory).sort();
-    
-    let lastNormal = 0;
-    let lastAppend = 0;
-    let lastPotential = 0;
-    if (sortedDates.length > 0) {
-      const lastEntry = ratingHistory[sortedDates[sortedDates.length - 1]];
-      if (typeof lastEntry === 'object' && lastEntry !== null) {
-        lastNormal = lastEntry.normal || 0;
-        lastAppend = lastEntry.append || 0;
-        lastPotential = lastEntry.potential || 0;
-      } else if (typeof lastEntry === 'number') {
-        lastNormal = lastEntry;
+    let finalScores;
+    if (replace) {
+      finalScores = scores || [];
+    } else if (modifications && Array.isArray(modifications)) {
+      let currentScores = [];
+      try {
+        currentScores = JSON.parse(user.scores || '[]');
+      } catch (err) {
+        console.error("JSON parse error for scores", err);
       }
-    }
 
-    let newNormal = 0;
-    let newAppend = 0;
-    let newPotential = 0;
-    if (typeof rating === 'object' && rating !== null) {
-      newNormal = Number(rating.normal) || 0;
-      newAppend = Number(rating.append) || 0;
-      newPotential = Number(rating.potential) || 0;
-    } else if (typeof rating === 'number') {
-      newNormal = rating;
-    }
+      modifications.forEach(mod => {
+        const songId = String(mod.id);
+        const diff = mod.diff;
+        const status = mod.status === 'none' ? null : mod.status;
 
-    // Only update history if there's no history yet OR the new normal/append/potential has changed from the last recorded value
-    if (newNormal > 0 || newAppend > 0 || newPotential > 0) {
-      if (sortedDates.length === 0 || newNormal !== lastNormal || newAppend !== lastAppend || newPotential !== lastPotential) {
-        const today = new Date();
-        const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' });
-        const todayStr = formatter.format(today); // Returns YYYY-MM-DD
-        
-        ratingHistory[todayStr] = {
-          normal: newNormal,
-          append: newAppend,
-          potential: newPotential
-        };
-      }
+        const existIdx = currentScores.findIndex(s => String(s.id) === songId);
+        if (existIdx !== -1) {
+          currentScores[existIdx] = {
+            ...currentScores[existIdx],
+            [diff]: status
+          };
+        } else {
+          currentScores.push({
+            id: songId,
+            easy: diff === 'easy' ? status : null,
+            normal: diff === 'normal' ? status : null,
+            hard: diff === 'hard' ? status : null,
+            expert: diff === 'expert' ? status : null,
+            master: diff === 'master' ? status : null,
+            append: diff === 'append' ? status : null
+          });
+        }
+      });
+      finalScores = currentScores;
+    } else {
+      finalScores = scores || [];
     }
 
     await dbQuery.run(
-      'UPDATE users SET scores = ?, rating_history = ? WHERE LOWER(username) = LOWER(?)',
-      [JSON.stringify(scores || []), JSON.stringify(ratingHistory), username]
+      'UPDATE users SET scores = ? WHERE LOWER(username) = LOWER(?)',
+      [JSON.stringify(finalScores), username]
     );
+
+    const updatedHistory = await updateUserRatingHistoryIfNeeded(username);
 
     res.json({
       success: true,
       message: '플레이 기록과 레이팅이 성공적으로 저장되었습니다!',
-      rating_history: ratingHistory
+      scores: finalScores,
+      rating_history: updatedHistory || JSON.parse(user.rating_history || '{}')
     });
   } catch (err) {
     console.error(err);
