@@ -2113,3 +2113,58 @@ input[type="number"] {
         gap: 1rem !important;
     }
 }
+
+/* Cutoff Badges and Legend */
+.cutoff-badge {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    border-radius: 4px;
+    color: #ffffff !important;
+    line-height: 1.2;
+}
+.cutoff-badge.badge-b1 {
+    background: linear-gradient(135deg, #e5a93b 0%, #b87300 100%);
+    box-shadow: 0 0 8px rgba(229, 169, 59, 0.4);
+}
+.cutoff-badge.badge-b20 {
+    background: linear-gradient(135deg, #d352b9 0%, #7d3ca5 100%);
+    box-shadow: 0 0 8px rgba(211, 82, 185, 0.4);
+}
+.cutoff-badge.badge-b39 {
+    background: linear-gradient(135deg, #00a896 0%, #028090 100%);
+    box-shadow: 0 0 8px rgba(0, 168, 150, 0.4);
+}
+
+/* OB (Old Best) Badges - Cool Palette */
+.cutoff-badge.badge-ob1 {
+    background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
+    box-shadow: 0 0 8px rgba(156, 39, 176, 0.4);
+}
+.cutoff-badge.badge-ob15 {
+    background: linear-gradient(135deg, #2196f3 0%, #1a237e 100%);
+    box-shadow: 0 0 8px rgba(33, 150, 243, 0.4);
+}
+.cutoff-badge.badge-ob30 {
+    background: linear-gradient(135deg, #009688 0%, #004d40 100%);
+    box-shadow: 0 0 8px rgba(0, 150, 136, 0.4);
+}
+
+/* NB (New Best) Badges - Warm Palette */
+.cutoff-badge.badge-nb1 {
+    background: linear-gradient(135deg, #f44336 0%, #b71c1c 100%);
+    box-shadow: 0 0 8px rgba(244, 67, 54, 0.4);
+}
+.cutoff-badge.badge-nb5 {
+    background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);
+    box-shadow: 0 0 8px rgba(255, 152, 0, 0.4);
+}
+.cutoff-badge.badge-nb10 {
+    background: linear-gradient(135deg, #ffa000 0%, #ff6f00 100%);
+    box-shadow: 0 0 8px rgba(255, 160, 0, 0.4);
+}
+.cutoff-legend-bar {
+    animation: fadeIn 0.3s ease-out;
+}
+

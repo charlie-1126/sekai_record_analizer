@@ -2,6 +2,7 @@ import React from "react";
 import { JacketImage } from "./JacketImage";
 import { getSongTitle, getConstant } from "../../utils/ratingUtils";
 import { isNewSong, formatPublishedDate } from "../../utils/potentialUtils";
+import { ExternalLink } from "lucide-react";
 
 export default function JacketDetailsModal({
     selectedJacketSong,
@@ -174,6 +175,20 @@ export default function JacketDetailsModal({
                             );
                         })}
                     </div>
+                    <a
+                        href={`https://asset.rilaksekai.com/charts/${String(song.id).padStart(3, "0")}/${diff.toLowerCase()}.html`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-outline"
+                        style={{
+                            width: "100%",
+                            textDecoration: "none",
+                            boxSizing: "border-box",
+                            marginTop: "0.25rem",
+                        }}
+                    >
+                        <span>채보</span>
+                    </a>
                 </div>
             </div>
         </div>

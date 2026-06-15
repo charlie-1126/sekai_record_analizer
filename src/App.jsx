@@ -1263,6 +1263,8 @@ function App() {
                         onJacketClick={handleJacketClick}
                         settingsTitleLang={settingsTitleLang}
                         ratingMode={ratingMode}
+                        b39List={b39List}
+                        potentialData={potentialData}
                     />
                 )}
 

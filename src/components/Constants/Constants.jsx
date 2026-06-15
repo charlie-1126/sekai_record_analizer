@@ -4,7 +4,15 @@ import { JacketImage } from "../Common/JacketImage";
 import { getConstant, hasExplicitConstant } from "../../utils/ratingUtils";
 import { isNewSong } from "../../utils/potentialUtils";
 
-export const Constants = ({ songs, scores, onJacketClick, settingsTitleLang }) => {
+export const Constants = ({
+    songs,
+    scores,
+    onJacketClick,
+    settingsTitleLang,
+    ratingMode = "b39",
+    b39List = [],
+    potentialData = null,
+}) => {
     // --- States ---
     const [isConstFilterExpanded, setIsConstFilterExpanded] = useState(true);
     const [constSearchInput, setConstSearchInput] = useState("");
@@ -73,6 +81,38 @@ export const Constants = ({ songs, scores, onJacketClick, settingsTitleLang }) =
         });
         return map;
     }, [scores]);
+
+    // --- Cutoff Calculations ---
+    const cutoffs = useMemo(() => {
+        // B39 Mode Cutoffs
+        const cutoffB1 = b39List[0]?.rating || 0;
+        const cutoffB20 = b39List[19]?.rating || b39List[b39List.length - 1]?.rating || 0;
+        const cutoffB39 = b39List[38]?.rating || b39List[b39List.length - 1]?.rating || 0;
+
+        // Potential Mode Cutoffs (OB = Old Best, NB = New Best)
+        const oldBest = potentialData?.oldBest30 || [];
+        const newBest = potentialData?.newBest10 || [];
+
+        const cutoffOB1 = oldBest[0]?.potential || 0;
+        const cutoffOB15 = oldBest[14]?.potential || oldBest[oldBest.length - 1]?.potential || 0;
+        const cutoffOB30 = oldBest[29]?.potential || oldBest[oldBest.length - 1]?.potential || 0;
+
+        const cutoffNB1 = newBest[0]?.potential || 0;
+        const cutoffNB5 = newBest[4]?.potential || newBest[newBest.length - 1]?.potential || 0;
+        const cutoffNB10 = newBest[9]?.potential || newBest[newBest.length - 1]?.potential || 0;
+
+        return {
+            cutoffB1,
+            cutoffB20,
+            cutoffB39,
+            cutoffOB1,
+            cutoffOB15,
+            cutoffOB30,
+            cutoffNB1,
+            cutoffNB5,
+            cutoffNB10,
+        };
+    }, [b39List, potentialData]);
 
     const getSongTitle = (song) => {
         if (!song) return "";
@@ -201,6 +241,76 @@ export const Constants = ({ songs, scores, onJacketClick, settingsTitleLang }) =
         constNewFilter,
         settingsTitleLang,
     ]);
+
+    // --- Find boundary constant values ---
+    const boundaries = useMemo(() => {
+        if (groupedConstants.length === 0) return {};
+
+        const result = {
+            b1: null,
+            b20: null,
+            b39: null,
+            ob1: null,
+            ob15: null,
+            ob30: null,
+            nb1: null,
+            nb5: null,
+            nb10: null,
+        };
+
+        const multiplier = constType === "ap" ? 8.0 : 7.5;
+
+        if (ratingMode === "b39") {
+            const b1Groups = groupedConstants.filter(
+                (g) => cutoffs.cutoffB1 > 0 && Math.round(g.constantValue * multiplier) >= cutoffs.cutoffB1,
+            );
+            if (b1Groups.length > 0) result.b1 = b1Groups[b1Groups.length - 1].constantValue;
+
+            const b20Groups = groupedConstants.filter(
+                (g) => cutoffs.cutoffB20 > 0 && Math.round(g.constantValue * multiplier) >= cutoffs.cutoffB20,
+            );
+            if (b20Groups.length > 0) result.b20 = b20Groups[b20Groups.length - 1].constantValue;
+
+            const b39Groups = groupedConstants.filter(
+                (g) => cutoffs.cutoffB39 > 0 && Math.round(g.constantValue * multiplier) >= cutoffs.cutoffB39,
+            );
+            if (b39Groups.length > 0) result.b39 = b39Groups[b39Groups.length - 1].constantValue;
+        } else {
+            const extra = constType === "ap" ? 2.0 : 0.0;
+
+            const ob1Groups = groupedConstants.filter(
+                (g) => cutoffs.cutoffOB1 > 0 && g.constantValue + extra >= cutoffs.cutoffOB1,
+            );
+            if (ob1Groups.length > 0) result.ob1 = ob1Groups[ob1Groups.length - 1].constantValue;
+
+            const ob15Groups = groupedConstants.filter(
+                (g) => cutoffs.cutoffOB15 > 0 && g.constantValue + extra >= cutoffs.cutoffOB15,
+            );
+            if (ob15Groups.length > 0) result.ob15 = ob15Groups[ob15Groups.length - 1].constantValue;
+
+            const ob30Groups = groupedConstants.filter(
+                (g) => cutoffs.cutoffOB30 > 0 && g.constantValue + extra >= cutoffs.cutoffOB30,
+            );
+            if (ob30Groups.length > 0) result.ob30 = ob30Groups[ob30Groups.length - 1].constantValue;
+
+            const nb1Groups = groupedConstants.filter(
+                (g) => cutoffs.cutoffNB1 > 0 && g.constantValue + extra >= cutoffs.cutoffNB1,
+            );
+            if (nb1Groups.length > 0) result.nb1 = nb1Groups[nb1Groups.length - 1].constantValue;
+
+            const nb5Groups = groupedConstants.filter(
+                (g) => cutoffs.cutoffNB5 > 0 && g.constantValue + extra >= cutoffs.cutoffNB5,
+            );
+            if (nb5Groups.length > 0) result.nb5 = nb5Groups[nb5Groups.length - 1].constantValue;
+
+            const nb10Groups = groupedConstants.filter(
+                (g) => cutoffs.cutoffNB10 > 0 && g.constantValue + extra >= cutoffs.cutoffNB10,
+            );
+            if (nb10Groups.length > 0) result.nb10 = nb10Groups[nb10Groups.length - 1].constantValue;
+        }
+
+        return result;
+    }, [groupedConstants, cutoffs, ratingMode, constType]);
 
     const visibleConstants = useMemo(() => {
         return groupedConstants.slice(0, constVisibleCount);
@@ -435,87 +545,142 @@ export const Constants = ({ songs, scores, onJacketClick, settingsTitleLang }) =
                         검색 및 필터 조건에 합치하는 곡 상수 조합이 없습니다.
                     </div>
                 ) : (
-                    visibleConstants.map((group) => (
-                        <div key={group.constantValue} className="constant-group-section">
-                            {/* Constant group title */}
-                            <div className="constant-group-header">{group.constantValue.toFixed(1)}</div>
+                    visibleConstants.map((group) => {
+                        const constant = group.constantValue;
+                        const hasNewSong = group.charts.some((c) => isNewSong(c.song));
+                        const hasOldSong = group.charts.some((c) => !isNewSong(c.song));
 
-                            {/* Visual jacket grid for charts */}
-                            <div className="constant-charts-grid">
-                                {group.charts.map((chart) => (
-                                    <div
-                                        key={`${chart.song.id}-${chart.diff}`}
-                                        className="jacket-chart-card"
-                                        onClick={() => onJacketClick(chart.song, chart.diff, chart.status)}
-                                    >
-                                        {/* Jacket wrapper with difficulty border */}
+                        const badges = [];
+
+                        if (ratingMode === "b39") {
+                            if (constant === boundaries.b1) {
+                                badges.push({ type: "b1", label: "B1" });
+                            }
+                            if (constant === boundaries.b20) {
+                                badges.push({ type: "b20", label: "B20" });
+                            }
+                            if (constant === boundaries.b39) {
+                                badges.push({ type: "b39", label: "B39" });
+                            }
+                        } else {
+                            if (hasOldSong) {
+                                if (constant === boundaries.ob1) {
+                                    badges.push({ type: "ob1", label: "OB #1" });
+                                }
+                                if (constant === boundaries.ob15) {
+                                    badges.push({ type: "ob15", label: "OB #15" });
+                                }
+                                if (constant === boundaries.ob30) {
+                                    badges.push({ type: "ob30", label: "OB #30" });
+                                }
+                            }
+
+                            if (hasNewSong) {
+                                if (constant === boundaries.nb1) {
+                                    badges.push({ type: "nb1", label: "NB #1" });
+                                }
+                                if (constant === boundaries.nb5) {
+                                    badges.push({ type: "nb5", label: "NB #5" });
+                                }
+                                if (constant === boundaries.nb10) {
+                                    badges.push({ type: "nb10", label: "NB #10" });
+                                }
+                            }
+                        }
+
+                        return (
+                            <div key={group.constantValue} className="constant-group-section">
+                                {/* Constant group title */}
+                                <div className="constant-group-header" style={{ paddingRight: "1rem" }}>
+                                    <span>{group.constantValue.toFixed(1)}</span>
+                                    {badges.length > 0 && (
+                                        <div style={{ display: "flex", gap: "0.35rem", marginLeft: "auto" }}>
+                                            {badges.map((b) => (
+                                                <span key={b.type} className={`cutoff-badge badge-${b.type}`}>
+                                                    {b.label}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Visual jacket grid for charts */}
+                                <div className="constant-charts-grid">
+                                    {group.charts.map((chart) => (
                                         <div
-                                            className={`jacket-wrapper border-${chart.diff}`}
-                                            style={{ position: "relative" }}
+                                            key={`${chart.song.id}-${chart.diff}`}
+                                            className="jacket-chart-card"
+                                            onClick={() => onJacketClick(chart.song, chart.diff, chart.status)}
                                         >
-                                            <JacketImage songId={chart.song.id} size={85} />
-                                            {/* NEW badge */}
-                                            {isNewSong(chart.song) && (
-                                                <span
+                                            {/* Jacket wrapper with difficulty border */}
+                                            <div
+                                                className={`jacket-wrapper border-${chart.diff}`}
+                                                style={{ position: "relative" }}
+                                            >
+                                                <JacketImage songId={chart.song.id} size={85} />
+                                                {/* NEW badge */}
+                                                {isNewSong(chart.song) && (
+                                                    <span
+                                                        style={{
+                                                            position: "absolute",
+                                                            top: "2px",
+                                                            left: "2px",
+                                                            background: "linear-gradient(135deg, #ff4545ed, #f42516)",
+                                                            color: "#000",
+                                                            fontWeight: 800,
+                                                            fontSize: "0.55rem",
+                                                            padding: "0.1rem 0.3rem",
+                                                            borderRadius: "3px",
+                                                            zIndex: 2,
+                                                            letterSpacing: "0.05em",
+                                                        }}
+                                                    >
+                                                        NEW
+                                                    </span>
+                                                )}
+                                                {!chart.hasConstant && (
+                                                    <span
+                                                        className="no-constant-badge"
+                                                        title="상수 데이터 없음 (기본 레벨 표시)"
+                                                    >
+                                                        ?
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Neon Status tag directly under jacket */}
+                                            <div className={`jacket-status-overlay ${chart.statusClass}`}>
+                                                {chart.statusClass === "unplayed"
+                                                    ? "NC"
+                                                    : chart.statusClass === "clear"
+                                                      ? "C"
+                                                      : chart.statusClass.toUpperCase()}
+                                            </div>
+
+                                            {/* Hover detail tooltip */}
+                                            <div className="jacket-chart-tooltip">
+                                                <div
                                                     style={{
-                                                        position: "absolute",
-                                                        top: "2px",
-                                                        left: "2px",
-                                                        background: "linear-gradient(135deg, #ff4545ed, #f42516)",
-                                                        color: "#000",
-                                                        fontWeight: 800,
-                                                        fontSize: "0.55rem",
-                                                        padding: "0.1rem 0.3rem",
-                                                        borderRadius: "3px",
-                                                        zIndex: 2,
-                                                        letterSpacing: "0.05em",
+                                                        fontWeight: "700",
+                                                        wordBreak: "keep-all",
+                                                        overflowWrap: "break-word",
+                                                        display: "-webkit-box",
+                                                        WebkitLineClamp: 2,
+                                                        WebkitBoxOrient: "vertical",
+                                                        overflow: "hidden",
+                                                        textOverflow: "ellipsis",
+                                                        lineHeight: "1.2",
                                                     }}
                                                 >
-                                                    NEW
-                                                </span>
-                                            )}
-                                            {!chart.hasConstant && (
-                                                <span
-                                                    className="no-constant-badge"
-                                                    title="상수 데이터 없음 (기본 레벨 표시)"
-                                                >
-                                                    ?
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* Neon Status tag directly under jacket */}
-                                        <div className={`jacket-status-overlay ${chart.statusClass}`}>
-                                            {chart.statusClass === "unplayed"
-                                                ? "NC"
-                                                : chart.statusClass === "clear"
-                                                  ? "C"
-                                                  : chart.statusClass.toUpperCase()}
-                                        </div>
-
-                                        {/* Hover detail tooltip */}
-                                        <div className="jacket-chart-tooltip">
-                                            <div
-                                                style={{
-                                                    fontWeight: "700",
-                                                    wordBreak: "keep-all",
-                                                    overflowWrap: "break-word",
-                                                    display: "-webkit-box",
-                                                    WebkitLineClamp: 2,
-                                                    WebkitBoxOrient: "vertical",
-                                                    overflow: "hidden",
-                                                    textOverflow: "ellipsis",
-                                                    lineHeight: "1.2",
-                                                }}
-                                            >
-                                                {getSongTitle(chart.song)}
+                                                    {getSongTitle(chart.song)}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
                 {/* Sentinel for IntersectionObserver */}
                 {groupedConstants.length > constVisibleCount && (
