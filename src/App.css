@@ -1856,6 +1856,9 @@ input[type="number"] {
     .glass-panel {
         padding: 1.25rem !important;
     }
+    .glass-panel.b39-item {
+        padding: 0 !important;
+    }
     .constants-filters-grid,
     .distributions-filters-grid,
     .records-filters-grid {
