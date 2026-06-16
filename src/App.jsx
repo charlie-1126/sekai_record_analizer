@@ -53,7 +53,6 @@ import JacketDetailsModal from "./components/Common/JacketDetailsModal";
 
 // Rating Utils
 import { calculateRating, getConstant, hasExplicitConstant, calculateTempRatings } from "./utils/ratingUtils";
-import { mergeScores } from "./utils/scoreUtils";
 import {
     computePotentialRating,
     calculateTempPotential,
@@ -175,9 +174,10 @@ function App() {
 
     const fileInputRef = useRef(null);
     const skipNextFetch = useRef(false);
-    // [Fix C-2] Track whether a score-save is in-flight to prevent polling from
-    // overwriting a score change that hasn't been persisted to the server yet.
+    // Tracks whether a score-save is in-flight (C-2: prevents polling from overwriting optimistic UI)
     const isSyncingScores = useRef(false);
+    // Shows a brief error message when server sync fails (e.g. offline)
+    const [syncError, setSyncError] = useState("");
 
     // --- Fetch Songs from Server DB ---
     const fetchSongsFromServer = async () => {
@@ -260,7 +260,9 @@ function App() {
     };
 
     // --- Sync local scores to server ---
-    const syncScoresToServer = async (userObj, currentScores, ratingObj, modifications = null, replace = false) => {
+    // previousScores: the scores state before the change, used to revert on failure.
+    // Pass null to skip revert (e.g. on initial login sync).
+    const syncScoresToServer = async (userObj, currentScores, previousScores, ratingObj, modifications = null, replace = false) => {
         if (!userObj) return;
 
         let ratings = ratingObj;
@@ -274,7 +276,6 @@ function App() {
             };
         }
 
-        // [Fix C-2] Mark as syncing before the request starts
         isSyncingScores.current = true;
         try {
             const payload = {
@@ -294,14 +295,12 @@ function App() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    // [Fix H-1] Send token so requireAuth middleware can authenticate
                     "Authorization": `Bearer ${userObj.token}`,
                 },
                 body: JSON.stringify(payload),
             });
             if (res.ok) {
                 const data = await res.json();
-                console.log("Successfully synced scores to server.");
                 if (data.scores) {
                     setScores(data.scores);
                     localStorage.setItem("pjsk_user_scores", JSON.stringify(data.scores));
@@ -312,24 +311,36 @@ function App() {
                         if (JSON.stringify(prev.rating_history) === JSON.stringify(data.rating_history)) {
                             return prev;
                         }
-                        const updated = {
-                            ...prev,
-                            rating_history: data.rating_history
-                        };
+                        const updated = { ...prev, rating_history: data.rating_history };
                         localStorage.setItem("pjsk_auth", JSON.stringify(updated));
                         return updated;
                     });
                 }
+            } else {
+                // Server returned an error — revert the optimistic UI update
+                if (previousScores !== null) {
+                    setScores(previousScores);
+                    localStorage.setItem("pjsk_user_scores", JSON.stringify(previousScores));
+                }
+                setSyncError("저장 실패: 서버 오류가 발생했습니다. 변경사항이 취소되었습니다.");
+                setTimeout(() => setSyncError(""), 4000);
             }
         } catch (e) {
+            // Network error (offline) — revert the optimistic UI update
             console.error("Failed to sync scores to server:", e);
+            if (previousScores !== null) {
+                setScores(previousScores);
+                localStorage.setItem("pjsk_user_scores", JSON.stringify(previousScores));
+            }
+            setSyncError("오프라인 상태입니다. 인터넷 연결을 확인해 주세요.");
+            setTimeout(() => setSyncError(""), 4000);
         } finally {
-            // [Fix C-2] Always clear the flag after completion or error
             isSyncingScores.current = false;
         }
     };
 
-    const updateScores = (newScores, modifications = null, replace = false) => {
+    const updateScores = (newScores, previousScores, modifications = null, replace = false) => {
+        // Optimistic update: apply immediately in UI and localStorage
         setScores(newScores);
         localStorage.setItem("pjsk_user_scores", JSON.stringify(newScores));
         if (currentUser) {
@@ -340,8 +351,10 @@ function App() {
                 append: tempCalc.playerAppendRating,
                 potential: tempPot.potential4,
             };
-            syncScoresToServer(currentUser, newScores, ratingObj, modifications, replace);
+            // Pass previousScores so the sync can revert on failure
+            syncScoresToServer(currentUser, newScores, previousScores, ratingObj, modifications, replace);
         }
+        // Guest users: localStorage is the only store, no revert needed
     };
 
     // --- Song Title Localization Helper ---
@@ -354,6 +367,7 @@ function App() {
     };
 
     const handleScoreChange = (songId, diff, newStatus) => {
+        const previousScores = scores; // snapshot before change for revert-on-failure
         const existIdx = scores.findIndex((s) => String(s.id) === String(songId));
         let newScores = [...scores];
 
@@ -377,7 +391,7 @@ function App() {
                 append: diff === "append" ? sanitizeStatus(newStatus) : null,
             });
         }
-        updateScores(newScores, [{ id: String(songId), diff, status: sanitizeStatus(newStatus) }]);
+        updateScores(newScores, previousScores, [{ id: String(songId), diff, status: sanitizeStatus(newStatus) }]);
     };
 
     const handleJacketClick = (song, diff, currentStatus) => {
@@ -509,7 +523,8 @@ function App() {
 
     const confirmImport = () => {
         if (pendingImportScores) {
-            updateScores(pendingImportScores, null, true);
+            const previousScores = scores; // snapshot to revert to if server save fails
+            updateScores(pendingImportScores, previousScores, null, true);
             setShowImportPreview(false);
             setPendingImportScores(null);
             setPreviewCalculatedData(null);
@@ -610,27 +625,10 @@ function App() {
                             };
                             setCurrentUser(userObj);
 
-                            // [Fix C-3] Merge local (possibly-offline-edited) scores with server scores
-                            // using "best status wins" strategy, so offline edits are never silently lost.
-                            const serverScores = data.user.scores || [];
-                            let localScores = [];
-                            try {
-                                const localRaw = localStorage.getItem("pjsk_user_scores");
-                                localScores = localRaw ? JSON.parse(localRaw) : [];
-                            } catch { localScores = []; }
-
-                            // Only attempt merge if there are meaningful local scores to consider
-                            let finalScores = serverScores;
-                            if (localScores.length > 0) {
-                                finalScores = mergeScores(localScores, serverScores);
-                                // If the merge produced something different from the server, push it back
-                                if (JSON.stringify(finalScores) !== JSON.stringify(serverScores)) {
-                                    console.log('[initAuth] Local scores differ from server — pushing merged result.');
-                                    // Fire-and-forget: push merged scores to server in background
-                                    syncScoresToServer(userObj, finalScores, null, null, true);
-                                }
-                            }
-
+                            // Server is the single source of truth for logged-in users.
+                            // Offline edits are not supported: scores are only saved when the
+                            // server request succeeds (see syncScoresToServer revert logic).
+                            const finalScores = data.user.scores || [];
                             setScores(finalScores);
                             localStorage.setItem("pjsk_user_scores", JSON.stringify(finalScores));
                             setSettingsNickname(data.user.nickname);
@@ -1334,6 +1332,7 @@ function App() {
                 handleScoreChange={handleScoreChange}
                 trainerSpeed={trainerSpeed}
                 isLoggedIn={!!currentUser}
+                scores={scores}
             />
 
             <AuthModal
@@ -1474,6 +1473,28 @@ function App() {
                     <Distributions songs={visibleSongs} userScoresMap={userScoresMap} ratingMode={ratingMode} />
                 )}
             </main>
+
+            {/* Offline / sync-failure toast */}
+            {syncError && (
+                <div style={{
+                    position: "fixed",
+                    bottom: "1.5rem",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    background: "rgba(255,80,80,0.92)",
+                    color: "#fff",
+                    padding: "0.75rem 1.5rem",
+                    borderRadius: "0.75rem",
+                    fontWeight: 600,
+                    fontSize: "0.9rem",
+                    boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+                    zIndex: 9999,
+                    pointerEvents: "none",
+                    whiteSpace: "nowrap",
+                }}>
+                    ⚠ {syncError}
+                </div>
+            )}
         </div>
     );
 }

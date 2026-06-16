@@ -11,10 +11,13 @@ export default function JacketDetailsModal({
     handleScoreChange,
     trainerSpeed = "10.5",
     isLoggedIn = false,
+    scores = [],
 }) {
     if (!selectedJacketSong) return null;
 
-    const { song, diff, status } = selectedJacketSong;
+    const { song, diff } = selectedJacketSong;
+    const songScore = scores.find((s) => String(s.id) === String(song.id));
+    const status = songScore && songScore[diff] ? songScore[diff] : "none";
 
     const diffLower = diff.toLowerCase();
     const isEasyOrNormal = diffLower === "easy" || diffLower === "normal";
@@ -222,10 +225,6 @@ export default function JacketDetailsModal({
                                     onClick={() => {
                                         if (!isLoggedIn) return;
                                         handleScoreChange(song.id, diff, opt.value);
-                                        setSelectedJacketSong({
-                                            ...selectedJacketSong,
-                                            status: opt.value,
-                                        });
                                     }}
                                 >
                                     {opt.label}

@@ -122,6 +122,7 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
     };
 
     const handleScoreChange = (songId, diff, newStatus) => {
+        const previousScores = scores; // snapshot for revert-on-failure
         const existIdx = scores.findIndex((s) => String(s.id) === String(songId));
         let newScores = [...scores];
 
@@ -145,12 +146,13 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                 append: diff === "append" ? sanitizeStatus(newStatus) : null,
             });
         }
-        updateScores(newScores, [{ id: String(songId), diff, status: sanitizeStatus(newStatus) }]);
+        updateScores(newScores, previousScores, [{ id: String(songId), diff, status: sanitizeStatus(newStatus) }]);
     };
 
     // --- Bulk Score Update Handlers ---
     const handleBulkScoreChange = (newStatus) => {
         if (filteredAndSortedRecords.length === 0) return;
+        const previousScores = scores; // snapshot for revert-on-failure
 
         const sanitizeStatus = (status) => {
             return status === "none" ? null : status;
@@ -183,7 +185,7 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
             modifications.push({ id: songId, diff, status: sanitizeStatus(newStatus) });
         });
 
-        updateScores(newScores, modifications);
+        updateScores(newScores, previousScores, modifications);
     };
 
     const handleBulkScoreConfirm = (status) => {
