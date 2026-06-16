@@ -124,6 +124,19 @@ class JSONDatabase {
 
 const dbSongs = new JSONDatabase('songs.json', []);
 
+const originalDbSongsRead = dbSongs.read.bind(dbSongs);
+dbSongs.read = function() {
+  const songs = originalDbSongsRead();
+  const isAfterRemoveDate = new Date() >= new Date('2026-04-22');
+  if (isAfterRemoveDate) {
+    return songs.filter(song => {
+      const idStr = String(Number(song.id));
+      return !["707", "708", "709"].includes(idStr);
+    });
+  }
+  return songs;
+};
+
 // Copy initial songs data if exists
 const initialSongsPath = path.join(__dirname, 'songs_data.json');
 if (fs.existsSync(initialSongsPath) && dbSongs.read().length === 0) {
@@ -650,6 +663,16 @@ function processAndSaveSongs(songsArray, releaseDates = {}, songTypes = {}) {
   let updatedCount = 0;
   let addedCount = 0;
 
+  const isAfterRemoveDate = new Date() >= new Date('2026-04-22');
+  if (isAfterRemoveDate) {
+    currentMap.delete(707);
+    currentMap.delete(708);
+    currentMap.delete(709);
+    currentMap.delete("707");
+    currentMap.delete("708");
+    currentMap.delete("709");
+  }
+
   const parseConstant = (val) => {
     if (val === undefined || val === null) return null;
     const valStr = String(val).trim();
@@ -661,6 +684,11 @@ function processAndSaveSongs(songsArray, releaseDates = {}, songTypes = {}) {
   const normalizeNameForType = name => name ? name.toLowerCase().replace(/[\s\-\_\,\.\!\?\'\"\`\’\“\”\：\:\；\;\~\(\)\[\]\※]/g, '').replace(/[\uFF01-\uFF5E]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0)) : '';
 
   for (const song of songsArray) {
+    const songIdStr = String(Number(song.id));
+    if (isAfterRemoveDate && ["707", "708", "709"].includes(songIdStr)) {
+      continue;
+    }
+
     const levels = {
       easy: song.levels?.easy ? Number(song.levels.easy) : null,
       normal: song.levels?.normal ? Number(song.levels.normal) : null,
@@ -682,7 +710,6 @@ function processAndSaveSongs(songsArray, releaseDates = {}, songTypes = {}) {
       append_ap: parseConstant(song.apd_ap),
     };
 
-    const songIdStr = String(Number(song.id));
     const publishedAtVal = releaseDates[songIdStr] || song.publishedAt || (currentMap.get(song.id)?.publishedAt) || null;
 
     // Match song type (既, 公, 書) from pjsekai.com wiki scraping
@@ -702,6 +729,15 @@ function processAndSaveSongs(songsArray, releaseDates = {}, songTypes = {}) {
       }
     }
 
+    const forceFalseIds = ["230", "231", "232", "233", "234"];
+    const forceTrueIds = ["162", "163", "164", "447", "448", "449", "503", "536", "622"];
+    let isOriginal = songType === '書';
+    if (forceFalseIds.includes(songIdStr)) {
+      isOriginal = false;
+    } else if (forceTrueIds.includes(songIdStr)) {
+      isOriginal = true;
+    }
+
     const refinedSong = {
       id: song.id,
       title_ko: song.title_ko || '',
@@ -715,7 +751,7 @@ function processAndSaveSongs(songsArray, releaseDates = {}, songTypes = {}) {
       composer: song.composer || song.composer_jp || '',
       jacketUrl: `/jackets/jacket_s_${String(song.id).padStart(3, '0')}.webp`,
       publishedAt: publishedAtVal,
-      song_type: songType
+      original: isOriginal
     };
 
     if (currentMap.has(song.id)) {

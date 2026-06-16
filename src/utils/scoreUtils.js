@@ -68,7 +68,7 @@ export function mergeScores(localScores, serverScores) {
 
 /**
  * Default sorting function based on the following priorities:
- * 1. Song type: Non-originals (公, 既) first, Originals (書) last.
+ * 1. Song type: Non-originals first, Originals last.
  * 2. Unit code order: VS -> L/n -> MMJ -> VBS -> WxS -> N25 -> Oth.
  * 3. Release date (publishedAt) ascending.
  * 4. Song ID ascending as final fallback.
@@ -77,9 +77,9 @@ export function defaultSort(a, b) {
     const songA = a.song || a;
     const songB = b.song || b;
 
-    // 1. Song Type: '書' is original (value 1), other types (既, 公) are 0
-    const typeA = songA.song_type === "書" ? 1 : 0;
-    const typeB = songB.song_type === "書" ? 1 : 0;
+    // 1. Song Type: original (value 1), non-original (value 0)
+    const typeA = songA.original ? 1 : 0;
+    const typeB = songB.original ? 1 : 0;
     if (typeA !== typeB) {
         return typeA - typeB;
     }
