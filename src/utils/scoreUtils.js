@@ -65,3 +65,41 @@ export function mergeScores(localScores, serverScores) {
 
     return Array.from(mergedMap.values());
 }
+
+/**
+ * Default sorting function based on the following priorities:
+ * 1. Song type: Non-originals (公, 既) first, Originals (書) last.
+ * 2. Unit code order: VS -> L/n -> MMJ -> VBS -> WxS -> N25 -> Oth.
+ * 3. Release date (publishedAt) ascending.
+ * 4. Song ID ascending as final fallback.
+ */
+export function defaultSort(a, b) {
+    const songA = a.song || a;
+    const songB = b.song || b;
+
+    // 1. Song Type: '書' is original (value 1), other types (既, 公) are 0
+    const typeA = songA.song_type === "書" ? 1 : 0;
+    const typeB = songB.song_type === "書" ? 1 : 0;
+    if (typeA !== typeB) {
+        return typeA - typeB;
+    }
+
+    // 2. Unit Order: VS -> L/n -> MMJ -> VBS -> WxS -> N25 -> Oth
+    const unitOrder = { "VS": 0, "L/n": 1, "MMJ": 2, "VBS": 3, "WxS": 4, "N25": 5, "Oth": 6 };
+    const unitA = unitOrder[songA.unit_code] !== undefined ? unitOrder[songA.unit_code] : 7;
+    const unitB = unitOrder[songB.unit_code] !== undefined ? unitOrder[songB.unit_code] : 7;
+    if (unitA !== unitB) {
+        return unitA - unitB;
+    }
+
+    // 3. Release Date (publishedAt) ascending
+    const timeA = songA.publishedAt ? Number(songA.publishedAt) : 0;
+    const timeB = songB.publishedAt ? Number(songB.publishedAt) : 0;
+    if (timeA !== timeB) {
+        return timeA - timeB;
+    }
+
+    // 4. Fallback to Song ID ascending
+    return Number(songA.id) - Number(songB.id);
+}
+

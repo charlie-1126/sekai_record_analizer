@@ -60,6 +60,8 @@ import {
     getTierDisplayName,
 } from "./utils/potentialUtils";
 import { PotentialDashboard } from "./components/Dashboard/PotentialDashboard";
+import { defaultSort } from "./utils/scoreUtils";
+
 
 function App() {
     // --- Routing Hooks ---
@@ -802,7 +804,12 @@ function App() {
             });
         });
 
-        return list.sort((a, b) => b.rating - a.rating);
+        return list.sort((a, b) => {
+            if (b.rating !== a.rating) {
+                return b.rating - a.rating;
+            }
+            return defaultSort(a, b);
+        });
     }, [userScoresMap, songs]);
 
     // --- Top 39 (B39) & Player R ---
@@ -844,7 +851,12 @@ function App() {
             }
         });
 
-        return list.sort((a, b) => b.rating - a.rating);
+        return list.sort((a, b) => {
+            if (b.rating !== a.rating) {
+                return b.rating - a.rating;
+            }
+            return defaultSort(a, b);
+        });
     }, [userScoresMap, songs]);
 
     const appendB15List = useMemo(() => {

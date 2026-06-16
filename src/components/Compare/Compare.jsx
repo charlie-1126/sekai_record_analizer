@@ -5,6 +5,8 @@ import { JacketImage } from "../Common/JacketImage";
 import { calculateRating, getConstant, getRelativePercentages } from "../../utils/ratingUtils";
 import { isNewSong, computePotentialRating, calculateSongPotential } from "../../utils/potentialUtils";
 import { useSessionState } from "../../utils/useSessionState";
+import { defaultSort } from "../../utils/scoreUtils";
+
 
 export const Compare = ({
     currentUser,
@@ -43,7 +45,7 @@ export const Compare = ({
     const [compareResultFilter, setCompareResultFilter] = useSessionState("pjsk_compare_result_filter", "all"); // "all", "win", "lose", "draw"
     const [compareMinLevel, setCompareMinLevel] = useSessionState("pjsk_compare_min_level", "");
     const [compareMaxLevel, setCompareMaxLevel] = useSessionState("pjsk_compare_max_level", "");
-    const [compareSortBy, setCompareSortBy] = useSessionState("pjsk_compare_sort_by", "level"); // "level", "gap", "title", "ratingA", "ratingB"
+    const [compareSortBy, setCompareSortBy] = useSessionState("pjsk_compare_sort_by", "gap"); // "level", "gap", "title", "ratingA", "ratingB"
     const [compareSortOrder, setCompareSortOrder] = useSessionState("pjsk_compare_sort_order", "desc"); // "asc", "desc"
     const [compareNewFilter, setCompareNewFilter] = useSessionState("pjsk_compare_new_filter", "all"); // "all", "new", "old"
     const [isCompareFilterExpanded, setIsCompareFilterExpanded] = useSessionState("pjsk_compare_filter_expanded", true);
@@ -389,10 +391,9 @@ export const Compare = ({
 
         // 6. Sorting
         list.sort((a, b) => {
-            let valA, valB;
+            let cmp = 0;
             if (compareSortBy === "level") {
-                valA = a.level;
-                valB = b.level;
+                cmp = a.level - b.level;
             } else if (compareSortBy === "gap") {
                 const tierMap = compareIncludeClear
                     ? { full_perfect: 3, full_combo: 2, clear: 1, none: 0 }
@@ -401,28 +402,32 @@ export const Compare = ({
                 const tierDiffB = (tierMap[b.statA] || 0) - (tierMap[b.statB] || 0);
 
                 if (tierDiffA !== tierDiffB) {
-                    valA = tierDiffA;
-                    valB = tierDiffB;
+                    cmp = tierDiffA - tierDiffB;
                 } else {
-                    valA = a.ratingA - a.ratingB;
-                    valB = b.ratingA - b.ratingB;
+                    cmp = (a.ratingA - a.ratingB) - (b.ratingA - b.ratingB);
                 }
             } else if (compareSortBy === "title") {
-                valA = getSongTitle(a.song);
-                valB = getSongTitle(b.song);
+                cmp = getSongTitle(a.song).localeCompare(getSongTitle(b.song));
             } else if (compareSortBy === "ratingA") {
-                valA = a.ratingA;
-                valB = b.ratingA;
+                cmp = a.ratingA - b.ratingA;
             } else if (compareSortBy === "ratingB") {
-                valA = a.ratingB;
-                valB = b.ratingB;
+                cmp = a.ratingB - b.ratingB;
             }
 
-            if (typeof valA === "string") {
-                return compareSortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
-            } else {
-                return compareSortOrder === "asc" ? valA - valB : valB - valA;
+            if (cmp !== 0) {
+                return compareSortOrder === "asc" ? cmp : -cmp;
             }
+
+            // 2차 정렬: 내 성과 순 정렬(AP->FC->C->NC) 내림차순
+            const statusMap = { full_perfect: 3, full_combo: 2, clear: 1, none: 0 };
+            const myStatA = statusMap[a.statA] || 0;
+            const myStatB = statusMap[b.statA] || 0;
+            if (myStatA !== myStatB) {
+                return myStatB - myStatA;
+            }
+
+            // 3차 정렬: 디폴트 정렬
+            return defaultSort(a, b);
         });
 
         return list;

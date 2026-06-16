@@ -5,6 +5,8 @@
  */
 
 import { getConstant } from "./ratingUtils";
+import { defaultSort } from "./scoreUtils";
+
 
 // ─────────────────────────────────────────
 // 1. New-song detection
@@ -109,9 +111,19 @@ export const computePotentialRating = (songs, userScoresMap, diffList = null) =>
         });
     });
 
-    // 각각 내림차순 정렬
-    oldEntries.sort((a, b) => b.potential - a.potential);
-    newEntries.sort((a, b) => b.potential - a.potential);
+    // 각각 내림차순 정렬: 포텐셜이 다르면 포텐셜 내림차순, 같으면 디폴트 정렬
+    oldEntries.sort((a, b) => {
+        if (b.potential !== a.potential) {
+            return b.potential - a.potential;
+        }
+        return defaultSort(a, b);
+    });
+    newEntries.sort((a, b) => {
+        if (b.potential !== a.potential) {
+            return b.potential - a.potential;
+        }
+        return defaultSort(a, b);
+    });
 
     const oldBest30 = oldEntries.slice(0, 30);
     const newBest10 = newEntries.slice(0, 10);

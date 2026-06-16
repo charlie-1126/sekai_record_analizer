@@ -56,6 +56,65 @@ async function fetchSongs() {
       console.error('Failed to fetch release dates, fallback to none:', e);
     }
 
+    let songTypes = {};
+    try {
+      console.log('Fetching song classifications from pjsekai.com...');
+      let wikiHtml;
+      try {
+        const res = await fetch('https://pjsekai.com/?aad6ee23b0', {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          }
+        });
+        if (res.ok) {
+          wikiHtml = await res.text();
+        } else {
+          throw new Error(`Status ${res.status}`);
+        }
+      } catch (err) {
+        console.warn('Direct wiki fetch failed, trying proxy fallback:', err.message);
+        const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent('https://pjsekai.com/?aad6ee23b0')}`;
+        const res = await fetch(proxyUrl);
+        if (res.ok) {
+          wikiHtml = await res.text();
+        } else {
+          throw new Error(`Proxy fallback failed: ${res.status}`);
+        }
+      }
+
+      if (wikiHtml) {
+        const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+        let m;
+        const cleanText = text => text ? text.replace(/<[^>]*>/g, '').trim() : '';
+        const normalizeNameForType = name => name ? name.toLowerCase().replace(/[\s\-\_\,\.\!\?\'\"\`\’\“\”\：\:\；\;\~\(\)\[\]\※]/g, '').replace(/[\uFF01-\uFF5E]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0)) : '';
+
+        while ((m = trRegex.exec(wikiHtml)) !== null) {
+          const trContent = m[1];
+          const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+          const tds = [];
+          let tdMatch;
+          while ((tdMatch = tdRegex.exec(trContent)) !== null) {
+            tds.push(tdMatch[1]);
+          }
+          if (tds.length >= 4) {
+            const typeText = cleanText(tds[2]);
+            const titleTd = tds[3];
+            if ((typeText === '既' || typeText === '公' || typeText === '書') && titleTd.includes('<a href=')) {
+              const titleText = cleanText(titleTd);
+              const normTitle = normalizeNameForType(titleText);
+              if (normTitle) {
+                songTypes[normTitle] = typeText;
+              }
+              songTypes[titleText] = typeText;
+            }
+          }
+        }
+        console.log(`Successfully fetched song types map of size ${Object.keys(songTypes).length}.`);
+      }
+    } catch (e) {
+      console.error('Failed to fetch song classifications from pjsekai.com:', e);
+    }
+
     const processedSongs = data.map(song => {
       const levels = {
         easy: song.levels?.easy ? Number(song.levels.easy) : null,
@@ -86,6 +145,24 @@ async function fetchSongs() {
         append_ap: parseConstant(song.apd_ap),
       };
 
+      const normalizeNameForType = name => name ? name.toLowerCase().replace(/[\s\-\_\,\.\!\?\'\"\`\’\“\”\：\:\；\;\~\(\)\[\]\※]/g, '').replace(/[\uFF01-\uFF5E]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0)) : '';
+
+      let songType = '既'; // default is existing
+      if (song.title_jp && songTypes[song.title_jp]) {
+        songType = songTypes[song.title_jp];
+      } else {
+        const normJp = normalizeNameForType(song.title_jp);
+        const normKo = normalizeNameForType(song.title_ko);
+        const normHangul = normalizeNameForType(song.title_hangul);
+        if (normJp && songTypes[normJp]) {
+          songType = songTypes[normJp];
+        } else if (normKo && songTypes[normKo]) {
+          songType = songTypes[normKo];
+        } else if (normHangul && songTypes[normHangul]) {
+          songType = songTypes[normHangul];
+        }
+      }
+
       return {
         id: song.id,
         title_ko: song.title_ko || '',
@@ -97,7 +174,8 @@ async function fetchSongs() {
         levels: levels,
         constants: constants,
         composer: song.composer || song.composer_jp || '',
-        publishedAt: releaseDates[String(song.id)] || song.publishedAt || null,
+        publishedAt: releaseDates[String(Number(song.id))] || song.publishedAt || null,
+        song_type: songType
       };
     });
 

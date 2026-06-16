@@ -3,6 +3,8 @@ import { Target, XCircle, CheckCircle2 } from "lucide-react";
 import { JacketImage } from "../Common/JacketImage";
 import { isNewSong } from "../../utils/potentialUtils";
 import { useSessionState } from "../../utils/useSessionState";
+import { defaultSort } from "../../utils/scoreUtils";
+
 
 export const Tour = ({
     songs,
@@ -122,9 +124,7 @@ export const Tour = ({
         });
         return charts.sort((a, b) => {
             if (a.level !== b.level) return a.level - b.level;
-            const titleA = a.song.title_ko || a.song.title_jp || "";
-            const titleB = b.song.title_ko || b.song.title_jp || "";
-            return titleA.localeCompare(titleB);
+            return defaultSort(a, b);
         });
     }, [tourDiffs, tourMinLevel, tourMaxLevel, tourNewFilter, songs]);
 

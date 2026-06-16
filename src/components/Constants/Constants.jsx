@@ -4,6 +4,8 @@ import { JacketImage } from "../Common/JacketImage";
 import { getConstant, hasExplicitConstant } from "../../utils/ratingUtils";
 import { isNewSong } from "../../utils/potentialUtils";
 import { useSessionState } from "../../utils/useSessionState";
+import { defaultSort } from "../../utils/scoreUtils";
+
 
 export const Constants = ({
     songs,
@@ -219,7 +221,7 @@ export const Constants = ({
         const sortedKeys = Object.keys(groups).sort((a, b) => parseFloat(b) - parseFloat(a));
 
         const sortedGroups = sortedKeys.map((key) => {
-            const charts = groups[key].sort((a, b) => getSongTitle(a.song).localeCompare(getSongTitle(b.song)));
+            const charts = groups[key].sort((a, b) => defaultSort(a, b));
             return {
                 constantValue: parseFloat(key),
                 charts,

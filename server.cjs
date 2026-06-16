@@ -556,6 +556,36 @@ if (fs.existsSync(configPath)) {
 const SONGS_API_URL = process.env.SONGS_API_URL || CONFIG.songsApiUrl;
 const SYNC_INTERVAL = process.env.SYNC_INTERVAL ? Number(process.env.SYNC_INTERVAL) : CONFIG.syncIntervalMs;
 
+// Helper to fetch plain text / HTML with proxy fallback
+async function fetchTextWithFallback(targetUrl) {
+  console.log(`[Fetch Text] Attempting to fetch from: ${targetUrl}`);
+  try {
+    const response = await fetch(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    if (response.ok) {
+      return await response.text();
+    }
+    throw new Error(`HTTP error! status: ${response.status}`);
+  } catch (directError) {
+    console.warn(`[Fetch Text] Direct fetch failed: ${directError.message}`);
+    const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`;
+    console.log(`[Fetch Text] Attempting fallback via proxy: ${proxyUrl}`);
+    try {
+      const response = await fetch(proxyUrl);
+      if (response.ok) {
+        return await response.text();
+      }
+      throw new Error(`Proxy HTTP error! status: ${response.status}`);
+    } catch (proxyError) {
+      console.error(`[Fetch Text] Proxy fetch failed: ${proxyError.message}`);
+      throw new Error(`Both direct fetch and proxy fallback failed. Direct: ${directError.message}, Proxy: ${proxyError.message}`);
+    }
+  }
+}
+
 // Helper to fetch URL with proxy fallback to bypass Cloudflare TLS fingerprinting
 async function fetchUrlWithFallback(targetUrl) {
   console.log(`[Fetch] Attempting to fetch from: ${targetUrl}`);
@@ -614,7 +644,7 @@ async function prefetchJacketsBackground(songs) {
   }
 }
 
-function processAndSaveSongs(songsArray, releaseDates = {}) {
+function processAndSaveSongs(songsArray, releaseDates = {}, songTypes = {}) {
   const currentSongs = dbSongs.read();
   const currentMap = new Map(currentSongs.map(s => [s.id, s]));
   let updatedCount = 0;
@@ -627,6 +657,8 @@ function processAndSaveSongs(songsArray, releaseDates = {}) {
     const parsed = parseFloat(valStr);
     return isNaN(parsed) ? null : parsed;
   };
+
+  const normalizeNameForType = name => name ? name.toLowerCase().replace(/[\s\-\_\,\.\!\?\'\"\`\’\“\”\：\:\；\;\~\(\)\[\]\※]/g, '').replace(/[\uFF01-\uFF5E]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0)) : '';
 
   for (const song of songsArray) {
     const levels = {
@@ -650,8 +682,25 @@ function processAndSaveSongs(songsArray, releaseDates = {}) {
       append_ap: parseConstant(song.apd_ap),
     };
 
-    const songIdStr = String(song.id);
+    const songIdStr = String(Number(song.id));
     const publishedAtVal = releaseDates[songIdStr] || song.publishedAt || (currentMap.get(song.id)?.publishedAt) || null;
+
+    // Match song type (既, 公, 書) from pjsekai.com wiki scraping
+    let songType = '既'; // default is existing
+    if (song.title_jp && songTypes[song.title_jp]) {
+      songType = songTypes[song.title_jp];
+    } else {
+      const normJp = normalizeNameForType(song.title_jp);
+      const normKo = normalizeNameForType(song.title_ko);
+      const normHangul = normalizeNameForType(song.title_hangul);
+      if (normJp && songTypes[normJp]) {
+        songType = songTypes[normJp];
+      } else if (normKo && songTypes[normKo]) {
+        songType = songTypes[normKo];
+      } else if (normHangul && songTypes[normHangul]) {
+        songType = songTypes[normHangul];
+      }
+    }
 
     const refinedSong = {
       id: song.id,
@@ -665,7 +714,8 @@ function processAndSaveSongs(songsArray, releaseDates = {}) {
       constants: constants,
       composer: song.composer || song.composer_jp || '',
       jacketUrl: `/jackets/jacket_s_${String(song.id).padStart(3, '0')}.webp`,
-      publishedAt: publishedAtVal
+      publishedAt: publishedAtVal,
+      song_type: songType
     };
 
     if (currentMap.has(song.id)) {
@@ -709,7 +759,42 @@ async function syncSongsInternal(targetUrl = SONGS_API_URL) {
       console.error('[Auto Sync] Failed to fetch release dates, fallback to none:', e.message);
     }
 
-    return processAndSaveSongs(apiResponse, releaseDates);
+    let songTypes = {};
+    try {
+      console.log('[Auto Sync] Fetching song types from pjsekai.com...');
+      const wikiHtml = await fetchTextWithFallback('https://pjsekai.com/?aad6ee23b0');
+      const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+      let m;
+      const cleanText = text => text ? text.replace(/<[^>]*>/g, '').trim() : '';
+      const normalizeNameForType = name => name ? name.toLowerCase().replace(/[\s\-\_\,\.\!\?\'\"\`\’\“\”\：\:\；\;\~\(\)\[\]\※]/g, '').replace(/[\uFF01-\uFF5E]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0)) : '';
+
+      while ((m = trRegex.exec(wikiHtml)) !== null) {
+        const trContent = m[1];
+        const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+        const tds = [];
+        let tdMatch;
+        while ((tdMatch = tdRegex.exec(trContent)) !== null) {
+          tds.push(tdMatch[1]);
+        }
+        if (tds.length >= 4) {
+          const typeText = cleanText(tds[2]);
+          const titleTd = tds[3];
+          if ((typeText === '既' || typeText === '公' || typeText === '書') && titleTd.includes('<a href=')) {
+            const titleText = cleanText(titleTd);
+            const normTitle = normalizeNameForType(titleText);
+            if (normTitle) {
+              songTypes[normTitle] = typeText;
+            }
+            songTypes[titleText] = typeText;
+          }
+        }
+      }
+      console.log(`[Auto Sync] Successfully fetched song types map of size ${Object.keys(songTypes).length}.`);
+    } catch (e) {
+      console.error('[Auto Sync] Failed to fetch song types, fallback to empty:', e.message);
+    }
+
+    return processAndSaveSongs(apiResponse, releaseDates, songTypes);
   } catch (error) {
     console.error('[Auto Sync] Error syncing songs:', error);
     throw error;

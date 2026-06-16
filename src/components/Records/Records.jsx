@@ -4,6 +4,8 @@ import { JacketImage } from "../Common/JacketImage";
 import { calculateRating, getConstant, hasExplicitConstant } from "../../utils/ratingUtils";
 import { isNewSong, calculateSongPotential } from "../../utils/potentialUtils";
 import { useSessionState } from "../../utils/useSessionState";
+import { defaultSort } from "../../utils/scoreUtils";
+
 
 export const Records = ({ songs, scores, updateScores, settingsTitleLang, ratingMode = "b39", isLoggedIn = false }) => {
     // --- States ---
@@ -289,50 +291,21 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
             } else if (recordSortBy === "status") {
                 const scoreA = getStatusScore(a.status);
                 const scoreB = getStatusScore(b.status);
-                if (scoreA !== scoreB) {
-                    cmp = scoreA - scoreB;
-                } else {
-                    if (a.fcConstant !== b.fcConstant) {
-                        cmp = a.fcConstant - b.fcConstant;
-                    } else {
-                        cmp = compareTitles(a, b);
-                    }
-                }
+                cmp = scoreA - scoreB;
             } else if (recordSortBy === "level") {
-                if (a.level !== b.level) {
-                    cmp = a.level - b.level;
-                } else {
-                    if (a.fcConstant !== b.fcConstant) {
-                        cmp = a.fcConstant - b.fcConstant;
-                    } else {
-                        cmp = compareTitles(a, b);
-                    }
-                }
+                cmp = a.level - b.level;
             } else if (recordSortBy === "fc_constant") {
-                if (a.fcConstant !== b.fcConstant) {
-                    cmp = a.fcConstant - b.fcConstant;
-                } else {
-                    cmp = compareTitles(a, b);
-                }
+                cmp = a.fcConstant - b.fcConstant;
             } else if (recordSortBy === "ap_constant") {
-                if (a.apConstant !== b.apConstant) {
-                    cmp = a.apConstant - b.apConstant;
-                } else {
-                    cmp = compareTitles(a, b);
-                }
+                cmp = a.apConstant - b.apConstant;
             } else if (recordSortBy === "rating") {
-                if (a.rating !== b.rating) {
-                    cmp = a.rating - b.rating;
-                } else {
-                    if (a.fcConstant !== b.fcConstant) {
-                        cmp = a.fcConstant - b.fcConstant;
-                    } else {
-                        cmp = compareTitles(a, b);
-                    }
-                }
+                cmp = a.rating - b.rating;
             }
 
-            return recordSortOrder === "asc" ? cmp : -cmp;
+            if (cmp !== 0) {
+                return recordSortOrder === "asc" ? cmp : -cmp;
+            }
+            return defaultSort(a, b);
         });
 
         return list;
