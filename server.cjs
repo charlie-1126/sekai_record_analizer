@@ -927,30 +927,183 @@ async function fetchTrainerSongs() {
     // [Fix H-5] Replace vm.runInContext with a safe JSON.parse approach.
     // Node's vm module is NOT a secure sandbox; executing remote JS from a
     // third-party site risks server compromise if the site is ever hijacked.
-    // Instead we convert the JS literal array to valid JSON:
-    //   1. Quote unquoted keys  (e.g.  id:  → "id":)
-    //   2. Replace 'single-quoted' strings with "double-quoted" ones
-    //   3. Drop trailing commas that are invalid in JSON
-    //   4. Replace undefined/Infinity/NaN values with null
-    let jsonCandidate = arrayString
-      // Replace undefined, Infinity, NaN with null
-      .replace(/\bundefined\b/g, 'null')
-      .replace(/\bInfinity\b/g, 'null')
-      .replace(/\bNaN\b/g, 'null')
-      // Quote unquoted object keys: word chars followed by colon (not already quoted)
-      .replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)(\s*:)/g, '$1"$2"$3')
-      // Convert single-quoted strings to double-quoted (basic, handles escaped \' )
-      .replace(/'((?:[^'\\]|\\.)*)'/g, (_, inner) =>
-        '"' + inner.replace(/\\'/g, "'").replace(/"/g, '\\"') + '"'
-      )
-      // Remove trailing commas before ] or }
-      .replace(/,(\s*[}\]])/g, '$1');
+    // We use a safe, custom character-tokenization parser to convert the JS literal
+    // array to a JavaScript object, avoiding insecure eval/vm or fragile regex-based JSON conversion.
+    function parseJSArrayOrObject(str) {
+      let index = 0;
+      
+      function skipWhitespace() {
+        while (index < str.length && /\s/.test(str[index])) {
+          index++;
+        }
+      }
+      
+      function parseValue() {
+        skipWhitespace();
+        if (index >= str.length) throw new Error("Unexpected end of input");
+        
+        const char = str[index];
+        if (char === '[') return parseArray();
+        if (char === '{') return parseObject();
+        if (char === '"' || char === "'") return parseString();
+        
+        return parsePrimitiveOrIdentifier();
+      }
+      
+      function parseArray() {
+        index++; // skip '['
+        const arr = [];
+        skipWhitespace();
+        if (str[index] === ']') {
+          index++;
+          return arr;
+        }
+        while (true) {
+          arr.push(parseValue());
+          skipWhitespace();
+          if (str[index] === ',') {
+            index++;
+            skipWhitespace();
+            // check trailing comma
+            if (str[index] === ']') {
+              index++;
+              return arr;
+            }
+          } else if (str[index] === ']') {
+            index++;
+            return arr;
+          } else {
+            throw new Error(`Expected ',' or ']' at position ${index}, got '${str[index]}'`);
+          }
+        }
+      }
+      
+      function parseObject() {
+        index++; // skip '{'
+        const obj = {};
+        skipWhitespace();
+        if (str[index] === '}') {
+          index++;
+          return obj;
+        }
+        while (true) {
+          let key;
+          skipWhitespace();
+          const char = str[index];
+          if (char === '"' || char === "'") {
+            key = parseString();
+          } else {
+            // identifier key
+            const match = str.slice(index).match(/^[a-zA-Z_$][a-zA-Z0-9_$]*/);
+            if (!match) {
+              throw new Error(`Expected object key identifier at position ${index}`);
+            }
+            key = match[0];
+            index += key.length;
+          }
+          skipWhitespace();
+          if (str[index] !== ':') {
+            throw new Error(`Expected ':' at position ${index}, got '${str[index]}'`);
+          }
+          index++; // skip ':'
+          obj[key] = parseValue();
+          skipWhitespace();
+          if (str[index] === ',') {
+            index++;
+            skipWhitespace();
+            // check trailing comma
+            if (str[index] === '}') {
+              index++;
+              return obj;
+            }
+          } else if (str[index] === '}') {
+            index++;
+            return obj;
+          } else {
+            throw new Error(`Expected ',' or '}' at position ${index}, got '${str[index]}'`);
+          }
+        }
+      }
+      
+      function parseString() {
+        const quote = str[index];
+        index++; // skip quote
+        let val = "";
+        while (index < str.length) {
+          const char = str[index];
+          if (char === quote) {
+            index++;
+            return val;
+          }
+          if (char === '\\') {
+            index++;
+            const nextChar = str[index];
+            if (nextChar === 'x') {
+              // hex escape (e.g. \xd7)
+              const hex = str.slice(index + 1, index + 3);
+              val += String.fromCharCode(parseInt(hex, 16));
+              index += 3;
+            } else if (nextChar === 'u') {
+              // unicode escape (e.g. \u30fc)
+              const hex = str.slice(index + 1, index + 5);
+              val += String.fromCharCode(parseInt(hex, 16));
+              index += 5;
+            } else {
+              const escapeMap = {
+                'n': '\n', 'r': '\r', 't': '\t', 'b': '\b', 'f': '\f',
+                '\\': '\\', '"': '"', "'": "'", '/': '/'
+              };
+              val += escapeMap[nextChar] || nextChar;
+              index++;
+            }
+          } else {
+            val += char;
+            index++;
+          }
+        }
+        throw new Error("Unterminated string");
+      }
+      
+      function parsePrimitiveOrIdentifier() {
+        const start = index;
+        // Match until a delimiter
+        const match = str.slice(index).match(/^[^,\]\}\s:]+/);
+        if (!match) {
+          throw new Error(`Expected value at position ${index}`);
+        }
+        const raw = match[0];
+        index += raw.length;
+        
+        if (raw === 'true') return true;
+        if (raw === 'false') return false;
+        if (raw === 'null') return null;
+        if (raw === 'undefined') return null; // Convert undefined to null
+        if (raw === 'NaN') return null;       // Convert NaN to null
+        if (raw === 'Infinity') return null;  // Convert Infinity to null
+        
+        // Try to parse number
+        let numStr = raw;
+        if (numStr.startsWith('.')) {
+          numStr = '0' + numStr;
+        } else if (numStr.startsWith('-.') || numStr.startsWith('+.')) {
+          numStr = numStr[0] + '0' + numStr.slice(1);
+        }
+        const num = Number(numStr);
+        if (!isNaN(num)) {
+          return num;
+        }
+        
+        throw new Error(`Unknown token: ${raw} at position ${start}`);
+      }
+      
+      return parseValue();
+    }
 
     let parsedArray;
     try {
-      parsedArray = JSON.parse(jsonCandidate);
+      parsedArray = parseJSArrayOrObject(arrayString);
     } catch (parseErr) {
-      throw new Error(`JSON.parse failed after conversion: ${parseErr.message}`);
+      throw new Error(`Parsing JS array failed: ${parseErr.message}`);
     }
     
     if (Array.isArray(parsedArray)) {
