@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Search, Filter, Settings, Edit, Check, X } from "lucide-react";
 import { JacketImage } from "../Common/JacketImage";
 import { getConstant } from "../../utils/ratingUtils";
+import { defaultSort } from "../../utils/scoreUtils";
 
 const PATTERN_KEYS = [
     { key: "burst", label: "폭타" },
@@ -16,16 +17,25 @@ const PATTERN_KEYS = [
     { key: "reading", label: "인식난" },
     { key: "rhythm", label: "리듬난" },
     { key: "holding", label: "롱잡" },
-    { key: "crossing", label: "손교차" }
+    { key: "crossing", label: "손교차" },
 ];
 
 const DIFF_LABELS = {
-    easy: "EZ",
-    normal: "NM",
-    hard: "HD",
-    expert: "EX",
+    easy: "EASY",
+    normal: "NORMAL",
+    hard: "HARD",
+    expert: "EXPERT",
+    master: "MASTER",
+    append: "APPEND", // SC -> APD
+};
+
+const DIFF_SHORT_LABELS = {
+    easy: "EAS",
+    normal: "NOR",
+    hard: "HAR",
+    expert: "EXP",
     master: "MAS",
-    append: "APD", // SC -> APD
+    append: "APD",
 };
 
 export default function Pattern({ songs, currentUser, settingsTitleLang }) {
@@ -37,6 +47,29 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
     const [maxLevel, setMaxLevel] = useState("");
     const [visibleCount, setVisibleCount] = useState(30);
     const [isFilterExpanded, setIsFilterExpanded] = useState(true); // Default to expanded like other pages
+
+    // Sorting State
+    const [sortField, setSortField] = useState(null); // null, "title", "diff", "constant", "level", or pattern key
+    const [sortOrder, setSortOrder] = useState(null); // null, "desc", "asc"
+
+    const handleSort = (field) => {
+        if (sortField !== field) {
+            setSortField(field);
+            setSortOrder("desc");
+        } else {
+            if (sortOrder === "desc") {
+                setSortOrder("asc");
+            } else if (sortOrder === "asc") {
+                setSortField(null);
+                setSortOrder(null);
+            }
+        }
+    };
+
+    const renderSortIndicator = (field) => {
+        if (sortField !== field) return null;
+        return sortOrder === "asc" ? " ▲" : " ▼";
+    };
 
     // Edit Modal State
     const [editingChart, setEditingChart] = useState(null);
@@ -127,18 +160,46 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
             });
         });
 
-        // Sort by constant desc, then level desc, then song title
-        return list.sort((a, b) => {
-            if (b.constant !== a.constant) return b.constant - a.constant;
-            if (b.level !== a.level) return b.level - a.level;
-            return getSongTitle(a.song).localeCompare(getSongTitle(b.song));
-        });
-    }, [songs, patterns, search, diffFilters, minLevel, maxLevel, settingsTitleLang]);
+        // Sort logic
+        if (!sortField || !sortOrder) {
+            return list.sort((a, b) => defaultSort(a, b));
+        }
 
-    // Reset visible count when filter changes
+        return list.sort((a, b) => {
+            let cmp = 0;
+            if (sortField === "title") {
+                const valA = getSongTitle(a.song);
+                const valB = getSongTitle(b.song);
+                cmp = valA.localeCompare(valB);
+            } else if (sortField === "diff") {
+                const diffOrder = { easy: 0, normal: 1, hard: 2, expert: 3, master: 4, append: 5 };
+                const valA = diffOrder[a.diff] ?? 0;
+                const valB = diffOrder[b.diff] ?? 0;
+                cmp = valA - valB;
+            } else if (sortField === "constant") {
+                cmp = a.constant - b.constant;
+            } else if (sortField === "level") {
+                cmp = a.level - b.level;
+            } else {
+                // It's a pattern key (like "burst", "jacks", etc.)
+                const valA = a.pattern[sortField] || 0;
+                const valB = b.pattern[sortField] || 0;
+                cmp = valA - valB;
+            }
+
+            if (cmp !== 0) {
+                return sortOrder === "asc" ? cmp : -cmp;
+            }
+            
+            // Tie breaker: default sort
+            return defaultSort(a, b);
+        });
+    }, [songs, patterns, search, diffFilters, minLevel, maxLevel, settingsTitleLang, sortField, sortOrder]);
+
+    // Reset visible count when filter or sorting changes
     useEffect(() => {
         setVisibleCount(30);
-    }, [search, diffFilters, minLevel, maxLevel]);
+    }, [search, diffFilters, minLevel, maxLevel, sortField, sortOrder]);
 
     // Infinite scroll trigger
     const observer = useRef(null);
@@ -260,10 +321,7 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
             {/* SEARCH & FILTERS - Unified with other pages */}
             {isFilterExpanded && (
                 <div className="table-filters-expanded" style={{ marginBottom: "1.5rem" }}>
-                    <div
-                        className="filters-row"
-                        style={{ display: "grid", gridTemplateColumns: "1.5fr 1.5fr 1fr", gap: "1rem" }}
-                    >
+                    <div className="filters-row pattern-filters-grid">
                         {/* 곡 검색 */}
                         <div className="filter-group">
                             <label className="filter-label">곡 검색</label>
@@ -286,33 +344,6 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                 />
-                            </div>
-                        </div>
-
-                        {/* 난이도 필터 */}
-                        <div className="filter-group">
-                            <label className="filter-label">난이도</label>
-                            <div
-                                className="filter-checkbox-group difficulty-checkbox-group"
-                                style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}
-                            >
-                                {Object.keys(DIFF_LABELS).map((diff) => {
-                                    const active = diffFilters.includes(diff);
-                                    return (
-                                        <label
-                                            key={diff}
-                                            className={`checkbox-label ${active ? `active-${diff}` : ""}`}
-                                            style={{ cursor: "pointer" }}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={active}
-                                                onChange={() => toggleDiffFilter(diff)}
-                                            />
-                                            {DIFF_LABELS[diff]}
-                                        </label>
-                                    );
-                                })}
                             </div>
                         </div>
 
@@ -343,21 +374,65 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
                             </div>
                         </div>
                     </div>
+
+                    {/* 난이도 필터 */}
+                    <div className="filter-group">
+                        <label className="filter-label">난이도</label>
+                        <div className="filter-checkbox-group difficulty-checkbox-group">
+                            {Object.keys(DIFF_LABELS).map((diff) => {
+                                const active = diffFilters.includes(diff);
+                                return (
+                                    <label
+                                        key={diff}
+                                        className={`checkbox-label ${active ? `active-${diff}` : ""}`}
+                                        style={{ cursor: "pointer" }}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={active}
+                                            onChange={() => toggleDiffFilter(diff)}
+                                        />
+                                        {DIFF_LABELS[diff]}
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
             )}
 
             {/* PATTERNS TABLE */}
-            <div className="record-list-container" style={{ overflow: "visible" }}>
+            <div className="pattern-table-container">
                 <table
                     className="pattern-table"
-                    style={{ width: "100%", borderCollapse: "collapse", textAlign: "center" }}
+                    style={{ width: "100%", borderCollapse: "collapse", textAlign: "center", tableLayout: "fixed" }}
                 >
                     <thead>
                         <tr style={{ borderBottom: "1px solid var(--border-color)" }}>
-                            <th style={{ textAlign: "left", padding: "1rem", whiteSpace: "nowrap" }}>곡명</th>
-                            <th style={{ width: "70px", minWidth: "70px", whiteSpace: "nowrap" }}>난이도</th>
-                            <th style={{ width: "70px", minWidth: "70px", whiteSpace: "nowrap" }}>상수</th>
-                            <th style={{ width: "70px", minWidth: "70px", whiteSpace: "nowrap" }}>레벨</th>
+                            <th 
+                                style={{ textAlign: "left", padding: "1rem", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none", width: "260px", minWidth: "260px" }}
+                                onClick={() => handleSort("title")}
+                            >
+                                곡명{renderSortIndicator("title")}
+                            </th>
+                            <th 
+                                style={{ width: "70px", minWidth: "70px", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
+                                onClick={() => handleSort("diff")}
+                            >
+                                난이도{renderSortIndicator("diff")}
+                            </th>
+                            <th 
+                                style={{ width: "70px", minWidth: "70px", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
+                                onClick={() => handleSort("constant")}
+                            >
+                                상수{renderSortIndicator("constant")}
+                            </th>
+                            <th 
+                                style={{ width: "70px", minWidth: "70px", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
+                                onClick={() => handleSort("level")}
+                            >
+                                레벨{renderSortIndicator("level")}
+                            </th>
                             {PATTERN_KEYS.map((p) => (
                                 <th
                                     key={p.key}
@@ -368,9 +443,12 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
                                         fontWeight: "600",
                                         color: "var(--text-secondary)",
                                         whiteSpace: "nowrap",
+                                        cursor: "pointer",
+                                        userSelect: "none",
                                     }}
+                                    onClick={() => handleSort(p.key)}
                                 >
-                                    {p.label}
+                                    {p.label}{renderSortIndicator(p.key)}
                                 </th>
                             ))}
                         </tr>
@@ -378,19 +456,13 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
                     <tbody>
                         {isLoading ? (
                             <tr>
-                                <td
-                                    colSpan={16}
-                                    style={{ padding: "4rem 0", color: "var(--text-muted)" }}
-                                >
+                                <td colSpan={16} style={{ padding: "4rem 0", color: "var(--text-muted)" }}>
                                     패턴 데이터를 불러오는 중...
                                 </td>
                             </tr>
                         ) : visibleCharts.length === 0 ? (
                             <tr>
-                                <td
-                                    colSpan={16}
-                                    style={{ padding: "4rem 0", color: "var(--text-muted)" }}
-                                >
+                                <td colSpan={16} style={{ padding: "4rem 0", color: "var(--text-muted)" }}>
                                     조건에 부합하는 패턴 정보가 없습니다.
                                 </td>
                             </tr>
@@ -454,7 +526,7 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
                                                     fontWeight: "700",
                                                 }}
                                             >
-                                                {DIFF_LABELS[chart.diff] || chart.diff.toUpperCase()}
+                                                {DIFF_SHORT_LABELS[chart.diff] || chart.diff.toUpperCase()}
                                             </span>
                                         </td>
                                         <td style={{ fontWeight: "700", color: "var(--color-pink)" }}>
@@ -491,183 +563,186 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
             )}
 
             {/* EDIT PATTERN MODAL */}
-            {editingChart && createPortal(
-                <div className="modal-backdrop" onClick={() => setEditingChart(null)}>
-                    <div
-                        className="glass-panel modal-content"
-                        style={{
-                            width: "90%",
-                            maxWidth: "760px",
-                            padding: "2.5rem",
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <button
-                            style={{
-                                position: "absolute",
-                                right: "1.5rem",
-                                top: "1.5rem",
-                                background: "none",
-                                border: "none",
-                                color: "var(--text-muted)",
-                                cursor: "pointer",
-                             }}
-                            onClick={() => setEditingChart(null)}
-                        >
-                            <X size={20} />
-                        </button>
-
+            {editingChart &&
+                createPortal(
+                    <div className="modal-backdrop" onClick={() => setEditingChart(null)}>
                         <div
+                            className="glass-panel modal-content pattern-edit-modal"
                             style={{
-                                display: "flex",
-                                gap: "1rem",
-                                alignItems: "center",
-                                marginBottom: "1.5rem",
-                                borderBottom: "1px solid rgba(255,255,255,0.05)",
-                                paddingBottom: "1rem",
+                                width: "90%",
+                                maxWidth: "760px",
+                                padding: "2.5rem",
                             }}
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            <div
-                                className={`jacket-wrapper border-${editingChart.diff}`}
-                                style={{ width: "55px", height: "55px", flexShrink: 0, overflow: "hidden" }}
+                            <button
+                                style={{
+                                    position: "absolute",
+                                    right: "1.5rem",
+                                    top: "1.5rem",
+                                    background: "none",
+                                    border: "none",
+                                    color: "var(--text-muted)",
+                                    cursor: "pointer",
+                                }}
+                                onClick={() => setEditingChart(null)}
                             >
-                                <JacketImage songId={editingChart.song.id} size={55} />
-                            </div>
-                            <div>
-                                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: "700" }}>
-                                    {getSongTitle(editingChart.song)}
-                                </h3>
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        gap: "0.5rem",
-                                        marginTop: "0.25rem",
-                                        alignItems: "center",
-                                    }}
-                                >
-                                    <span
-                                        className={`diff-badge diff-${editingChart.diff}`}
-                                        style={{ fontSize: "0.75rem", padding: "0.1rem 0.4rem", borderRadius: "3px" }}
-                                    >
-                                        {DIFF_LABELS[editingChart.diff]}
-                                    </span>
-                                    <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                                        상수:{" "}
-                                        <strong style={{ color: "var(--color-pink)" }}>
-                                            {editingChart.constant.toFixed(1)}
-                                        </strong>{" "}
-                                        (Lv.{editingChart.level})
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                                <X size={20} />
+                            </button>
 
-                        {/* Attribute inputs */}
-                        <div
-                            style={{
-                                display: "grid",
-                                gridTemplateColumns: "repeat(4, 1fr)",
-                                gap: "1.25rem",
-                                marginBottom: "2.5rem",
-                            }}
-                        >
-                            {PATTERN_KEYS.map((p) => (
-                                <div key={p.key} style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
-                                    <label
-                                        style={{
-                                            fontSize: "0.9rem",
-                                            color: "var(--text-secondary)",
-                                            fontWeight: "600",
-                                        }}
-                                    >
-                                        {p.label}
-                                    </label>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    gap: "1rem",
+                                    alignItems: "center",
+                                    marginBottom: "1.5rem",
+                                    borderBottom: "1px solid rgba(255,255,255,0.05)",
+                                    paddingBottom: "1rem",
+                                }}
+                            >
+                                <div
+                                    className={`jacket-wrapper border-${editingChart.diff}`}
+                                    style={{ width: "55px", height: "55px", flexShrink: 0, overflow: "hidden" }}
+                                >
+                                    <JacketImage songId={editingChart.song.id} size={55} />
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: "700" }}>
+                                        {getSongTitle(editingChart.song)}
+                                    </h3>
                                     <div
                                         style={{
                                             display: "flex",
-                                            background: "rgba(255,255,255,0.04)",
-                                            borderRadius: "6px",
-                                            border: "1px solid rgba(255,255,255,0.08)",
-                                            overflow: "hidden",
+                                            gap: "0.5rem",
+                                            marginTop: "0.25rem",
+                                            alignItems: "center",
                                         }}
                                     >
-                                        {[0, 1, 2, 3].map((val) => {
-                                            const active = editForm[p.key] === val;
-                                            let activeColor = "rgba(255,255,255,0.15)";
-                                            let textColor = "#fff";
-                                            if (active) {
-                                                if (val === 1) {
-                                                    activeColor = "rgba(45, 212, 191, 0.25)";
-                                                    textColor = "#2dd4bf";
-                                                } else if (val === 2) {
-                                                    activeColor = "rgba(234, 179, 8, 0.25)";
-                                                    textColor = "#eab308";
-                                                } else if (val === 3) {
-                                                    activeColor = "rgba(168, 85, 247, 0.25)";
-                                                    textColor = "#a855f7";
-                                                }
-                                            }
-                                            return (
-                                                <button
-                                                    key={val}
-                                                    type="button"
-                                                    onClick={() => setEditForm((prev) => ({ ...prev, [p.key]: val }))}
-                                                    style={{
-                                                        flex: 1,
-                                                        padding: "0.5rem 0",
-                                                        border: "none",
-                                                        background: active ? activeColor : "transparent",
-                                                        color: active ? textColor : "var(--text-muted)",
-                                                        fontWeight: active ? "700" : "500",
-                                                        fontSize: "0.95rem",
-                                                        cursor: "pointer",
-                                                        transition: "all 0.15s",
-                                                    }}
-                                                >
-                                                    {val === 0 ? "." : val}
-                                                </button>
-                                            );
-                                        })}
+                                        <span
+                                            className={`diff-badge diff-${editingChart.diff}`}
+                                            style={{
+                                                fontSize: "0.75rem",
+                                                padding: "0.1rem 0.4rem",
+                                                borderRadius: "3px",
+                                            }}
+                                        >
+                                            {DIFF_LABELS[editingChart.diff]}
+                                        </span>
+                                        <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                                            상수:{" "}
+                                            <strong style={{ color: "var(--color-pink)" }}>
+                                                {editingChart.constant.toFixed(1)}
+                                            </strong>{" "}
+                                            (Lv.{editingChart.level})
+                                        </span>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
+                            </div>
 
-                        <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
-                            <button
-                                className="btn btn-outline"
-                                style={{ padding: "0.5rem 1.5rem" }}
-                                onClick={() => setEditingChart(null)}
-                                disabled={isSaving}
-                            >
-                                취소
-                            </button>
-                            <button
-                                className="btn"
-                                style={{
-                                    padding: "0.5rem 1.5rem",
-                                    background: "var(--color-pink)",
-                                    color: "#fff",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "0.4rem",
-                                }}
-                                onClick={handleSave}
-                                disabled={isSaving}
-                            >
-                                {isSaving ? (
-                                    "저장 중..."
-                                ) : (
-                                    <>
-                                        <Check size={16} /> 저장
-                                    </>
-                                )}
-                            </button>
+                            {/* Attribute inputs */}
+                            <div className="pattern-modal-grid">
+                                {PATTERN_KEYS.map((p) => (
+                                    <div
+                                        key={p.key}
+                                        style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}
+                                    >
+                                        <label
+                                            style={{
+                                                fontSize: "0.9rem",
+                                                color: "var(--text-secondary)",
+                                                fontWeight: "600",
+                                            }}
+                                        >
+                                            {p.label}
+                                        </label>
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                background: "rgba(255,255,255,0.04)",
+                                                borderRadius: "6px",
+                                                border: "1px solid rgba(255,255,255,0.08)",
+                                                overflow: "hidden",
+                                            }}
+                                        >
+                                            {[0, 1, 2, 3].map((val) => {
+                                                const active = editForm[p.key] === val;
+                                                let activeColor = "rgba(255,255,255,0.15)";
+                                                let textColor = "#fff";
+                                                if (active) {
+                                                    if (val === 1) {
+                                                        activeColor = "rgba(45, 212, 191, 0.25)";
+                                                        textColor = "#2dd4bf";
+                                                    } else if (val === 2) {
+                                                        activeColor = "rgba(234, 179, 8, 0.25)";
+                                                        textColor = "#eab308";
+                                                    } else if (val === 3) {
+                                                        activeColor = "rgba(168, 85, 247, 0.25)";
+                                                        textColor = "#a855f7";
+                                                    }
+                                                }
+                                                return (
+                                                    <button
+                                                        key={val}
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setEditForm((prev) => ({ ...prev, [p.key]: val }))
+                                                        }
+                                                        style={{
+                                                            flex: 1,
+                                                            padding: "0.5rem 0",
+                                                            border: "none",
+                                                            background: active ? activeColor : "transparent",
+                                                            color: active ? textColor : "var(--text-muted)",
+                                                            fontWeight: active ? "700" : "500",
+                                                            fontSize: "0.95rem",
+                                                            cursor: "pointer",
+                                                            transition: "all 0.15s",
+                                                        }}
+                                                    >
+                                                        {val === 0 ? "." : val}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+                                <button
+                                    className="btn btn-outline"
+                                    style={{ padding: "0.5rem 1.5rem" }}
+                                    onClick={() => setEditingChart(null)}
+                                    disabled={isSaving}
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    className="btn"
+                                    style={{
+                                        padding: "0.5rem 1.5rem",
+                                        background: "var(--color-pink)",
+                                        color: "#fff",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "0.4rem",
+                                    }}
+                                    onClick={handleSave}
+                                    disabled={isSaving}
+                                >
+                                    {isSaving ? (
+                                        "저장 중..."
+                                    ) : (
+                                        <>
+                                            <Check size={16} /> 저장
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                </div>,
-                document.body
-            )}
+                    </div>,
+                    document.body,
+                )}
         </section>
     );
 }

@@ -1597,7 +1597,7 @@ input[type="number"] {
 
 .records-filters-grid {
     display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr 1fr 1.5fr;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
     gap: 1rem;
 }
 
@@ -2278,6 +2278,99 @@ input[type="number"] {
 @media (min-width: 1920px) {
     .pattern-table th {
         top: 90px !important;
+    }
+}
+
+/* Pattern Page Responsive Grid & Table Styles */
+.pattern-filters-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 1.25rem;
+}
+
+.pattern-table-container {
+    width: 100%;
+    overflow: visible; /* Default visible to let vertical sticky header work relative to the window */
+    margin-bottom: 1.5rem;
+}
+
+/* Modal Attribute Grid for Pattern Page */
+.pattern-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 2.5rem;
+}
+
+/* Tablet & Mobile Breakpoint for Pattern Table Overflow and Sticky Reset */
+@media (max-width: 1400px) {
+    .pattern-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .pattern-table th {
+        position: static !important; /* Reset position sticky to prevent covering table content */
+    }
+}
+
+/* Mobile responsive styles to reduce cell/row sizes on Pattern Table & Modal */
+@media (max-width: 768px) {
+    .pattern-filters-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .pattern-table th, 
+    .pattern-table td {
+        padding: 0.45rem 0.3rem !important; /* Slightly larger than before, but smaller than desktop */
+        font-size: 0.8rem !important;        /* Slightly larger than before */
+    }
+    
+    .pattern-table .jacket-wrapper {
+        width: 36px !important;            /* Slightly larger jacket wrapper */
+        height: 36px !important;
+    }
+
+    .pattern-table .jacket-wrapper img,
+    .pattern-table .jacket-wrapper div {
+        width: 36px !important;            /* Slightly larger image/placeholder */
+        height: 36px !important;
+    }
+    
+    .pattern-table .diff-badge {
+        width: 42px !important;            /* Slightly larger difficulty badges */
+        font-size: 0.7rem !important;
+        padding: 0.12rem 0 !important;
+    }
+    
+    .pattern-table .pattern-badge {
+        font-size: 0.8rem !important;      /* Slightly larger pattern badges */
+        min-width: 20px !important;
+        padding: 0.12rem 0.3rem !important;
+    }
+    
+    .pattern-table .pattern-badge-dot {
+        font-size: 0.8rem !important;
+    }
+
+    /* Small font size for composer names */
+    .pattern-table td div div + div {
+        font-size: 0.68rem !important;
+    }
+    
+    /* Title text font size */
+    .pattern-table td div div {
+        font-size: 0.85rem !important;
+    }
+
+    /* Responsive edits for Pattern Edit Modal */
+    .pattern-modal-grid {
+        grid-template-columns: repeat(2, 1fr) !important; /* 2 columns, 6 rows */
+        gap: 0.85rem !important;
+        margin-bottom: 1.5rem !important;
+    }
+
+    .pattern-edit-modal {
+        padding: 1.25rem !important; /* Slimmer padding for mobile height */
     }
 }
 

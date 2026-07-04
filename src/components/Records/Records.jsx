@@ -6,7 +6,6 @@ import { isNewSong, calculateSongPotential } from "../../utils/potentialUtils";
 import { useSessionState } from "../../utils/useSessionState";
 import { defaultSort } from "../../utils/scoreUtils";
 
-
 export const Records = ({ songs, scores, updateScores, settingsTitleLang, ratingMode = "b39", isLoggedIn = false }) => {
     // --- States ---
     const [isRecordFilterExpanded, setIsRecordFilterExpanded] = useSessionState("pjsk_record_filter_expanded", true);
@@ -121,6 +120,25 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
         } else {
             setRecordPlayFilters([...recordPlayFilters, playStatus]);
         }
+    };
+
+    const handleRecordSort = (field) => {
+        if (recordSortBy !== field) {
+            setRecordSortBy(field);
+            setRecordSortOrder("desc");
+        } else {
+            if (recordSortOrder === "desc") {
+                setRecordSortOrder("asc");
+            } else if (recordSortOrder === "asc") {
+                setRecordSortBy(null);
+                setRecordSortOrder(null);
+            }
+        }
+    };
+
+    const renderSortIndicator = (field) => {
+        if (recordSortBy !== field) return null;
+        return recordSortOrder === "asc" ? " ▲" : " ▼";
     };
 
     const handleScoreChange = (songId, diff, newStatus) => {
@@ -283,11 +301,21 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
             return titleA.localeCompare(titleB);
         };
 
+        if (!recordSortBy || !recordSortOrder) {
+            list.sort((a, b) => defaultSort(a, b));
+            return list;
+        }
+
         list.sort((a, b) => {
             let cmp = 0;
 
             if (recordSortBy === "title") {
                 cmp = compareTitles(a, b);
+            } else if (recordSortBy === "diff") {
+                const diffOrder = { easy: 0, normal: 1, hard: 2, expert: 3, master: 4, append: 5 };
+                const valA = diffOrder[a.diff] ?? 0;
+                const valB = diffOrder[b.diff] ?? 0;
+                cmp = valA - valB;
             } else if (recordSortBy === "status") {
                 const scoreA = getStatusScore(a.status);
                 const scoreB = getStatusScore(b.status);
@@ -495,35 +523,6 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                             </div>
                         </div>
 
-                        <div className="filter-group">
-                            <label className="filter-label">정렬 기준</label>
-                            <div style={{ display: "flex", gap: "0.5rem" }}>
-                                <select
-                                    className="form-control"
-                                    value={recordSortBy}
-                                    onChange={(e) => setRecordSortBy(e.target.value)}
-                                    style={{ flex: 2 }}
-                                >
-                                    <option value="title">곡명</option>
-                                    <option value="status">성과</option>
-                                    <option value="level">레벨</option>
-                                    <option value="fc_constant">FC 상수</option>
-                                    <option value="ap_constant">AP 상수</option>
-                                    <option value="rating">
-                                        {ratingMode === "potential" ? "Potential" : "Music R"}
-                                    </option>
-                                </select>
-                                <select
-                                    className="form-control"
-                                    value={recordSortOrder}
-                                    onChange={(e) => setRecordSortOrder(e.target.value)}
-                                    style={{ flex: 1.2 }}
-                                >
-                                    <option value="desc">내림차순</option>
-                                    <option value="asc">오름차순</option>
-                                </select>
-                            </div>
-                        </div>
                     </div>
 
                     {/* Row 2: Difficulties Checkboxes */}
@@ -683,13 +682,48 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                     <div className="record-grid-header">
                         <span>순위</span>
                         <span>자켓</span>
-                        <span style={{ textAlign: "left" }}>곡 정보</span>
-                        <span>난이도</span>
-                        <span>레벨</span>
-                        <span>FC 상수</span>
-                        <span>AP 상수</span>
-                        <span>{ratingMode === "potential" ? "Potential" : "Music R"}</span>
-                        <span>성과 설정</span>
+                        <span 
+                            style={{ textAlign: "left", cursor: "pointer", userSelect: "none" }}
+                            onClick={() => handleRecordSort("title")}
+                        >
+                            곡명{renderSortIndicator("title")}
+                        </span>
+                        <span 
+                            style={{ cursor: "pointer", userSelect: "none" }}
+                            onClick={() => handleRecordSort("diff")}
+                        >
+                            난이도{renderSortIndicator("diff")}
+                        </span>
+                        <span 
+                            style={{ cursor: "pointer", userSelect: "none" }}
+                            onClick={() => handleRecordSort("level")}
+                        >
+                            레벨{renderSortIndicator("level")}
+                        </span>
+                        <span 
+                            style={{ cursor: "pointer", userSelect: "none" }}
+                            onClick={() => handleRecordSort("fc_constant")}
+                        >
+                            FC 상수{renderSortIndicator("fc_constant")}
+                        </span>
+                        <span 
+                            style={{ cursor: "pointer", userSelect: "none" }}
+                            onClick={() => handleRecordSort("ap_constant")}
+                        >
+                            AP 상수{renderSortIndicator("ap_constant")}
+                        </span>
+                        <span 
+                            style={{ cursor: "pointer", userSelect: "none" }}
+                            onClick={() => handleRecordSort("rating")}
+                        >
+                            {ratingMode === "potential" ? "Potential" : "Music R"}{renderSortIndicator("rating")}
+                        </span>
+                        <span 
+                            style={{ cursor: "pointer", userSelect: "none" }}
+                            onClick={() => handleRecordSort("status")}
+                        >
+                            성과 설정{renderSortIndicator("status")}
+                        </span>
                     </div>
 
                     {filteredAndSortedRecords.length === 0 ? (
