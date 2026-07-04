@@ -2171,3 +2171,113 @@ input[type="number"] {
     animation: fadeIn 0.3s ease-out;
 }
 
+/* Pattern Management Page Styles */
+.pattern-table th, .pattern-table td {
+    padding: 0.6rem 0.4rem;
+    vertical-align: middle;
+}
+.pattern-tr-row {
+    transition: background-color 0.2s ease;
+}
+.pattern-tr-row.editable-row {
+    cursor: pointer;
+}
+.pattern-tr-row:hover {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}
+.pattern-badge-dot {
+    color: rgba(255, 255, 255, 0.15);
+    font-weight: 800;
+}
+.pattern-badge {
+    display: inline-block;
+    padding: 0.15rem 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 800;
+    border-radius: 4px;
+    min-width: 24px;
+    text-align: center;
+    line-height: 1.2;
+}
+.pattern-badge.badge-cyan {
+    background: rgba(45, 212, 191, 0.15);
+    color: #2dd4bf;
+    border: 1px solid rgba(45, 212, 191, 0.25);
+}
+.pattern-badge.badge-yellow {
+    background: rgba(234, 179, 8, 0.15);
+    color: #eab308;
+    border: 1px solid rgba(234, 179, 8, 0.25);
+}
+.pattern-badge.badge-purple {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+    border: 1px solid rgba(168, 85, 247, 0.25);
+}
+
+/* Pattern Page specific thin borders for jackets & correct corner radii */
+.pattern-manager-panel .jacket-wrapper {
+    border-width: 2px !important;
+    border-radius: 6px !important;
+}
+.pattern-manager-panel .jacket-wrapper img,
+.pattern-manager-panel .jacket-wrapper div {
+    border-radius: 4px !important;
+}
+.pattern-manager-panel .jacket-wrapper.border-append {
+    border: 2px solid transparent !important;
+    background:
+        linear-gradient(var(--bg-surface-solid), var(--bg-surface-solid)) padding-box,
+        linear-gradient(135deg, var(--color-purple), var(--color-append)) border-box !important;
+}
+
+/* Modal jacket borders in pattern page */
+.pattern-manager-panel .modal-content .jacket-wrapper {
+    border-width: 2px !important;
+    border-radius: 8px !important;
+}
+.pattern-manager-panel .modal-content .jacket-wrapper img,
+.pattern-manager-panel .modal-content .jacket-wrapper div {
+    border-radius: 6px !important;
+}
+.pattern-manager-panel .modal-content .jacket-wrapper.border-append {
+    border: 2px solid transparent !important;
+    background:
+        linear-gradient(var(--bg-surface-solid), var(--bg-surface-solid)) padding-box,
+        linear-gradient(135deg, var(--color-purple), var(--color-append)) border-box !important;
+}
+
+/* Full Width layout for pattern management page */
+.container.pattern-full-width {
+    max-width: 99.5% !important;
+    width: 99.5% !important;
+    padding-top: 0.5rem !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+}
+
+/* Responsive sticky table headers for pattern-table */
+.pattern-table th {
+    position: sticky !important;
+    background-color: var(--bg-base) !important;
+    z-index: 10 !important;
+    top: 80px !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+@media (min-width: 1200px) {
+    .pattern-table th {
+        top: 84px !important;
+    }
+}
+@media (min-width: 1440px) {
+    .pattern-table th {
+        top: 86px !important;
+    }
+}
+@media (min-width: 1920px) {
+    .pattern-table th {
+        top: 90px !important;
+    }
+}
+

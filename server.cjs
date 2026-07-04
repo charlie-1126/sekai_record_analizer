@@ -65,6 +65,57 @@ async function initDatabase() {
     )
   `);
 
+  await dbQuery.run(`
+    CREATE TABLE IF NOT EXISTS patterns (
+      song_id TEXT NOT NULL,
+      difficulty TEXT NOT NULL,
+      burst INTEGER DEFAULT 0,
+      jacks INTEGER DEFAULT 0,
+      trill INTEGER DEFAULT 0,
+      onehand_trill INTEGER DEFAULT 0,
+      doublet INTEGER DEFAULT 0,
+      aim INTEGER DEFAULT 0,
+      flick INTEGER DEFAULT 0,
+      holding INTEGER DEFAULT 0,
+      reading INTEGER DEFAULT 0,
+      rhythm INTEGER DEFAULT 0,
+      gimmick INTEGER DEFAULT 0,
+      crossing INTEGER DEFAULT 0,
+      PRIMARY KEY (song_id, difficulty)
+    )
+  `);
+
+  // Migrate 'onehand_trill' and 'crossing' columns in patterns table if they don't exist
+  try {
+    const tableInfo = await dbQuery.all("PRAGMA table_info(patterns)");
+    const hasOnehandTrill = tableInfo.some(col => col.name === 'onehand_trill');
+    if (!hasOnehandTrill) {
+      await dbQuery.run("ALTER TABLE patterns ADD COLUMN onehand_trill INTEGER DEFAULT 0");
+      console.log("[Migration] Added 'onehand_trill' column to patterns table.");
+    }
+    const hasCrossing = tableInfo.some(col => col.name === 'crossing');
+    if (!hasCrossing) {
+      await dbQuery.run("ALTER TABLE patterns ADD COLUMN crossing INTEGER DEFAULT 0");
+      console.log("[Migration] Added 'crossing' column to patterns table.");
+    }
+  } catch (err) {
+    console.error("[Migration] Error adding columns to patterns:", err);
+  }
+
+  // Migrate 'role' column
+  try {
+    const tableInfo = await dbQuery.all("PRAGMA table_info(users)");
+    const hasRole = tableInfo.some(col => col.name === 'role');
+    if (!hasRole) {
+      await dbQuery.run("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'");
+      console.log("[Migration] Added 'role' column to users table.");
+    }
+    // Force admin role for the default admin user
+    await dbQuery.run("UPDATE users SET role = 'admin' WHERE LOWER(username) = 'admin'");
+  } catch (err) {
+    console.error("[Migration] Error adding role column to users:", err);
+  }
+
   // Migrate JSON data to SQLite if DB is empty
   const usersJsonPath = path.join(DB_DIR, 'users.json');
   const scoresJsonPath = path.join(DB_DIR, 'scores.json');
@@ -77,9 +128,9 @@ async function initDatabase() {
         for (const u of jsonUsers) {
           const userScores = jsonScores.find(s => s.username.toLowerCase() === u.username.toLowerCase())?.scores || [];
           await dbQuery.run(
-            `INSERT INTO users (username, nickname, password_salt, password_hash, scores, friends, settings, rating_history, created_at)
-             VALUES (?, ?, ?, ?, ?, '[]', '{"songTitleLang":"jp"}', '{}', ?)`,
-            [u.username, u.nickname, u.salt, u.hash, JSON.stringify(userScores), u.createdAt || new Date().toISOString()]
+            `INSERT INTO users (username, nickname, password_salt, password_hash, scores, friends, settings, rating_history, created_at, role)
+             VALUES (?, ?, ?, ?, ?, '[]', '{"songTitleLang":"jp"}', '{}', ?, ?)`,
+            [u.username, u.nickname, u.salt, u.hash, JSON.stringify(userScores), u.createdAt || new Date().toISOString(), u.username.toLowerCase() === 'admin' ? 'admin' : 'user']
           );
         }
         console.log(`Successfully migrated ${jsonUsers.length} users from JSON to SQLite.`);
@@ -338,6 +389,7 @@ app.post('/api/auth/login', async (req, res) => {
       user: {
         username: user.username,
         nickname: user.nickname,
+        role: user.role || (user.username.toLowerCase() === 'admin' ? 'admin' : 'user'),
         friends: safeParseArray(user.friends),
         settings: safeParseObj(user.settings, '{"songTitleLang": "jp"}'),
         rating_history: updatedHistory || safeParseObj(user.rating_history, '{}'),
@@ -377,6 +429,7 @@ app.get('/api/auth/me', async (req, res) => {
       user: {
         username: user.username,
         nickname: user.nickname,
+        role: user.role || (user.username.toLowerCase() === 'admin' ? 'admin' : 'user'),
         friends: safeParseArray(user.friends),
         settings: safeParseObj(user.settings, '{"songTitleLang": "jp"}'),
         rating_history: updatedHistory || safeParseObj(user.rating_history, '{}'),
@@ -454,7 +507,7 @@ const adminAuth = async (req, res, next) => {
 
 app.get('/api/admin/users', adminAuth, async (req, res) => {
   try {
-    const users = await dbQuery.all('SELECT username, nickname, created_at FROM users');
+    const users = await dbQuery.all('SELECT username, nickname, role, created_at FROM users');
     res.json({ users });
   } catch (err) {
     console.error(err);
@@ -504,6 +557,36 @@ app.post('/api/admin/users/:username/reset-password', adminAuth, async (req, res
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: '비밀번호 초기화 중 에러가 발생했습니다.' });
+  }
+});
+
+// Admin update user role API
+app.post('/api/admin/users/:username/role', adminAuth, async (req, res) => {
+  const targetUsername = req.params.username;
+  const { role } = req.body;
+
+  if (targetUsername.toLowerCase() === 'admin') {
+    return res.status(400).json({ error: '최고 관리자의 권한은 변경할 수 없습니다.' });
+  }
+
+  if (!['user', 'editor'].includes(role)) {
+    return res.status(400).json({ error: '유효하지 않은 권한입니다.' });
+  }
+
+  try {
+    const result = await dbQuery.run(
+      'UPDATE users SET role = ? WHERE LOWER(username) = LOWER(?)',
+      [role, targetUsername]
+    );
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: '존재하지 않는 회원입니다.' });
+    }
+
+    res.json({ success: true, message: `회원 권한이 ${role === 'editor' ? '수정 권한자' : '일반 유저'}로 변경되었습니다.` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '권한 변경 중 에러가 발생했습니다.' });
   }
 });
 
@@ -1158,6 +1241,84 @@ function findTrainerSong(song, trainerSongs) {
   
   return match || null;
 }
+
+// --- Pattern Constants APIs ---
+app.get('/api/patterns', async (req, res) => {
+  try {
+    const rows = await dbQuery.all('SELECT * FROM patterns');
+    res.json(rows);
+  } catch (err) {
+    console.error('[Patterns API] Error fetching patterns:', err);
+    res.status(500).json({ error: '패턴 상수를 가져오는 중 오류가 발생했습니다.' });
+  }
+});
+
+app.post('/api/patterns', requireAuth, async (req, res) => {
+  const userRole = req.user.role || (req.user.username.toLowerCase() === 'admin' ? 'admin' : 'user');
+  if (userRole !== 'admin' && userRole !== 'editor') {
+    return res.status(403).json({ error: '패턴 상수를 수정할 권한이 없습니다.' });
+  }
+
+  const {
+    song_id,
+    difficulty,
+    burst,
+    jacks,
+    trill,
+    onehand_trill,
+    doublet,
+    aim,
+    flick,
+    holding,
+    reading,
+    rhythm,
+    gimmick,
+    crossing
+  } = req.body;
+
+  if (!song_id || !difficulty) {
+    return res.status(400).json({ error: '곡 ID와 난이도는 필수입니다.' });
+  }
+
+  try {
+    await dbQuery.run(`
+      INSERT INTO patterns (song_id, difficulty, burst, jacks, trill, onehand_trill, doublet, aim, flick, holding, reading, rhythm, gimmick, crossing)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(song_id, difficulty) DO UPDATE SET
+        burst = excluded.burst,
+        jacks = excluded.jacks,
+        trill = excluded.trill,
+        onehand_trill = excluded.onehand_trill,
+        doublet = excluded.doublet,
+        aim = excluded.aim,
+        flick = excluded.flick,
+        holding = excluded.holding,
+        reading = excluded.reading,
+        rhythm = excluded.rhythm,
+        gimmick = excluded.gimmick,
+        crossing = excluded.crossing
+    `, [
+      song_id,
+      difficulty,
+      Number(burst) || 0,
+      Number(jacks) || 0,
+      Number(trill) || 0,
+      Number(onehand_trill) || 0,
+      Number(doublet) || 0,
+      Number(aim) || 0,
+      Number(flick) || 0,
+      Number(holding) || 0,
+      Number(reading) || 0,
+      Number(rhythm) || 0,
+      Number(gimmick) || 0,
+      Number(crossing) || 0
+    ]);
+    res.json({ success: true, message: '패턴 상수가 성공적으로 저장되었습니다.' });
+  } catch (error) {
+    console.error('[Patterns API] Error updating pattern:', error);
+    res.status(500).json({ error: '패턴 상수 저장 중 오류가 발생했습니다.' });
+  }
+});
 
 app.get('/api/songs', async (req, res) => {
   try {

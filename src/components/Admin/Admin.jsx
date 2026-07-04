@@ -82,6 +82,30 @@ export default function Admin({ currentUser }) {
         }
     };
 
+    const changeUserRole = async (username, newRole) => {
+        if (!currentUser || !currentUser.token) return;
+        try {
+            const res = await fetch(`/api/admin/users/${username}/role`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${currentUser.token}`,
+                },
+                body: JSON.stringify({ role: newRole }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message || "권한이 변경되었습니다.");
+                fetchAdminUsers();
+            } else {
+                alert(data.error || "권한 변경에 실패했습니다.");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("서버 통신 오류가 발생했습니다.");
+        }
+    };
+
     useEffect(() => {
         if (currentUser && currentUser.username.toLowerCase() === "admin") {
             fetchAdminUsers();
@@ -170,6 +194,15 @@ export default function Admin({ currentUser }) {
                                             padding: "1rem 0.5rem",
                                             color: "var(--text-secondary)",
                                             fontWeight: "600",
+                                        }}
+                                    >
+                                        권한
+                                    </th>
+                                    <th
+                                        style={{
+                                            padding: "1rem 0.5rem",
+                                            color: "var(--text-secondary)",
+                                            fontWeight: "600",
                                             textAlign: "center",
                                         }}
                                     >
@@ -181,7 +214,7 @@ export default function Admin({ currentUser }) {
                                 {adminUsers.length === 0 ? (
                                     <tr>
                                         <td
-                                            colSpan="5"
+                                            colSpan="6"
                                             style={{
                                                 padding: "3rem",
                                                 textAlign: "center",
@@ -226,6 +259,31 @@ export default function Admin({ currentUser }) {
                                                     }}
                                                 >
                                                     {formattedDate}
+                                                </td>
+                                                <td style={{ padding: "0.75rem 0.5rem" }}>
+                                                    {isAdmin ? (
+                                                        <span style={{ color: "var(--color-pink)", fontWeight: "700" }}>
+                                                            최고 관리자
+                                                        </span>
+                                                    ) : (
+                                                        <select
+                                                            value={user.role || "user"}
+                                                            onChange={(e) => changeUserRole(user.username, e.target.value)}
+                                                            style={{
+                                                                background: "rgba(255,255,255,0.05)",
+                                                                color: "var(--text-primary)",
+                                                                border: "1px solid var(--border-color)",
+                                                                borderRadius: "4px",
+                                                                padding: "0.2rem 0.4rem",
+                                                                fontSize: "0.85rem",
+                                                                outline: "none",
+                                                                cursor: "pointer"
+                                                            }}
+                                                        >
+                                                            <option value="user" style={{ background: "#222" }}>일반 유저</option>
+                                                            <option value="editor" style={{ background: "#222" }}>수정 권한자</option>
+                                                        </select>
+                                                    )}
                                                 </td>
                                                 <td
                                                     style={{

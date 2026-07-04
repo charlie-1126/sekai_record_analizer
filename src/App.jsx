@@ -40,6 +40,7 @@ import "./App.css";
 import { Dashboard } from "./components/Dashboard/Dashboard";
 import { Records } from "./components/Records/Records";
 import { Constants } from "./components/Constants/Constants";
+import Pattern from "./components/Pattern/Pattern";
 import { Tour } from "./components/Tour/Tour";
 import { Calculator as CalculatorTab } from "./components/Calculator/Calculator";
 import { Compare } from "./components/Compare/Compare";
@@ -73,6 +74,7 @@ function App() {
         if (path.startsWith("/dashboard")) return "dashboard";
         if (path.startsWith("/records")) return "records";
         if (path.startsWith("/constants")) return "constants";
+        if (path.startsWith("/pattern")) return "pattern";
         if (path.startsWith("/tour")) return "tour";
         if (path.startsWith("/calculator")) return "calculator";
         if (path.startsWith("/compare")) return "compare";
@@ -925,7 +927,7 @@ function App() {
                         </button>
 
                         {/* Dropdown 1: 기록 */}
-                        <div className={`nav-dropdown ${["records", "constants"].includes(activeTab) ? "active" : ""}`}>
+                        <div className={`nav-dropdown ${["records", "constants", "pattern"].includes(activeTab) ? "active" : ""}`}>
                             <button className={`btn btn-outline dropdown-trigger`}>
                                 <ClipboardList size={16} /> 기록 <ChevronDown size={14} />
                             </button>
@@ -941,6 +943,12 @@ function App() {
                                     onClick={() => setActiveTab("constants")}
                                 >
                                     <Layers size={14} /> 상수표
+                                </button>
+                                <button
+                                    className={`nav-dropdown-item ${activeTab === "pattern" ? "active" : ""}`}
+                                    onClick={() => setActiveTab("pattern")}
+                                >
+                                    <Settings size={14} /> 패턴상수
                                 </button>
                             </div>
                         </div>
@@ -1152,7 +1160,7 @@ function App() {
                             <div className="drawer-accordion">
                                 <button
                                     className={`drawer-accordion-trigger ${
-                                        ["records", "constants"].includes(activeTab) ? "active-parent" : ""
+                                        ["records", "constants", "pattern"].includes(activeTab) ? "active-parent" : ""
                                     }`}
                                     onClick={() =>
                                         setOpenMobileAccordions({
@@ -1186,6 +1194,15 @@ function App() {
                                         }}
                                     >
                                         상수표
+                                    </button>
+                                    <button
+                                        className={`drawer-sub-item ${activeTab === "pattern" ? "active" : ""}`}
+                                        onClick={() => {
+                                            setActiveTab("pattern");
+                                            setIsMobileMenuOpen(false);
+                                        }}
+                                    >
+                                        패턴상수
                                     </button>
                                 </div>
                             </div>
@@ -1354,7 +1371,7 @@ function App() {
                 onLoginSuccess={handleLoginSuccess}
             />
 
-            <main className="container" style={{ flex: 1 }}>
+            <main className={`container ${activeTab === "pattern" ? "pattern-full-width" : ""}`} style={{ flex: 1 }}>
                 {activeTab === "dashboard" &&
                     (ratingMode === "potential" ? (
                         <PotentialDashboard
@@ -1415,6 +1432,14 @@ function App() {
                         ratingMode={ratingMode}
                         b39List={b39List}
                         potentialData={potentialData}
+                    />
+                )}
+
+                {activeTab === "pattern" && (
+                    <Pattern
+                        songs={visibleSongs}
+                        currentUser={currentUser}
+                        settingsTitleLang={settingsTitleLang}
                     />
                 )}
 
