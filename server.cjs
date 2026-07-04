@@ -85,6 +85,18 @@ async function initDatabase() {
     )
   `);
 
+  await dbQuery.run(`
+    CREATE TABLE IF NOT EXISTS pattern_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      song_id TEXT NOT NULL,
+      difficulty TEXT NOT NULL,
+      username TEXT NOT NULL,
+      changed_at TEXT NOT NULL,
+      before_values TEXT NOT NULL,
+      after_values TEXT NOT NULL
+    )
+  `);
+
   // Migrate 'onehand_trill' and 'crossing' columns in patterns table if they don't exist
   try {
     const tableInfo = await dbQuery.all("PRAGMA table_info(patterns)");
@@ -1281,6 +1293,66 @@ app.post('/api/patterns', requireAuth, async (req, res) => {
   }
 
   try {
+    // 1. Fetch previous pattern values to compare
+    const previousPattern = await dbQuery.get(
+      'SELECT * FROM patterns WHERE song_id = ? AND difficulty = ?',
+      [song_id, difficulty]
+    );
+
+    // 2. Prepare before and after objects
+    const afterValues = {
+      burst: Number(burst) || 0,
+      jacks: Number(jacks) || 0,
+      trill: Number(trill) || 0,
+      onehand_trill: Number(onehand_trill) || 0,
+      doublet: Number(doublet) || 0,
+      aim: Number(aim) || 0,
+      flick: Number(flick) || 0,
+      holding: Number(holding) || 0,
+      reading: Number(reading) || 0,
+      rhythm: Number(rhythm) || 0,
+      gimmick: Number(gimmick) || 0,
+      crossing: Number(crossing) || 0
+    };
+
+    const beforeValues = previousPattern ? {
+      burst: Number(previousPattern.burst) || 0,
+      jacks: Number(previousPattern.jacks) || 0,
+      trill: Number(previousPattern.trill) || 0,
+      onehand_trill: Number(previousPattern.onehand_trill) || 0,
+      doublet: Number(previousPattern.doublet) || 0,
+      aim: Number(previousPattern.aim) || 0,
+      flick: Number(previousPattern.flick) || 0,
+      holding: Number(previousPattern.holding) || 0,
+      reading: Number(previousPattern.reading) || 0,
+      rhythm: Number(previousPattern.rhythm) || 0,
+      gimmick: Number(previousPattern.gimmick) || 0,
+      crossing: Number(previousPattern.crossing) || 0
+    } : {
+      burst: 0,
+      jacks: 0,
+      trill: 0,
+      onehand_trill: 0,
+      doublet: 0,
+      aim: 0,
+      flick: 0,
+      holding: 0,
+      reading: 0,
+      rhythm: 0,
+      gimmick: 0,
+      crossing: 0
+    };
+
+    // 3. Check if anything actually changed
+    let hasChanged = false;
+    for (const key of Object.keys(afterValues)) {
+      if (beforeValues[key] !== afterValues[key]) {
+        hasChanged = true;
+        break;
+      }
+    }
+
+    // 4. Update patterns table
     await dbQuery.run(`
       INSERT INTO patterns (song_id, difficulty, burst, jacks, trill, onehand_trill, doublet, aim, flick, holding, reading, rhythm, gimmick, crossing)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1300,23 +1372,51 @@ app.post('/api/patterns', requireAuth, async (req, res) => {
     `, [
       song_id,
       difficulty,
-      Number(burst) || 0,
-      Number(jacks) || 0,
-      Number(trill) || 0,
-      Number(onehand_trill) || 0,
-      Number(doublet) || 0,
-      Number(aim) || 0,
-      Number(flick) || 0,
-      Number(holding) || 0,
-      Number(reading) || 0,
-      Number(rhythm) || 0,
-      Number(gimmick) || 0,
-      Number(crossing) || 0
+      afterValues.burst,
+      afterValues.jacks,
+      afterValues.trill,
+      afterValues.onehand_trill,
+      afterValues.doublet,
+      afterValues.aim,
+      afterValues.flick,
+      afterValues.holding,
+      afterValues.reading,
+      afterValues.rhythm,
+      afterValues.gimmick,
+      afterValues.crossing
     ]);
+
+    // 5. If changed, record history
+    if (hasChanged) {
+      const changedAt = new Date().toISOString();
+      const username = req.user.username;
+      await dbQuery.run(`
+        INSERT INTO pattern_history (song_id, difficulty, username, changed_at, before_values, after_values)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [
+        song_id,
+        difficulty,
+        username,
+        changedAt,
+        JSON.stringify(beforeValues),
+        JSON.stringify(afterValues)
+      ]);
+    }
+
     res.json({ success: true, message: '패턴 상수가 성공적으로 저장되었습니다.' });
   } catch (error) {
     console.error('[Patterns API] Error updating pattern:', error);
     res.status(500).json({ error: '패턴 상수 저장 중 오류가 발생했습니다.' });
+  }
+});
+
+app.get('/api/patterns/history', async (req, res) => {
+  try {
+    const rows = await dbQuery.all('SELECT * FROM pattern_history ORDER BY changed_at DESC LIMIT 200');
+    res.json(rows);
+  } catch (err) {
+    console.error('[Patterns History API] Error fetching history:', err);
+    res.status(500).json({ error: '패턴 변경 히스토리를 가져오는 중 오류가 발생했습니다.' });
   }
 });
 

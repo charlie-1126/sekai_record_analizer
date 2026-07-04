@@ -38,6 +38,60 @@ const DIFF_SHORT_LABELS = {
     append: "APD",
 };
 
+const renderChanges = (beforeJson, afterJson) => {
+    try {
+        const before = JSON.parse(beforeJson || "{}");
+        const after = JSON.parse(afterJson || "{}");
+        const changes = [];
+        
+        PATTERN_KEYS.forEach((p) => {
+            const bVal = before[p.key] ?? 0;
+            const aVal = after[p.key] ?? 0;
+            if (bVal !== aVal) {
+                changes.push({
+                    label: p.label,
+                    from: bVal,
+                    to: aVal,
+                });
+            }
+        });
+
+        if (changes.length === 0) return <span style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>변경 사항 없음</span>;
+
+        return (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem", justifyContent: "center" }}>
+                {changes.map((ch, idx) => (
+                    <span 
+                        key={idx} 
+                        style={{ 
+                            display: "inline-flex", 
+                            alignItems: "center", 
+                            gap: "0.25rem", 
+                            background: "rgba(255,255,255,0.03)", 
+                            border: "1px solid rgba(255,255,255,0.06)", 
+                            borderRadius: "4px", 
+                            padding: "0.15rem 0.4rem", 
+                            fontSize: "0.8rem" 
+                        }}
+                    >
+                        <span style={{ color: "var(--text-secondary)", fontWeight: "600" }}>{ch.label}</span>
+                        <span style={{ color: "var(--text-muted)" }}>{ch.from === 0 ? "." : ch.from}</span>
+                        <span style={{ color: "var(--color-pink)", fontSize: "0.75rem" }}>➔</span>
+                        <span style={{ 
+                            color: ch.to === 1 ? "#2dd4bf" : ch.to === 2 ? "#eab308" : ch.to === 3 ? "#a855f7" : "var(--text-muted)",
+                            fontWeight: ch.to > 0 ? "700" : "500" 
+                        }}>
+                            {ch.to === 0 ? "." : ch.to}
+                        </span>
+                    </span>
+                ))}
+            </div>
+        );
+    } catch (e) {
+        return <span style={{ color: "var(--color-danger)" }}>데이터 파싱 오류</span>;
+    }
+};
+
 export default function Pattern({ songs, currentUser, settingsTitleLang }) {
     const [patterns, setPatterns] = useState({});
     const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +101,26 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
     const [maxLevel, setMaxLevel] = useState("");
     const [visibleCount, setVisibleCount] = useState(30);
     const [isFilterExpanded, setIsFilterExpanded] = useState(true); // Default to expanded like other pages
+
+    // Subtab state
+    const [activeSubTab, setActiveSubTab] = useState("list"); // "list" | "history"
+    const [historyData, setHistoryData] = useState([]);
+    const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+
+    const fetchHistory = async () => {
+        setIsHistoryLoading(true);
+        try {
+            const res = await fetch("/api/patterns/history");
+            if (res.ok) {
+                const data = await res.json();
+                setHistoryData(data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch pattern history:", err);
+        } finally {
+            setIsHistoryLoading(false);
+        }
+    };
 
     // Sorting State
     const [sortField, setSortField] = useState(null); // null, "title", "diff", "constant", "level", or pattern key
@@ -103,6 +177,12 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
     useEffect(() => {
         fetchPatterns();
     }, []);
+
+    useEffect(() => {
+        if (activeSubTab === "history") {
+            fetchHistory();
+        }
+    }, [activeSubTab]);
 
     // Get Song Title based on settings
     const getSongTitle = (song) => {
@@ -262,6 +342,7 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
                     },
                 }));
                 setEditingChart(null);
+                fetchHistory();
             } else {
                 alert(data.error || "패턴 상수 저장에 실패했습니다.");
             }
@@ -298,28 +379,72 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
     return (
         <section className="pattern-manager-panel" style={{ padding: "0 0 1rem 0" }}>
             <div className="section-title-bar" style={{ marginBottom: "1.5rem" }}>
-                <h2 className="section-title" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <Settings size={22} style={{ color: "var(--color-pink)" }} /> 패턴상수
-                </h2>
-                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                    <button
-                        className="btn btn-outline btn-sm"
-                        onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.25rem",
-                            fontSize: "0.85rem",
-                            padding: "0.35rem 0.6rem",
-                        }}
-                    >
-                        <Filter size={14} /> {isFilterExpanded ? "필터 접기" : "필터 펼치기"}
-                    </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+                    <h2 className="section-title" style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: 0 }}>
+                        <Settings size={22} style={{ color: "var(--color-pink)" }} /> 패턴상수
+                    </h2>
+                    
+                    {/* Sub Tab Buttons */}
+                    <div style={{ display: "flex", gap: "0.25rem", background: "rgba(255, 255, 255, 0.04)", padding: "2px", borderRadius: "8px", border: "1px solid rgba(255, 255, 255, 0.06)" }}>
+                        <button
+                            type="button"
+                            className="btn btn-sm"
+                            style={{ 
+                                border: "none", 
+                                background: activeSubTab === "list" ? "var(--color-pink)" : "transparent",
+                                color: activeSubTab === "list" ? "#fff" : "var(--text-secondary)",
+                                borderRadius: "6px",
+                                padding: "0.35rem 0.75rem",
+                                fontSize: "0.85rem",
+                                fontWeight: "600",
+                                cursor: "pointer",
+                                transition: "all 0.15s"
+                            }}
+                            onClick={() => setActiveSubTab("list")}
+                        >
+                            상수 목록
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-sm"
+                            style={{ 
+                                border: "none", 
+                                background: activeSubTab === "history" ? "var(--color-pink)" : "transparent",
+                                color: activeSubTab === "history" ? "#fff" : "var(--text-secondary)",
+                                borderRadius: "6px",
+                                padding: "0.35rem 0.75rem",
+                                fontSize: "0.85rem",
+                                fontWeight: "600",
+                                cursor: "pointer",
+                                transition: "all 0.15s"
+                            }}
+                            onClick={() => setActiveSubTab("history")}
+                        >
+                            변경 히스토리
+                        </button>
+                    </div>
                 </div>
+                {activeSubTab === "list" && (
+                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                        <button
+                            className="btn btn-outline btn-sm"
+                            onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "0.25rem",
+                                fontSize: "0.85rem",
+                                padding: "0.35rem 0.6rem",
+                            }}
+                        >
+                            <Filter size={14} /> {isFilterExpanded ? "필터 접기" : "필터 펼치기"}
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* SEARCH & FILTERS - Unified with other pages */}
-            {isFilterExpanded && (
+            {activeSubTab === "list" && isFilterExpanded && (
                 <div className="table-filters-expanded" style={{ marginBottom: "1.5rem" }}>
                     <div className="filters-row pattern-filters-grid">
                         {/* 곡 검색 */}
@@ -401,164 +526,283 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
                 </div>
             )}
 
-            {/* PATTERNS TABLE */}
-            <div className="pattern-table-container">
-                <table
-                    className="pattern-table"
-                    style={{ width: "100%", borderCollapse: "collapse", textAlign: "center", tableLayout: "fixed" }}
-                >
-                    <thead>
-                        <tr style={{ borderBottom: "1px solid var(--border-color)" }}>
-                            <th 
-                                style={{ textAlign: "left", padding: "1rem", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none", width: "260px", minWidth: "260px" }}
-                                onClick={() => handleSort("title")}
-                            >
-                                곡명{renderSortIndicator("title")}
-                            </th>
-                            <th 
-                                style={{ width: "70px", minWidth: "70px", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
-                                onClick={() => handleSort("diff")}
-                            >
-                                난이도{renderSortIndicator("diff")}
-                            </th>
-                            <th 
-                                style={{ width: "70px", minWidth: "70px", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
-                                onClick={() => handleSort("constant")}
-                            >
-                                상수{renderSortIndicator("constant")}
-                            </th>
-                            <th 
-                                style={{ width: "70px", minWidth: "70px", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
-                                onClick={() => handleSort("level")}
-                            >
-                                레벨{renderSortIndicator("level")}
-                            </th>
-                            {PATTERN_KEYS.map((p) => (
-                                <th
-                                    key={p.key}
-                                    style={{
-                                        width: "75px",
-                                        minWidth: "75px",
-                                        fontSize: "0.85rem",
-                                        fontWeight: "600",
-                                        color: "var(--text-secondary)",
-                                        whiteSpace: "nowrap",
-                                        cursor: "pointer",
-                                        userSelect: "none",
-                                    }}
-                                    onClick={() => handleSort(p.key)}
-                                >
-                                    {p.label}{renderSortIndicator(p.key)}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {isLoading ? (
-                            <tr>
-                                <td colSpan={16} style={{ padding: "4rem 0", color: "var(--text-muted)" }}>
-                                    패턴 데이터를 불러오는 중...
-                                </td>
-                            </tr>
-                        ) : visibleCharts.length === 0 ? (
-                            <tr>
-                                <td colSpan={16} style={{ padding: "4rem 0", color: "var(--text-muted)" }}>
-                                    조건에 부합하는 패턴 정보가 없습니다.
-                                </td>
-                            </tr>
-                        ) : (
-                            visibleCharts.map((chart) => {
-                                const songTitle = getSongTitle(chart.song);
-                                return (
-                                    <tr
-                                        key={chart.patternKey}
-                                        className={`pattern-tr-row ${hasEditPermission ? "editable-row" : ""}`}
-                                        style={{ borderBottom: "1px solid rgba(255,255,255,0.02)" }}
-                                        onClick={() => hasEditPermission && handleOpenEdit(chart)}
+            {activeSubTab === "list" ? (
+                <>
+                    {/* PATTERNS TABLE */}
+                    <div className="pattern-table-container">
+                        <table
+                            className="pattern-table"
+                            style={{ width: "100%", borderCollapse: "collapse", textAlign: "center", tableLayout: "fixed" }}
+                        >
+                            <thead>
+                                <tr style={{ borderBottom: "1px solid var(--border-color)" }}>
+                                    <th 
+                                        style={{ textAlign: "left", padding: "1rem", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none", width: "260px", minWidth: "260px" }}
+                                        onClick={() => handleSort("title")}
                                     >
-                                        <td
+                                        곡명{renderSortIndicator("title")}
+                                    </th>
+                                    <th 
+                                        style={{ width: "70px", minWidth: "70px", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
+                                        onClick={() => handleSort("diff")}
+                                    >
+                                        난이도{renderSortIndicator("diff")}
+                                    </th>
+                                    <th 
+                                        style={{ width: "70px", minWidth: "70px", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
+                                        onClick={() => handleSort("constant")}
+                                    >
+                                        상수{renderSortIndicator("constant")}
+                                    </th>
+                                    <th 
+                                        style={{ width: "70px", minWidth: "70px", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
+                                        onClick={() => handleSort("level")}
+                                    >
+                                        레벨{renderSortIndicator("level")}
+                                    </th>
+                                    {PATTERN_KEYS.map((p) => (
+                                        <th
+                                            key={p.key}
                                             style={{
-                                                textAlign: "left",
-                                                padding: "0.75rem 1rem",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "0.75rem",
+                                                width: "75px",
+                                                minWidth: "75px",
+                                                fontSize: "0.85rem",
+                                                fontWeight: "600",
+                                                color: "var(--text-secondary)",
+                                                whiteSpace: "nowrap",
+                                                cursor: "pointer",
+                                                userSelect: "none",
                                             }}
+                                            onClick={() => handleSort(p.key)}
                                         >
-                                            <div
-                                                className={`jacket-wrapper border-${chart.diff}`}
-                                                style={{
-                                                    width: "42px",
-                                                    height: "42px",
-                                                    flexShrink: 0,
-                                                    overflow: "hidden",
-                                                }}
-                                            >
-                                                <JacketImage songId={chart.song.id} size={42} />
-                                            </div>
-                                            <div
-                                                style={{
-                                                    overflow: "hidden",
-                                                    textOverflow: "ellipsis",
-                                                    whiteSpace: "nowrap",
-                                                }}
-                                            >
-                                                <div
-                                                    style={{ fontWeight: "600", fontSize: "0.95rem" }}
-                                                    title={songTitle}
-                                                >
-                                                    {songTitle}
-                                                </div>
-                                                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                                                    {chart.song.composer}
-                                                </div>
-                                            </div>
+                                            {p.label}{renderSortIndicator(p.key)}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {isLoading ? (
+                                    <tr>
+                                        <td colSpan={16} style={{ padding: "4rem 0", color: "var(--text-muted)" }}>
+                                            패턴 데이터를 불러오는 중...
                                         </td>
-                                        <td>
-                                            <span
-                                                className={`diff-badge diff-${chart.diff}`}
-                                                style={{
-                                                    display: "inline-block",
-                                                    width: "45px",
-                                                    fontSize: "0.75rem",
-                                                    padding: "0.15rem 0",
-                                                    borderRadius: "4px",
-                                                    fontWeight: "700",
-                                                }}
-                                            >
-                                                {DIFF_SHORT_LABELS[chart.diff] || chart.diff.toUpperCase()}
-                                            </span>
-                                        </td>
-                                        <td style={{ fontWeight: "700", color: "var(--color-pink)" }}>
-                                            {chart.constant.toFixed(1)}
-                                        </td>
-                                        <td style={{ fontWeight: "600" }}>{chart.level}</td>
-                                        {PATTERN_KEYS.map((p) => (
-                                            <td key={p.key}>{renderBadge(chart.pattern[p.key])}</td>
-                                        ))}
                                     </tr>
-                                );
-                            })
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                                ) : visibleCharts.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={16} style={{ padding: "4rem 0", color: "var(--text-muted)" }}>
+                                            조건에 부합하는 패턴 정보가 없습니다.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    visibleCharts.map((chart) => {
+                                        const songTitle = getSongTitle(chart.song);
+                                        return (
+                                            <tr
+                                                key={chart.patternKey}
+                                                className={`pattern-tr-row ${hasEditPermission ? "editable-row" : ""}`}
+                                                style={{ borderBottom: "1px solid rgba(255,255,255,0.02)" }}
+                                                onClick={() => hasEditPermission && handleOpenEdit(chart)}
+                                            >
+                                                <td
+                                                    style={{
+                                                        textAlign: "left",
+                                                        padding: "0.75rem 1rem",
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: "0.75rem",
+                                                    }}
+                                                >
+                                                    <div
+                                                        className={`jacket-wrapper border-${chart.diff}`}
+                                                        style={{
+                                                            width: "42px",
+                                                            height: "42px",
+                                                            flexShrink: 0,
+                                                            overflow: "hidden",
+                                                        }}
+                                                    >
+                                                        <JacketImage songId={chart.song.id} size={42} />
+                                                    </div>
+                                                    <div
+                                                        style={{
+                                                            overflow: "hidden",
+                                                            textOverflow: "ellipsis",
+                                                            whiteSpace: "nowrap",
+                                                        }}
+                                                    >
+                                                        <div
+                                                            style={{ fontWeight: "600", fontSize: "0.95rem" }}
+                                                            title={songTitle}
+                                                        >
+                                                            {songTitle}
+                                                        </div>
+                                                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                                                            {chart.song.composer}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span
+                                                        className={`diff-badge diff-${chart.diff}`}
+                                                        style={{
+                                                            display: "inline-block",
+                                                            width: "45px",
+                                                            fontSize: "0.75rem",
+                                                            padding: "0.15rem 0",
+                                                            borderRadius: "4px",
+                                                            fontWeight: "700",
+                                                        }}
+                                                    >
+                                                        {DIFF_SHORT_LABELS[chart.diff] || chart.diff.toUpperCase()}
+                                                    </span>
+                                                </td>
+                                                <td style={{ fontWeight: "700", color: "var(--color-pink)" }}>
+                                                    {chart.constant.toFixed(1)}
+                                                </td>
+                                                <td style={{ fontWeight: "600" }}>{chart.level}</td>
+                                                {PATTERN_KEYS.map((p) => (
+                                                    <td key={p.key}>{renderBadge(chart.pattern[p.key])}</td>
+                                                ))}
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
 
-            {/* Infinite Scroll Sentinel */}
-            {chartList.length > visibleCount && (
-                <div
-                    ref={sentinelRef}
-                    style={{
-                        height: "50px",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        color: "var(--text-muted)",
-                        fontSize: "0.85rem",
-                        marginTop: "1rem",
-                    }}
-                >
-                    더 많은 패턴을 불러오는 중...
+                    {/* Infinite Scroll Sentinel */}
+                    {chartList.length > visibleCount && (
+                        <div
+                            ref={sentinelRef}
+                            style={{
+                                height: "50px",
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                color: "var(--text-muted)",
+                                fontSize: "0.85rem",
+                                marginTop: "1rem",
+                            }}
+                        >
+                            더 많은 패턴을 불러오는 중...
+                        </div>
+                    )}
+                </>
+            ) : (
+                <div className="pattern-table-container">
+                    <table
+                        className="pattern-table"
+                        style={{ width: "100%", borderCollapse: "collapse", textAlign: "center", tableLayout: "fixed" }}
+                    >
+                        <thead>
+                            <tr style={{ borderBottom: "1px solid var(--border-color)" }}>
+                                <th style={{ textAlign: "left", padding: "1rem", width: "260px", minWidth: "260px" }}>곡명</th>
+                                <th style={{ width: "80px" }}>난이도</th>
+                                <th style={{ width: "200px" }}>변경 상세</th>
+                                <th style={{ width: "100px" }}>작성자</th>
+                                <th style={{ width: "150px" }}>변경 시간</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {isHistoryLoading ? (
+                                <tr>
+                                    <td colSpan={5} style={{ padding: "4rem 0", color: "var(--text-muted)" }}>
+                                        변경 히스토리를 불러오는 중...
+                                    </td>
+                                </tr>
+                            ) : historyData.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} style={{ padding: "4rem 0", color: "var(--text-muted)" }}>
+                                        기록된 변경 히스토리가 없습니다.
+                                    </td>
+                                </tr>
+                            ) : (
+                                historyData.map((item) => {
+                                    const song = songs.find((s) => String(s.id) === String(item.song_id));
+                                    const songTitle = song ? getSongTitle(song) : `알 수 없는 곡 (ID: ${item.song_id})`;
+                                    const composer = song ? song.composer : "";
+                                    const formattedDate = new Date(item.changed_at).toLocaleString("ko-KR", {
+                                        year: "numeric",
+                                        month: "2-digit",
+                                        day: "2-digit",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        second: "2-digit",
+                                    });
+
+                                    return (
+                                        <tr key={item.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.02)" }}>
+                                            <td
+                                                style={{
+                                                    textAlign: "left",
+                                                    padding: "0.75rem 1rem",
+                                                    verticalAlign: "middle"
+                                                }}
+                                            >
+                                                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                                                    <div
+                                                        className={`jacket-wrapper border-${item.difficulty}`}
+                                                        style={{
+                                                            width: "42px",
+                                                            height: "42px",
+                                                            flexShrink: 0,
+                                                            overflow: "hidden",
+                                                        }}
+                                                    >
+                                                        <JacketImage songId={item.song_id} size={42} />
+                                                    </div>
+                                                    <div
+                                                        style={{
+                                                            overflow: "hidden",
+                                                            textOverflow: "ellipsis",
+                                                            whiteSpace: "nowrap",
+                                                        }}
+                                                    >
+                                                        <div
+                                                            style={{ fontWeight: "600", fontSize: "0.95rem" }}
+                                                            title={songTitle}
+                                                        >
+                                                            {songTitle}
+                                                        </div>
+                                                        {composer && (
+                                                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                                                                {composer}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td style={{ verticalAlign: "middle" }}>
+                                                <span
+                                                    className={`diff-badge diff-${item.difficulty}`}
+                                                    style={{
+                                                        display: "inline-block",
+                                                        width: "45px",
+                                                        fontSize: "0.75rem",
+                                                        padding: "0.15rem 0",
+                                                        borderRadius: "4px",
+                                                        fontWeight: "700",
+                                                    }}
+                                                >
+                                                    {DIFF_SHORT_LABELS[item.difficulty] || item.difficulty.toUpperCase()}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: "0.5rem", verticalAlign: "middle" }}>
+                                                {renderChanges(item.before_values, item.after_values)}
+                                            </td>
+                                            <td style={{ fontWeight: "600", color: "var(--text-secondary)", verticalAlign: "middle" }}>
+                                                {item.username}
+                                            </td>
+                                            <td style={{ fontSize: "0.85rem", color: "var(--text-muted)", verticalAlign: "middle" }}>
+                                                {formattedDate}
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             )}
 
