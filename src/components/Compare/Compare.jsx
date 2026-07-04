@@ -1552,7 +1552,9 @@ export const Compare = ({
 
                                         return (
                                             <div key={`${song.id}-${diff}`} className="compare-record-row">
-                                                <JacketImage songId={song.id} size={36} />
+                                                <div className={`compare-jacket-wrapper border-${diff}`}>
+                                                    <JacketImage songId={song.id} size={36} />
+                                                </div>
 
                                                 <div style={{ minWidth: 0 }}>
                                                     <div

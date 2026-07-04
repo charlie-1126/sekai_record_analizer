@@ -143,6 +143,7 @@ function App() {
 
     // --- Jacket Click Popup State ---
     const [selectedJacketSong, setSelectedJacketSong] = useState(null);
+    const [calculatorTarget, setCalculatorTarget] = useState(null); // { song, diff }
 
     // --- Auth States ---
     // [Fix M-4] Wrap JSON.parse to prevent app crash if localStorage is corrupted
@@ -400,6 +401,12 @@ function App() {
 
     const handleJacketClick = (song, diff, currentStatus) => {
         setSelectedJacketSong({ song, diff, status: currentStatus });
+    };
+
+    const handleNavigateToCalculator = (song, diff) => {
+        setCalculatorTarget({ song, diff });
+        setActiveTab("calculator");
+        setSelectedJacketSong(null);
     };
 
     // --- Profile & Settings Saver Handler ---
@@ -1362,6 +1369,7 @@ function App() {
                 trainerSpeed={trainerSpeed}
                 isLoggedIn={!!currentUser}
                 scores={scores}
+                onNavigateToCalculator={handleNavigateToCalculator}
             />
 
             <AuthModal
@@ -1420,6 +1428,7 @@ function App() {
                         settingsTitleLang={settingsTitleLang}
                         ratingMode={ratingMode}
                         isLoggedIn={!!currentUser}
+                        onJacketClick={handleJacketClick}
                     />
                 )}
 
@@ -1466,6 +1475,8 @@ function App() {
                         ratingMode={ratingMode}
                         potentialData={potentialData}
                         userScoresMap={userScoresMap}
+                        initialTarget={calculatorTarget}
+                        clearInitialTarget={() => setCalculatorTarget(null)}
                     />
                 )}
 

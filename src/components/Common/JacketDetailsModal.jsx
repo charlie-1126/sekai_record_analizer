@@ -2,7 +2,7 @@ import React from "react";
 import { JacketImage } from "./JacketImage";
 import { getSongTitle, getConstant, hasExplicitConstant } from "../../utils/ratingUtils";
 import { isNewSong, formatPublishedDate } from "../../utils/potentialUtils";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Calculator } from "lucide-react";
 
 export default function JacketDetailsModal({
     selectedJacketSong,
@@ -12,6 +12,7 @@ export default function JacketDetailsModal({
     trainerSpeed = "10.5",
     isLoggedIn = false,
     scores = [],
+    onNavigateToCalculator,
 }) {
     if (!selectedJacketSong) return null;
 
@@ -232,6 +233,29 @@ export default function JacketDetailsModal({
                             );
                         })}
                     </div>
+
+                    {/* 레이팅 계산 다이렉트 버튼 */}
+                    <button
+                        className="btn btn-outline"
+                        style={{
+                            padding: "0.6rem 0.5rem",
+                            fontSize: "0.85rem",
+                            borderColor: "var(--color-cyan)",
+                            color: "var(--color-cyan)",
+                            boxShadow: "0 0 10px rgba(0, 242, 254, 0.15)",
+                            fontWeight: "700",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "0.35rem",
+                            cursor: "pointer",
+                        }}
+                        onClick={() => onNavigateToCalculator && onNavigateToCalculator(song, diff)}
+                    >
+                        <Calculator size={16} />
+                        <span>레이팅 계산</span>
+                    </button>
+
                     <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem" }}>
                         <a
                             href={`https://asset.rilaksekai.com/charts/${String(song.id).padStart(3, "0")}/${diff.toLowerCase()}.html`}

@@ -6,7 +6,7 @@ import { isNewSong, calculateSongPotential } from "../../utils/potentialUtils";
 import { useSessionState } from "../../utils/useSessionState";
 import { defaultSort } from "../../utils/scoreUtils";
 
-export const Records = ({ songs, scores, updateScores, settingsTitleLang, ratingMode = "b39", isLoggedIn = false }) => {
+export const Records = ({ songs, scores, updateScores, settingsTitleLang, ratingMode = "b39", isLoggedIn = false, onJacketClick }) => {
     // --- States ---
     const [isRecordFilterExpanded, setIsRecordFilterExpanded] = useSessionState("pjsk_record_filter_expanded", true);
     const [recordSearchInput, setRecordSearchInput] = useSessionState("pjsk_record_search_input", "");
@@ -749,7 +749,11 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                             };
 
                             return (
-                                <div key={`${item.song.id}-${item.diff}`} className="record-row-item record-grid-row">
+                                <div
+                                    key={`${item.song.id}-${item.diff}`}
+                                    className="record-row-item record-grid-row"
+                                    onClick={() => onJacketClick && onJacketClick(item.song, item.diff, item.status)}
+                                >
                                     {/* Rank */}
                                     <div className="record-rank-col">#{index + 1}</div>
 
@@ -858,7 +862,7 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                                     </div>
 
                                     {/* Action / Selector */}
-                                    <div className="record-action-col">
+                                    <div className="record-action-col" onClick={(e) => e.stopPropagation()}>
                                         <select
                                             className={`record-status-select status-${item.status}`}
                                             value={item.status}

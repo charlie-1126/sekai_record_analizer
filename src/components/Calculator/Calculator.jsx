@@ -16,6 +16,8 @@ export const Calculator = ({
     ratingMode = "b39",
     potentialData,
     userScoresMap,
+    initialTarget,
+    clearInitialTarget,
 }) => {
     // --- States ---
     const [calcSongSearch, setCalcSongSearch] = useState("");
@@ -29,6 +31,19 @@ export const Calculator = ({
             setCalcGoal("full_combo");
         }
     }, [ratingMode, calcGoal]);
+
+    useEffect(() => {
+        if (initialTarget && initialTarget.song) {
+            const { song, diff } = initialTarget;
+            setCalcSelectedSong(song);
+            setCalcSongSearch(getSongTitle(song));
+            setCalcDiff(diff || "master");
+            setShowCalcDropdown(false);
+            if (clearInitialTarget) {
+                clearInitialTarget();
+            }
+        }
+    }, [initialTarget, clearInitialTarget]);
 
     const getSongTitle = (song) => {
         if (!song) return "";
@@ -436,7 +451,7 @@ export const Calculator = ({
                                             {potentialCalcResult.songIsNew ? "NB" : "OB"} #
                                             {potentialCalcResult.estimatedRank}
                                             {"\n"}
-                                            Potential: {potentialCalcResult.newPotential2.toFixed(1)} (
+                                            Potential: {potentialCalcResult.newPotential2.toFixed(2)} (
                                             {potentialCalcResult.gain2 >= 0 ? "+" : ""}
                                             {potentialCalcResult.gain2.toFixed(2)})
                                         </div>

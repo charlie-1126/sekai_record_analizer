@@ -1173,6 +1173,7 @@ input[type="number"] {
 /* ======================================================== */
 .record-row-item {
     transition: var(--transition-smooth);
+    cursor: pointer;
 }
 
 .record-row-item:hover {
@@ -2372,5 +2373,47 @@ input[type="number"] {
     .pattern-edit-modal {
         padding: 1.25rem !important; /* Slimmer padding for mobile height */
     }
+}
+
+/* Compare jacket difficulty borders */
+.compare-jacket-wrapper {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    box-sizing: border-box;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.compare-jacket-wrapper img,
+.compare-jacket-wrapper div {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 4px !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.compare-jacket-wrapper.border-easy {
+    border: 3px solid var(--color-easy);
+}
+.compare-jacket-wrapper.border-normal {
+    border: 3px solid var(--color-normal);
+}
+.compare-jacket-wrapper.border-hard {
+    border: 3px solid var(--color-hard);
+}
+.compare-jacket-wrapper.border-expert {
+    border: 3px solid var(--color-expert);
+}
+.compare-jacket-wrapper.border-master {
+    border: 3px solid var(--color-master);
+}
+.compare-jacket-wrapper.border-append {
+    border: 3px solid transparent;
+    background:
+        linear-gradient(var(--bg-surface-solid), var(--bg-surface-solid)) padding-box,
+        linear-gradient(135deg, var(--color-purple), var(--color-append)) border-box;
 }
 
