@@ -649,6 +649,7 @@ function App() {
                                 username: data.user.username,
                                 nickname: data.user.nickname,
                                 token: saved.token,
+                                role: data.user.role || (data.user.username.toLowerCase() === "admin" ? "admin" : "user"),
                                 friends: data.user.friends || [],
                                 settings: data.user.settings || { songTitleLang: "jp" },
                                 rating_history: data.user.rating_history || {},
