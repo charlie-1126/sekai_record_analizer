@@ -51,6 +51,7 @@ import Admin from "./components/Admin/Admin";
 import AuthModal from "./components/Auth/AuthModal";
 import ImportPreviewModal from "./components/Records/ImportPreviewModal";
 import JacketDetailsModal from "./components/Common/JacketDetailsModal";
+import UpdateNotesModal from "./components/Common/UpdateNotesModal";
 
 // Rating Utils
 import { calculateRating, getConstant, hasExplicitConstant, calculateTempRatings } from "./utils/ratingUtils";
@@ -183,6 +184,24 @@ function App() {
     const isSyncingScores = useRef(false);
     // Shows a brief error message when server sync fails (e.g. offline)
     const [syncError, setSyncError] = useState("");
+
+    // --- Update Notes Modal States ---
+    const [showUpdateNotesModal, setShowUpdateNotesModal] = useState(false);
+
+    useEffect(() => {
+        const latestVer = "v1.3.0";
+        const lastViewed = localStorage.getItem("pjsk_last_viewed_update");
+        if (lastViewed !== latestVer) {
+            // Check if lastViewed exists to avoid bothering first-time visitors immediately, 
+            // or we can auto-display for all users who haven't seen this specific version
+            setShowUpdateNotesModal(true);
+        }
+    }, []);
+
+    const handleCloseUpdateNotes = () => {
+        localStorage.setItem("pjsk_last_viewed_update", "v1.3.0");
+        setShowUpdateNotesModal(false);
+    };
 
     // --- Fetch Songs from Server DB ---
     const fetchSongsFromServer = async () => {
@@ -1309,6 +1328,16 @@ function App() {
                                     <Users size={18} /> 회원 관리
                                 </button>
                             )}
+
+                            <button
+                                className="drawer-menu-item"
+                                onClick={() => {
+                                    setShowUpdateNotesModal(true);
+                                    setIsMobileMenuOpen(false);
+                                }}
+                            >
+                                <Sparkles size={18} /> 업데이트 노트
+                            </button>
                         </div>
 
                         {/* Drawer Actions */}
@@ -1377,6 +1406,11 @@ function App() {
                 onClose={() => setShowAuthModal(false)}
                 songs={songs}
                 onLoginSuccess={handleLoginSuccess}
+            />
+
+            <UpdateNotesModal
+                isOpen={showUpdateNotesModal}
+                onClose={handleCloseUpdateNotes}
             />
 
             <main className={`container ${activeTab === "pattern" ? "pattern-full-width" : ""}`} style={{ flex: 1 }}>
