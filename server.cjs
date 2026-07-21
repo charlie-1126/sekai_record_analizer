@@ -142,7 +142,7 @@ async function initDatabase() {
           await dbQuery.run(
             `INSERT INTO users (username, nickname, password_salt, password_hash, scores, friends, settings, rating_history, created_at, role)
              VALUES (?, ?, ?, ?, ?, '[]', '{"songTitleLang":"jp"}', '{}', ?, ?)`,
-            [u.username, u.nickname, u.salt, u.hash, JSON.stringify(userScores), u.createdAt || new Date().toISOString(), u.username.toLowerCase() === 'admin' ? 'admin' : 'user']
+            [u.username, u.nickname, u.salt, u.hash, JSON.stringify(userScores), u.createdAt || getKstISOString(), u.username.toLowerCase() === 'admin' ? 'admin' : 'user']
           );
         }
         console.log(`Successfully migrated ${jsonUsers.length} users from JSON to SQLite.`);
@@ -266,6 +266,7 @@ function mergeScores(localScores, serverScores) {
             expert: getBetterStatus(score.expert, existing.expert),
             master: getBetterStatus(score.master, existing.master),
             append: getBetterStatus(score.append, existing.append),
+            dates: score.dates || existing.dates ? { ...(existing.dates || {}), ...(score.dates || {}) } : undefined,
           });
         } else {
           mergedMap.set(idStr, { ...score });
@@ -316,6 +317,24 @@ async function downloadJacket(songId) {
 }
 
 // Helper to get KST date string offset by a number of days
+function getKstISOString(date = new Date()) {
+  const d = new Date(date);
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  const parts = formatter.formatToParts(d);
+  const map = {};
+  parts.forEach(p => { map[p.type] = p.value; });
+  return `${map.year}-${map.month}-${map.day}T${map.hour}:${map.minute}:${map.second}+09:00`;
+}
+
 function getKstDateStrOffset(offsetDays) {
   const targetDate = new Date(Date.now() - offsetDays * 24 * 60 * 60 * 1000);
   const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -338,7 +357,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const { salt, hash } = hashPassword(password);
-    const createdAt = new Date().toISOString();
+    const createdAt = getKstISOString();
 
     let ratingHistory = '{}';
     if (username.toLowerCase().includes('test')) {
@@ -1388,7 +1407,7 @@ app.post('/api/patterns', requireAuth, async (req, res) => {
 
     // 5. If changed, record history
     if (hasChanged) {
-      const changedAt = new Date().toISOString();
+      const changedAt = getKstISOString();
       const username = req.user.username;
       await dbQuery.run(`
         INSERT INTO pattern_history (song_id, difficulty, username, changed_at, before_values, after_values)
@@ -1560,10 +1579,14 @@ app.post('/api/scores', requireAuth, async (req, res) => {
 
         const existIdx = currentScores.findIndex(s => String(s.id) === songId);
         if (existIdx !== -1) {
-          currentScores[existIdx] = {
+          const updatedItem = {
             ...currentScores[existIdx],
             [diff]: status
           };
+          if (mod.dates !== undefined) {
+            updatedItem.dates = mod.dates;
+          }
+          currentScores[existIdx] = updatedItem;
         } else {
           currentScores.push({
             id: songId,
@@ -1572,7 +1595,8 @@ app.post('/api/scores', requireAuth, async (req, res) => {
             hard: diff === 'hard' ? status : null,
             expert: diff === 'expert' ? status : null,
             master: diff === 'master' ? status : null,
-            append: diff === 'append' ? status : null
+            append: diff === 'append' ? status : null,
+            dates: mod.dates || undefined
           });
         }
       });

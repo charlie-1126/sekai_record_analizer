@@ -63,6 +63,7 @@ import {
 } from "./utils/potentialUtils";
 import { PotentialDashboard } from "./components/Dashboard/PotentialDashboard";
 import { defaultSort } from "./utils/scoreUtils";
+import { computeUpdatedDatesOnStatusChange, updateDatesForDiff, getFcApDates, getKstISOString } from "./utils/dateUtils";
 
 
 function App() {
@@ -390,7 +391,7 @@ function App() {
         return song.title_jp || song.title_ko || "";
     };
 
-    const handleScoreChange = (songId, diff, newStatus) => {
+    const handleScoreChange = (songId, diff, newStatus, customDates = null) => {
         const previousScores = scores; // snapshot before change for revert-on-failure
         const existIdx = scores.findIndex((s) => String(s.id) === String(songId));
         let newScores = [...scores];
@@ -399,10 +400,20 @@ function App() {
             return status === "none" ? null : status;
         };
 
+        const existingScore = existIdx !== -1 ? scores[existIdx] : null;
+        
+        let finalDates;
+        if (customDates !== null) {
+            finalDates = customDates;
+        } else {
+            finalDates = computeUpdatedDatesOnStatusChange(existingScore, diff, sanitizeStatus(newStatus));
+        }
+
         if (existIdx !== -1) {
             newScores[existIdx] = {
                 ...newScores[existIdx],
                 [diff]: sanitizeStatus(newStatus),
+                dates: finalDates,
             };
         } else {
             newScores.push({
@@ -413,9 +424,39 @@ function App() {
                 expert: diff === "expert" ? sanitizeStatus(newStatus) : null,
                 master: diff === "master" ? sanitizeStatus(newStatus) : null,
                 append: diff === "append" ? sanitizeStatus(newStatus) : null,
+                dates: finalDates,
             });
         }
-        updateScores(newScores, previousScores, [{ id: String(songId), diff, status: sanitizeStatus(newStatus) }]);
+        updateScores(newScores, previousScores, [{ id: String(songId), diff, status: sanitizeStatus(newStatus), dates: finalDates }]);
+    };
+
+    const handleDateChange = (songId, diff, dateType, dateValue) => {
+        const previousScores = scores;
+        const existIdx = scores.findIndex((s) => String(s.id) === String(songId));
+        let newScores = [...scores];
+        const existingScore = existIdx !== -1 ? scores[existIdx] : null;
+        
+        const finalDates = updateDatesForDiff(existingScore, diff, dateType, dateValue);
+        const currentStatus = existingScore && existingScore[diff] ? existingScore[diff] : null;
+
+        if (existIdx !== -1) {
+            newScores[existIdx] = {
+                ...newScores[existIdx],
+                dates: finalDates,
+            };
+        } else {
+            newScores.push({
+                id: String(songId),
+                easy: null,
+                normal: null,
+                hard: null,
+                expert: null,
+                master: null,
+                append: null,
+                dates: finalDates,
+            });
+        }
+        updateScores(newScores, previousScores, [{ id: String(songId), diff, status: currentStatus, dates: finalDates }]);
     };
 
     const handleJacketClick = (song, diff, currentStatus) => {
@@ -602,12 +643,13 @@ function App() {
                 expert: playRecord ? sanitizeValue(playRecord.expert) : null,
                 master: playRecord ? sanitizeValue(playRecord.master) : null,
                 append: playRecord ? sanitizeValue(playRecord.append) : null,
+                dates: playRecord && playRecord.dates ? playRecord.dates : null,
             };
         });
 
         const exportData = {
             version: 2,
-            exportedAt: new Date().toISOString(),
+            exportedAt: getKstISOString(),
             scores: completeScores,
         };
 
@@ -1396,6 +1438,7 @@ function App() {
                 setSelectedJacketSong={setSelectedJacketSong}
                 settingsTitleLang={settingsTitleLang}
                 handleScoreChange={handleScoreChange}
+                handleDateChange={handleDateChange}
                 trainerSpeed={trainerSpeed}
                 isLoggedIn={!!currentUser}
                 scores={scores}

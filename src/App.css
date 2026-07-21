@@ -1647,7 +1647,7 @@ input[type="number"] {
 /* Records Row Grid - Responsive */
 .record-grid-header {
     display: grid;
-    grid-template-columns: 50px 54px 2fr 120px 80px 80px 80px 100px 180px;
+    grid-template-columns: 50px 54px 2fr 110px 75px 85px 85px 100px 90px;
     gap: 1rem;
     font-weight: 700;
     font-size: 0.85rem;
@@ -1660,11 +1660,60 @@ input[type="number"] {
 
 .record-grid-row {
     display: grid;
-    grid-template-columns: 50px 54px 2fr 120px 80px 80px 80px 100px 180px;
+    grid-template-columns: 50px 54px 2fr 110px 75px 85px 85px 100px 90px;
     gap: 1rem;
     align-items: center;
     padding: 0.75rem 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+/* Record Status Badge */
+.record-status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+    min-width: 42px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.record-status-badge.mini {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.35rem;
+    min-width: unset;
+    border-radius: 4px;
+}
+
+.record-status-badge.status-full_perfect {
+    background: rgba(56, 189, 248, 0.15);
+    color: var(--color-ap);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+}
+
+.record-status-badge.status-full_combo {
+    background: rgba(192, 132, 252, 0.15);
+    color: var(--color-fc);
+    border: 1px solid rgba(192, 132, 252, 0.4);
+    box-shadow: 0 0 10px rgba(192, 132, 252, 0.2);
+}
+
+.record-status-badge.status-clear {
+    background: rgba(251, 191, 36, 0.15);
+    color: var(--color-clear);
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.15);
+}
+
+.record-status-badge.status-none {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
 }
 
 .record-rank-col {
@@ -1771,9 +1820,10 @@ input[type="number"] {
 
     .record-grid-row {
         grid-template-columns: 56px 1fr auto;
-        grid-template-areas: "jacket info action";
+        grid-template-areas: "jacket info status";
         gap: 0.5rem 0.75rem;
         padding: 0.75rem 0.5rem;
+        align-items: center;
     }
 
     .record-rank-col,
@@ -1793,8 +1843,11 @@ input[type="number"] {
         grid-area: info;
     }
 
-    .record-action-col {
-        grid-area: action;
+    .record-status-col {
+        grid-area: status;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
     }
 
     .record-composer {

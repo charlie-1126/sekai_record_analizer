@@ -2,13 +2,15 @@ import React from "react";
 import { JacketImage } from "./JacketImage";
 import { getSongTitle, getConstant, hasExplicitConstant } from "../../utils/ratingUtils";
 import { isNewSong, formatPublishedDate } from "../../utils/potentialUtils";
-import { ExternalLink, Calculator } from "lucide-react";
+import { getFcApDates, getTodayString } from "../../utils/dateUtils";
+import { ExternalLink, Calculator, Calendar, CalendarCheck } from "lucide-react";
 
 export default function JacketDetailsModal({
     selectedJacketSong,
     setSelectedJacketSong,
     settingsTitleLang,
     handleScoreChange,
+    handleDateChange,
     trainerSpeed = "10.5",
     isLoggedIn = false,
     scores = [],
@@ -19,6 +21,7 @@ export default function JacketDetailsModal({
     const { song, diff } = selectedJacketSong;
     const songScore = scores.find((s) => String(s.id) === String(song.id));
     const status = songScore && songScore[diff] ? songScore[diff] : "none";
+    const dates = getFcApDates(songScore, diff);
 
     const diffLower = diff.toLowerCase();
     const isEasyOrNormal = diffLower === "easy" || diffLower === "normal";
@@ -233,6 +236,98 @@ export default function JacketDetailsModal({
                             );
                         })}
                     </div>
+
+                    {/* 성과 달성 날짜 입력 세션 */}
+                    {isLoggedIn && (
+                        <div
+                            style={{
+                                background: "rgba(255, 255, 255, 0.02)",
+                                border: "1px solid var(--border-color)",
+                                borderRadius: "8px",
+                                padding: "0.75rem 1rem",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "0.5rem",
+                                marginTop: "0.25rem",
+                            }}
+                        >
+                            <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                <Calendar size={14} style={{ color: "var(--color-cyan)" }} />
+                                <span>달성 날짜 기록 (FC / AP)</span>
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                                {/* FC Date */}
+                                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                                    <label style={{ fontSize: "0.75rem", color: "var(--color-fc)", fontWeight: 700 }}>
+                                        FC 달성일
+                                    </label>
+                                    <div style={{ display: "flex", gap: "0.25rem", alignItems: "center" }}>
+                                        <input
+                                            type="date"
+                                            value={dates.fc || ""}
+                                            onChange={(e) => handleDateChange && handleDateChange(song.id, diff, "fc", e.target.value)}
+                                            style={{
+                                                flex: 1,
+                                                background: "rgba(0, 0, 0, 0.3)",
+                                                border: "1px solid var(--border-color)",
+                                                color: "var(--text-primary)",
+                                                borderRadius: "4px",
+                                                padding: "0.3rem 0.4rem",
+                                                fontSize: "0.75rem",
+                                                colorScheme: "dark",
+                                                width: "100%",
+                                                boxSizing: "border-box"
+                                            }}
+                                        />
+                                        <button
+                                            className="btn"
+                                            type="button"
+                                            title="오늘 날짜 입력"
+                                            onClick={() => handleDateChange && handleDateChange(song.id, diff, "fc", getTodayString())}
+                                            style={{ padding: "0.35rem 0.5rem", display: "flex", alignItems: "center", justifyContent: "center" }}
+                                        >
+                                            <CalendarCheck size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* AP Date */}
+                                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                                    <label style={{ fontSize: "0.75rem", color: "var(--color-ap)", fontWeight: 700 }}>
+                                        AP 달성일
+                                    </label>
+                                    <div style={{ display: "flex", gap: "0.25rem", alignItems: "center" }}>
+                                        <input
+                                            type="date"
+                                            value={dates.ap || ""}
+                                            onChange={(e) => handleDateChange && handleDateChange(song.id, diff, "ap", e.target.value)}
+                                            style={{
+                                                flex: 1,
+                                                background: "rgba(0, 0, 0, 0.3)",
+                                                border: "1px solid var(--border-color)",
+                                                color: "var(--text-primary)",
+                                                borderRadius: "4px",
+                                                padding: "0.3rem 0.4rem",
+                                                fontSize: "0.75rem",
+                                                colorScheme: "dark",
+                                                width: "100%",
+                                                boxSizing: "border-box"
+                                            }}
+                                        />
+                                        <button
+                                            className="btn"
+                                            type="button"
+                                            title="오늘 날짜 입력"
+                                            onClick={() => handleDateChange && handleDateChange(song.id, diff, "ap", getTodayString())}
+                                            style={{ padding: "0.35rem 0.5rem", display: "flex", alignItems: "center", justifyContent: "center" }}
+                                        >
+                                            <CalendarCheck size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* 레이팅 계산 다이렉트 버튼 */}
                     <button

@@ -55,6 +55,7 @@ export function mergeScores(localScores, serverScores) {
                         expert: getBetterStatus(score.expert, existing.expert),
                         master: getBetterStatus(score.master, existing.master),
                         append: getBetterStatus(score.append, existing.append),
+                        dates: score.dates || existing.dates ? { ...(existing.dates || {}), ...(score.dates || {}) } : undefined,
                     });
                 } else {
                     mergedMap.set(idStr, { ...score });

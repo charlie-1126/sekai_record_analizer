@@ -5,6 +5,7 @@ import { calculateRating, getConstant, hasExplicitConstant } from "../../utils/r
 import { isNewSong, calculateSongPotential } from "../../utils/potentialUtils";
 import { useSessionState } from "../../utils/useSessionState";
 import { defaultSort } from "../../utils/scoreUtils";
+import { computeUpdatedDatesOnStatusChange, updateDatesForDiff, getFcApDates, getTodayString } from "../../utils/dateUtils";
 
 export const Records = ({ songs, scores, updateScores, settingsTitleLang, ratingMode = "b39", isLoggedIn = false, onJacketClick }) => {
     // --- States ---
@@ -88,6 +89,7 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                     expert: s.expert,
                     master: s.master,
                     append: s.append,
+                    dates: s.dates,
                 });
             }
         });
@@ -150,10 +152,14 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
             return status === "none" ? null : status;
         };
 
+        const existingScore = existIdx !== -1 ? scores[existIdx] : null;
+        const finalDates = computeUpdatedDatesOnStatusChange(existingScore, diff, sanitizeStatus(newStatus));
+
         if (existIdx !== -1) {
             newScores[existIdx] = {
                 ...newScores[existIdx],
                 [diff]: sanitizeStatus(newStatus),
+                dates: finalDates,
             };
         } else {
             newScores.push({
@@ -164,9 +170,39 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                 expert: diff === "expert" ? sanitizeStatus(newStatus) : null,
                 master: diff === "master" ? sanitizeStatus(newStatus) : null,
                 append: diff === "append" ? sanitizeStatus(newStatus) : null,
+                dates: finalDates,
             });
         }
-        updateScores(newScores, previousScores, [{ id: String(songId), diff, status: sanitizeStatus(newStatus) }]);
+        updateScores(newScores, previousScores, [{ id: String(songId), diff, status: sanitizeStatus(newStatus), dates: finalDates }]);
+    };
+
+    const handleDateChange = (songId, diff, dateType, dateValue) => {
+        const previousScores = scores;
+        const existIdx = scores.findIndex((s) => String(s.id) === String(songId));
+        let newScores = [...scores];
+        const existingScore = existIdx !== -1 ? scores[existIdx] : null;
+
+        const finalDates = updateDatesForDiff(existingScore, diff, dateType, dateValue);
+        const currentStatus = existingScore && existingScore[diff] ? existingScore[diff] : null;
+
+        if (existIdx !== -1) {
+            newScores[existIdx] = {
+                ...newScores[existIdx],
+                dates: finalDates,
+            };
+        } else {
+            newScores.push({
+                id: String(songId),
+                easy: null,
+                normal: null,
+                hard: null,
+                expert: null,
+                master: null,
+                append: null,
+                dates: finalDates,
+            });
+        }
+        updateScores(newScores, previousScores, [{ id: String(songId), diff, status: currentStatus, dates: finalDates }]);
     };
 
     // --- Bulk Score Update Handlers ---
@@ -184,25 +220,31 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
         filteredAndSortedRecords.forEach((item) => {
             const songId = String(item.song.id);
             const diff = item.diff;
+            const sanitized = sanitizeStatus(newStatus);
 
             const existIdx = newScores.findIndex((s) => String(s.id) === songId);
+            const existingScore = existIdx !== -1 ? newScores[existIdx] : null;
+            const finalDates = computeUpdatedDatesOnStatusChange(existingScore, diff, sanitized);
+
             if (existIdx !== -1) {
                 newScores[existIdx] = {
                     ...newScores[existIdx],
-                    [diff]: sanitizeStatus(newStatus),
+                    [diff]: sanitized,
+                    dates: finalDates,
                 };
             } else {
                 newScores.push({
                     id: songId,
-                    easy: diff === "easy" ? sanitizeStatus(newStatus) : null,
-                    normal: diff === "normal" ? sanitizeStatus(newStatus) : null,
-                    hard: diff === "hard" ? sanitizeStatus(newStatus) : null,
-                    expert: diff === "expert" ? sanitizeStatus(newStatus) : null,
-                    master: diff === "master" ? sanitizeStatus(newStatus) : null,
-                    append: diff === "append" ? sanitizeStatus(newStatus) : null,
+                    easy: diff === "easy" ? sanitized : null,
+                    normal: diff === "normal" ? sanitized : null,
+                    hard: diff === "hard" ? sanitized : null,
+                    expert: diff === "expert" ? sanitized : null,
+                    master: diff === "master" ? sanitized : null,
+                    append: diff === "append" ? sanitized : null,
+                    dates: finalDates,
                 });
             }
-            modifications.push({ id: songId, diff, status: sanitizeStatus(newStatus) });
+            modifications.push({ id: songId, diff, status: sanitized, dates: finalDates });
         });
 
         updateScores(newScores, previousScores, modifications);
@@ -283,6 +325,7 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                     apConstant,
                     hasApConstant: hasExplicitConstant(song, diff, "full_perfect"),
                     status: status || "none",
+                    dates: getFcApDates(userPlay, diff),
                     rating,
                 });
             });
@@ -722,7 +765,7 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                             style={{ cursor: "pointer", userSelect: "none" }}
                             onClick={() => handleRecordSort("status")}
                         >
-                            성과 설정{renderSortIndicator("status")}
+                            성과{renderSortIndicator("status")}
                         </span>
                     </div>
 
@@ -842,7 +885,7 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                                         {!item.hasApConstant && "?"}
                                     </div>
 
-                                    {/* Music R */}
+                                    {/* Music R / Potential */}
                                     <div
                                         className="record-rating-col"
                                         style={{
@@ -861,23 +904,11 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
                                             : "-"}
                                     </div>
 
-                                    {/* Action / Selector */}
-                                    <div className="record-action-col" onClick={(e) => e.stopPropagation()}>
-                                        <select
-                                            className={`record-status-select status-${item.status}`}
-                                            value={item.status}
-                                            disabled={!isLoggedIn}
-                                            onChange={(e) => handleScoreChange(item.song.id, item.diff, e.target.value)}
-                                            style={{
-                                                opacity: isLoggedIn ? 1 : 0.6,
-                                                cursor: isLoggedIn ? "pointer" : "not-allowed",
-                                            }}
-                                        >
-                                            <option value="none">NC</option>
-                                            <option value="clear">C</option>
-                                            <option value="full_combo">FC</option>
-                                            <option value="full_perfect">AP</option>
-                                        </select>
+                                    {/* 성과 Display Badge */}
+                                    <div className="record-status-col" style={{ display: "flex", justifyContent: "center" }}>
+                                        <span className={`record-status-badge status-${item.status}`}>
+                                            {item.status === "full_perfect" ? "AP" : item.status === "full_combo" ? "FC" : item.status === "clear" ? "C" : "NC"}
+                                        </span>
                                     </div>
                                 </div>
                             );
