@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Music } from "lucide-react";
 
-export const JacketImage = ({ songId, size = 50, className = "", style = {} }) => {
-    const [imgSrc, setImgSrc] = useState(`/api/jackets/${songId}`);
+export const JacketImage = ({ songId, song, size = 50, className = "", style = {} }) => {
+    const actualSongId = songId || (song && song.id);
+    const [imgSrc, setImgSrc] = useState(`/api/jackets/${actualSongId}`);
     const [failed, setFailed] = useState(false);
 
     useEffect(() => {
-        setImgSrc(`/api/jackets/${songId}`);
+        setImgSrc(`/api/jackets/${actualSongId}`);
         setFailed(false);
-    }, [songId]);
+    }, [actualSongId]);
 
     if (failed) {
         return (

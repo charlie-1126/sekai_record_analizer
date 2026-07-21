@@ -18,7 +18,15 @@ export default function JacketDetailsModal({
 }) {
     if (!selectedJacketSong) return null;
 
-    const { song, diff } = selectedJacketSong;
+    let song = selectedJacketSong.song;
+    let diff = selectedJacketSong.diff || "master";
+
+    if (!song && selectedJacketSong.id) {
+        song = selectedJacketSong;
+    }
+
+    if (!song || !song.id) return null;
+
     const songScore = scores.find((s) => String(s.id) === String(song.id));
     const status = songScore && songScore[diff] ? songScore[diff] : "none";
     const dates = getFcApDates(songScore, diff);

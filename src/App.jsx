@@ -33,6 +33,7 @@ import {
     Settings,
     Lock,
     Trophy,
+    Clock,
 } from "lucide-react";
 import "./App.css";
 
@@ -43,6 +44,7 @@ import { Constants } from "./components/Constants/Constants";
 import Pattern from "./components/Pattern/Pattern";
 import { Tour } from "./components/Tour/Tour";
 import { Calculator as CalculatorTab } from "./components/Calculator/Calculator";
+import History from "./components/History/History";
 import { Compare } from "./components/Compare/Compare";
 import { Ranking } from "./components/Ranking/Ranking";
 import Distributions from "./components/Distributions/Distributions";
@@ -63,8 +65,12 @@ import {
 } from "./utils/potentialUtils";
 import { PotentialDashboard } from "./components/Dashboard/PotentialDashboard";
 import { defaultSort } from "./utils/scoreUtils";
-import { computeUpdatedDatesOnStatusChange, updateDatesForDiff, getFcApDates, getKstISOString } from "./utils/dateUtils";
-
+import {
+    computeUpdatedDatesOnStatusChange,
+    updateDatesForDiff,
+    getFcApDates,
+    getKstISOString,
+} from "./utils/dateUtils";
 
 function App() {
     // --- Routing Hooks ---
@@ -75,6 +81,7 @@ function App() {
         const path = location.pathname;
         if (path.startsWith("/dashboard")) return "dashboard";
         if (path.startsWith("/records")) return "records";
+        if (path.startsWith("/history")) return "history";
         if (path.startsWith("/constants")) return "constants";
         if (path.startsWith("/pattern")) return "pattern";
         if (path.startsWith("/tour")) return "tour";
@@ -193,7 +200,7 @@ function App() {
         const latestVer = "v1.3.0";
         const lastViewed = localStorage.getItem("pjsk_last_viewed_update");
         if (lastViewed !== latestVer) {
-            // Check if lastViewed exists to avoid bothering first-time visitors immediately, 
+            // Check if lastViewed exists to avoid bothering first-time visitors immediately,
             // or we can auto-display for all users who haven't seen this specific version
             setShowUpdateNotesModal(true);
         }
@@ -252,14 +259,14 @@ function App() {
                     localStorage.setItem("pjsk_user_scores", JSON.stringify(data.scores));
                 }
                 if (data.rating_history) {
-                    setCurrentUser(prev => {
+                    setCurrentUser((prev) => {
                         if (!prev) return prev;
                         if (JSON.stringify(prev.rating_history) === JSON.stringify(data.rating_history)) {
                             return prev;
                         }
                         const updated = {
                             ...prev,
-                            rating_history: data.rating_history
+                            rating_history: data.rating_history,
                         };
                         localStorage.setItem("pjsk_auth", JSON.stringify(updated));
                         return updated;
@@ -287,7 +294,14 @@ function App() {
     // --- Sync local scores to server ---
     // previousScores: the scores state before the change, used to revert on failure.
     // Pass null to skip revert (e.g. on initial login sync).
-    const syncScoresToServer = async (userObj, currentScores, previousScores, ratingObj, modifications = null, replace = false) => {
+    const syncScoresToServer = async (
+        userObj,
+        currentScores,
+        previousScores,
+        ratingObj,
+        modifications = null,
+        replace = false,
+    ) => {
         if (!userObj) return;
 
         let ratings = ratingObj;
@@ -320,7 +334,7 @@ function App() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${userObj.token}`,
+                    Authorization: `Bearer ${userObj.token}`,
                 },
                 body: JSON.stringify(payload),
             });
@@ -331,7 +345,7 @@ function App() {
                     localStorage.setItem("pjsk_user_scores", JSON.stringify(data.scores));
                 }
                 if (data.rating_history) {
-                    setCurrentUser(prev => {
+                    setCurrentUser((prev) => {
                         if (!prev) return prev;
                         if (JSON.stringify(prev.rating_history) === JSON.stringify(data.rating_history)) {
                             return prev;
@@ -401,7 +415,7 @@ function App() {
         };
 
         const existingScore = existIdx !== -1 ? scores[existIdx] : null;
-        
+
         let finalDates;
         if (customDates !== null) {
             finalDates = customDates;
@@ -427,7 +441,9 @@ function App() {
                 dates: finalDates,
             });
         }
-        updateScores(newScores, previousScores, [{ id: String(songId), diff, status: sanitizeStatus(newStatus), dates: finalDates }]);
+        updateScores(newScores, previousScores, [
+            { id: String(songId), diff, status: sanitizeStatus(newStatus), dates: finalDates },
+        ]);
     };
 
     const handleDateChange = (songId, diff, dateType, dateValue) => {
@@ -435,7 +451,7 @@ function App() {
         const existIdx = scores.findIndex((s) => String(s.id) === String(songId));
         let newScores = [...scores];
         const existingScore = existIdx !== -1 ? scores[existIdx] : null;
-        
+
         const finalDates = updateDatesForDiff(existingScore, diff, dateType, dateValue);
         const currentStatus = existingScore && existingScore[diff] ? existingScore[diff] : null;
 
@@ -456,7 +472,9 @@ function App() {
                 dates: finalDates,
             });
         }
-        updateScores(newScores, previousScores, [{ id: String(songId), diff, status: currentStatus, dates: finalDates }]);
+        updateScores(newScores, previousScores, [
+            { id: String(songId), diff, status: currentStatus, dates: finalDates },
+        ]);
     };
 
     const handleJacketClick = (song, diff, currentStatus) => {
@@ -507,7 +525,7 @@ function App() {
                 headers: {
                     "Content-Type": "application/json",
                     // [Fix H-3] Send token for requireAuth middleware
-                    "Authorization": `Bearer ${currentUser.token}`,
+                    Authorization: `Bearer ${currentUser.token}`,
                 },
                 body: JSON.stringify({
                     username: currentUser.username,
@@ -548,9 +566,9 @@ function App() {
     const handleLoginSuccess = async (userObj, finalScores, autoLogin, shouldSync = false) => {
         setScores(finalScores);
         localStorage.setItem("pjsk_user_scores", JSON.stringify(finalScores));
-        
+
         skipNextFetch.current = true;
-        
+
         setCurrentUser(userObj);
         if (autoLogin) {
             localStorage.setItem("pjsk_auth", JSON.stringify(userObj));
@@ -691,7 +709,8 @@ function App() {
                                 username: data.user.username,
                                 nickname: data.user.nickname,
                                 token: saved.token,
-                                role: data.user.role || (data.user.username.toLowerCase() === "admin" ? "admin" : "user"),
+                                role:
+                                    data.user.role || (data.user.username.toLowerCase() === "admin" ? "admin" : "user"),
                                 friends: data.user.friends || [],
                                 settings: data.user.settings || { songTitleLang: "jp" },
                                 rating_history: data.user.rating_history || {},
@@ -996,7 +1015,9 @@ function App() {
                         </button>
 
                         {/* Dropdown 1: 기록 */}
-                        <div className={`nav-dropdown ${["records", "constants", "pattern"].includes(activeTab) ? "active" : ""}`}>
+                        <div
+                            className={`nav-dropdown ${["records", "constants", "pattern"].includes(activeTab) ? "active" : ""}`}
+                        >
                             <button className={`btn btn-outline dropdown-trigger`}>
                                 <ClipboardList size={16} /> 기록 <ChevronDown size={14} />
                             </button>
@@ -1006,6 +1027,12 @@ function App() {
                                     onClick={() => setActiveTab("records")}
                                 >
                                     <ClipboardList size={14} /> 개인 기록
+                                </button>
+                                <button
+                                    className={`nav-dropdown-item ${activeTab === "history" ? "active" : ""}`}
+                                    onClick={() => setActiveTab("history")}
+                                >
+                                    <Clock size={14} /> 타임라인
                                 </button>
                                 <button
                                     className={`nav-dropdown-item ${activeTab === "constants" ? "active" : ""}`}
@@ -1229,7 +1256,9 @@ function App() {
                             <div className="drawer-accordion">
                                 <button
                                     className={`drawer-accordion-trigger ${
-                                        ["records", "constants", "pattern"].includes(activeTab) ? "active-parent" : ""
+                                        ["records", "history", "constants", "pattern"].includes(activeTab)
+                                            ? "active-parent"
+                                            : ""
                                     }`}
                                     onClick={() =>
                                         setOpenMobileAccordions({
@@ -1254,6 +1283,15 @@ function App() {
                                         }}
                                     >
                                         개인 기록
+                                    </button>
+                                    <button
+                                        className={`drawer-sub-item ${activeTab === "history" ? "active" : ""}`}
+                                        onClick={() => {
+                                            setActiveTab("history");
+                                            setIsMobileMenuOpen(false);
+                                        }}
+                                    >
+                                        타임라인
                                     </button>
                                     <button
                                         className={`drawer-sub-item ${activeTab === "constants" ? "active" : ""}`}
@@ -1452,10 +1490,7 @@ function App() {
                 onLoginSuccess={handleLoginSuccess}
             />
 
-            <UpdateNotesModal
-                isOpen={showUpdateNotesModal}
-                onClose={handleCloseUpdateNotes}
-            />
+            <UpdateNotesModal isOpen={showUpdateNotesModal} onClose={handleCloseUpdateNotes} />
 
             <main className={`container ${activeTab === "pattern" ? "pattern-full-width" : ""}`} style={{ flex: 1 }}>
                 {activeTab === "dashboard" &&
@@ -1510,6 +1545,16 @@ function App() {
                     />
                 )}
 
+                {activeTab === "history" && (
+                    <History
+                        songs={visibleSongs}
+                        scores={scores}
+                        settingsTitleLang={settingsTitleLang}
+                        setSelectedJacketSong={setSelectedJacketSong}
+                        setActiveTab={setActiveTab}
+                    />
+                )}
+
                 {activeTab === "constants" && (
                     <Constants
                         songs={visibleSongs}
@@ -1523,11 +1568,7 @@ function App() {
                 )}
 
                 {activeTab === "pattern" && (
-                    <Pattern
-                        songs={visibleSongs}
-                        currentUser={currentUser}
-                        settingsTitleLang={settingsTitleLang}
-                    />
+                    <Pattern songs={visibleSongs} currentUser={currentUser} settingsTitleLang={settingsTitleLang} />
                 )}
 
                 {activeTab === "tour" && (
@@ -1602,22 +1643,24 @@ function App() {
 
             {/* Offline / sync-failure toast */}
             {syncError && (
-                <div style={{
-                    position: "fixed",
-                    bottom: "1.5rem",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    background: "rgba(255,80,80,0.92)",
-                    color: "#fff",
-                    padding: "0.75rem 1.5rem",
-                    borderRadius: "0.75rem",
-                    fontWeight: 600,
-                    fontSize: "0.9rem",
-                    boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
-                    zIndex: 9999,
-                    pointerEvents: "none",
-                    whiteSpace: "nowrap",
-                }}>
+                <div
+                    style={{
+                        position: "fixed",
+                        bottom: "1.5rem",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        background: "rgba(255,80,80,0.92)",
+                        color: "#fff",
+                        padding: "0.75rem 1.5rem",
+                        borderRadius: "0.75rem",
+                        fontWeight: 600,
+                        fontSize: "0.9rem",
+                        boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+                        zIndex: 9999,
+                        pointerEvents: "none",
+                        whiteSpace: "nowrap",
+                    }}
+                >
                     ⚠ {syncError}
                 </div>
             )}
