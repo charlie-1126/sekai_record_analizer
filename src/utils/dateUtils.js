@@ -1,58 +1,25 @@
-/**
- * dateUtils.js
- * Utilities for recording and managing FC (Full Combo) and AP (All Perfect) achievement dates.
- */
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc.js";
+import timezone from "dayjs/plugin/timezone.js";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.tz.setDefault("Asia/Seoul");
+
+export { dayjs };
 
 /**
  * Returns today's date formatted as YYYY-MM-DD in KST (Asia/Seoul, UTC+9).
- * Guaranteed to produce Korea Standard Time regardless of device or server timezone.
  */
 export const getTodayString = () => {
-    try {
-        const formatter = new Intl.DateTimeFormat("en-CA", {
-            timeZone: "Asia/Seoul",
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-        });
-        return formatter.format(new Date());
-    } catch (e) {
-        const now = new Date();
-        const kstTime = new Date(now.getTime() + (9 * 60 + now.getTimezoneOffset()) * 60000);
-        const year = kstTime.getFullYear();
-        const month = String(kstTime.getMonth() + 1).padStart(2, "0");
-        const day = String(kstTime.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-    }
+    return dayjs().tz("Asia/Seoul").format("YYYY-MM-DD");
 };
 
 /**
  * Returns current timestamp formatted as ISO string in KST (Asia/Seoul, UTC+9).
  */
-export const getKstISOString = (date = new Date()) => {
-    try {
-        const d = new Date(date);
-        const formatter = new Intl.DateTimeFormat("sv-SE", {
-            timeZone: "Asia/Seoul",
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-        });
-        const parts = formatter.formatToParts(d);
-        const map = {};
-        parts.forEach((p) => {
-            map[p.type] = p.value;
-        });
-        return `${map.year}-${map.month}-${map.day}T${map.hour}:${map.minute}:${map.second}+09:00`;
-    } catch (e) {
-        const d = new Date(date);
-        const kstTime = new Date(d.getTime() + (9 * 60 + d.getTimezoneOffset()) * 60000);
-        return kstTime.toISOString().replace("Z", "+09:00");
-    }
+export const getKstISOString = (date = undefined) => {
+    return dayjs(date).tz("Asia/Seoul").format("YYYY-MM-DDTHH:mm:ssZ");
 };
 
 /**
@@ -69,7 +36,6 @@ export const getFcApDates = (songScore, diff) => {
 
 /**
  * Computes the updated dates object for a song score when its status is changed.
- * If an FC or AP date is already recorded and differs from today, prompts the user whether to overwrite.
  */
 export const computeUpdatedDatesOnStatusChange = (existingScore, diff, newStatus) => {
     const currentDates = getFcApDates(existingScore, diff);
@@ -77,12 +43,10 @@ export const computeUpdatedDatesOnStatusChange = (existingScore, diff, newStatus
     let updatedAp = currentDates.ap || null;
 
     if (newStatus === "full_combo") {
-        // FC 설정 시 기존 FC 날짜 유지 (없으면 null), AP 날짜 지우기
         updatedAp = null;
     } else if (newStatus === "full_perfect") {
-        // AP 설정 시 기존 FC/AP 날짜 유지 (없으면 null)
+        // Keeps existing dates
     } else {
-        // NC 또는 Clear 설정 시 FC 및 AP 날짜 모두 지우기
         updatedFc = null;
         updatedAp = null;
     }

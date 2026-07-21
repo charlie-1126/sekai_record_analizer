@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { TrendingUp } from "lucide-react";
+import { dayjs } from "../../utils/dateUtils";
 
 export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
     // --- Graph Filters & Hover States ---
@@ -20,14 +21,7 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
 
         const firstDateStr = sortedDates[0];
 
-        // Use formatter to get today's date in Asia/Seoul timezone (e.g. YYYY-MM-DD)
-        const formatter = new Intl.DateTimeFormat("en-CA", {
-            timeZone: "Asia/Seoul",
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-        });
-        const todayStr = formatter.format(new Date());
+        const todayStr = dayjs().tz("Asia/Seoul").format("YYYY-MM-DD");
 
         // Parse dates in UTC to avoid local timezone/DST differences
         const startUTC = new Date(firstDateStr + "T00:00:00Z");
@@ -71,13 +65,7 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
         if (sortedDates.length === 0) return [];
 
         const firstDateStr = sortedDates[0];
-        const formatter = new Intl.DateTimeFormat("en-CA", {
-            timeZone: "Asia/Seoul",
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-        });
-        const todayStr = formatter.format(new Date());
+        const todayStr = dayjs().tz("Asia/Seoul").format("YYYY-MM-DD");
         const startUTC = new Date(firstDateStr + "T00:00:00Z");
         const endUTC = new Date(todayStr + "T00:00:00Z");
 
@@ -163,13 +151,7 @@ export const RatingGraph = ({ effectiveUser, mode = "b39" }) => {
     const paddingX = 45;
     const paddingY = 30;
 
-    // Get today's date string in Seoul timezone
-    const todayStr = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Seoul",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    }).format(new Date());
+    const todayStr = dayjs().tz("Asia/Seoul").format("YYYY-MM-DD");
     const todayUTCMs = new Date(todayStr + "T00:00:00Z").getTime();
 
     let minTime = null;

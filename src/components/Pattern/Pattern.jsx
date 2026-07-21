@@ -4,6 +4,7 @@ import { Search, Filter, Settings, Edit, Check, X } from "lucide-react";
 import { JacketImage } from "../Common/JacketImage";
 import { getConstant } from "../../utils/ratingUtils";
 import { defaultSort } from "../../utils/scoreUtils";
+import { dayjs } from "../../utils/dateUtils";
 
 const PATTERN_KEYS = [
     { key: "burst", label: "폭타" },
@@ -722,14 +723,7 @@ export default function Pattern({ songs, currentUser, settingsTitleLang }) {
                                     const song = songs.find((s) => String(s.id) === String(item.song_id));
                                     const songTitle = song ? getSongTitle(song) : `알 수 없는 곡 (ID: ${item.song_id})`;
                                     const composer = song ? song.composer : "";
-                                    const formattedDate = new Date(item.changed_at).toLocaleString("ko-KR", {
-                                        year: "numeric",
-                                        month: "2-digit",
-                                        day: "2-digit",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        second: "2-digit",
-                                    });
+                                    const formattedDate = dayjs(item.changed_at).tz("Asia/Seoul").format("YYYY. MM. DD. HH:mm:ss");
 
                                     return (
                                         <tr key={item.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.02)" }}>

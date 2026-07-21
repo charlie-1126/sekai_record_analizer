@@ -6,6 +6,13 @@ const crypto = require('crypto');
 const http = require('http');
 const https = require('https');
 const sqlite3 = require('sqlite3').verbose();
+const dayjs = require('dayjs');
+const utc = require('dayjs/plugin/utc');
+const timezone = require('dayjs/plugin/timezone');
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.tz.setDefault('Asia/Seoul');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -190,7 +197,7 @@ const dbSongs = new JSONDatabase('songs.json', []);
 const originalDbSongsRead = dbSongs.read.bind(dbSongs);
 dbSongs.read = function() {
   const songs = originalDbSongsRead();
-  const isAfterRemoveDate = new Date() >= new Date('2026-04-22');
+  const isAfterRemoveDate = dayjs().tz('Asia/Seoul').isAfter(dayjs('2026-04-22').tz('Asia/Seoul'));
   if (isAfterRemoveDate) {
     return songs.filter(song => {
       const idStr = String(Number(song.id));
@@ -317,28 +324,12 @@ async function downloadJacket(songId) {
 }
 
 // Helper to get KST date string offset by a number of days
-function getKstISOString(date = new Date()) {
-  const d = new Date(date);
-  const formatter = new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'Asia/Seoul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  });
-  const parts = formatter.formatToParts(d);
-  const map = {};
-  parts.forEach(p => { map[p.type] = p.value; });
-  return `${map.year}-${map.month}-${map.day}T${map.hour}:${map.minute}:${map.second}+09:00`;
+function getKstISOString(date = undefined) {
+  return dayjs(date).tz('Asia/Seoul').format('YYYY-MM-DDTHH:mm:ssZ');
 }
 
 function getKstDateStrOffset(offsetDays) {
-  const targetDate = new Date(Date.now() - offsetDays * 24 * 60 * 60 * 1000);
-  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' });
-  return formatter.format(targetDate);
+  return dayjs().tz('Asia/Seoul').subtract(offsetDays, 'day').format('YYYY-MM-DD');
 }
 
 // --- API Router ---
@@ -2051,9 +2042,7 @@ async function updateUserRatingHistoryIfNeeded(username, userRecord = null, song
       }
     }
 
-    const today = new Date();
-    const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' });
-    const todayStr = formatter.format(today);
+    const todayStr = dayjs().tz('Asia/Seoul').format('YYYY-MM-DD');
 
     let needsUpdate = false;
 

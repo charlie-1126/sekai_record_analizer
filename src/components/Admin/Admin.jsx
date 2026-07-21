@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Users } from "lucide-react";
+import { dayjs } from "../../utils/dateUtils";
 
 export default function Admin({ currentUser }) {
     const [adminUsers, setAdminUsers] = useState([]);
@@ -227,13 +228,7 @@ export default function Admin({ currentUser }) {
                                 ) : (
                                     adminUsers.map((user, idx) => {
                                         const formattedDate = user.created_at
-                                            ? new Date(user.created_at).toLocaleString("ko-KR", {
-                                                  year: "numeric",
-                                                  month: "2-digit",
-                                                  day: "2-digit",
-                                                  hour: "2-digit",
-                                                  minute: "2-digit",
-                                              })
+                                            ? dayjs(user.created_at).tz("Asia/Seoul").format("YYYY. MM. DD. HH:mm")
                                             : "-";
                                         const isAdmin = user.username.toLowerCase() === "admin";
 
