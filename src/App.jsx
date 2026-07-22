@@ -53,7 +53,7 @@ import Admin from "./components/Admin/Admin";
 import AuthModal from "./components/Auth/AuthModal";
 import ImportPreviewModal from "./components/Records/ImportPreviewModal";
 import JacketDetailsModal from "./components/Common/JacketDetailsModal";
-import UpdateNotesModal from "./components/Common/UpdateNotesModal";
+import UpdateNotesModal, { UPDATE_NOTES } from "./components/Common/UpdateNotesModal";
 
 // Rating Utils
 import { calculateRating, getConstant, hasExplicitConstant, calculateTempRatings } from "./utils/ratingUtils";
@@ -195,19 +195,19 @@ function App() {
 
     // --- Update Notes Modal States ---
     const [showUpdateNotesModal, setShowUpdateNotesModal] = useState(false);
+    const latestVersionStr = UPDATE_NOTES[0]?.version || "v1.4.0";
 
     useEffect(() => {
-        const latestVer = "v1.3.0";
         const lastViewed = localStorage.getItem("pjsk_last_viewed_update");
-        if (lastViewed !== latestVer) {
+        if (lastViewed !== latestVersionStr) {
             // Check if lastViewed exists to avoid bothering first-time visitors immediately,
             // or we can auto-display for all users who haven't seen this specific version
             setShowUpdateNotesModal(true);
         }
-    }, []);
+    }, [latestVersionStr]);
 
     const handleCloseUpdateNotes = () => {
-        localStorage.setItem("pjsk_last_viewed_update", "v1.3.0");
+        localStorage.setItem("pjsk_last_viewed_update", latestVersionStr);
         setShowUpdateNotesModal(false);
     };
 
