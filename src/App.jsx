@@ -898,6 +898,11 @@ function App() {
             if (b.rating !== a.rating) {
                 return b.rating - a.rating;
             }
+            // 레이팅이 같을 때(반올림으로 인한 동점): 상수 내림차순
+            const constDiff = b.constant - a.constant;
+            if (constDiff !== 0) {
+                return constDiff;
+            }
             return defaultSort(a, b);
         });
     }, [userScoresMap, songs]);
@@ -944,6 +949,11 @@ function App() {
         return list.sort((a, b) => {
             if (b.rating !== a.rating) {
                 return b.rating - a.rating;
+            }
+            // 레이팅이 같을 때(반올림으로 인한 동점): 상수 내림차순
+            const constDiff = b.constant - a.constant;
+            if (constDiff !== 0) {
+                return constDiff;
             }
             return defaultSort(a, b);
         });

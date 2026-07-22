@@ -4,6 +4,21 @@ import { X, ChevronRight } from "lucide-react";
 
 export const UPDATE_NOTES = [
     {
+        version: "v1.4.1",
+        date: "2026-07-22",
+        title: "B39 순위 역전현상",
+        categories: [
+            {
+                name: "개선사항",
+                type: "improvement",
+                items: [
+                    "B39 대시보드에서 곡의 레이팅이 같을시 종종 상수가 낮은 곡이 위로 올라오는 현상 수정",
+                    "랭킹 탭 정렬 디자인 개선",
+                ],
+            },
+        ],
+    },
+    {
         version: "v1.4.0",
         date: "2026-07-22",
         title: "성과 일자 기록 추가",
