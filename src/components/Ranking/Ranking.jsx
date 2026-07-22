@@ -19,8 +19,32 @@ export const Ranking = ({
     const [rankings, setRankings] = useState([]);
     const [isRankingsLoading, setIsRankingsLoading] = useState(false);
     const [rankingsSearch, setRankingsSearch] = useSessionState("pjsk_rankings_search", "");
-    const [rankingsSortBy, setRankingsSortBy] = useSessionState("pjsk_rankings_sort_by", ratingMode === "potential" ? "potential" : "total"); // total, normal, append, ap, fc, potential
+    const [rankingsSortBy, setRankingsSortBy] = useSessionState(
+        "pjsk_rankings_sort_by",
+        ratingMode === "potential" ? "potential" : "total",
+    ); // total, normal, append, ap, fc, clear, potential
     const [rankingsSortOrder, setRankingsSortOrder] = useSessionState("pjsk_rankings_sort_order", "desc");
+
+    // --- Sort Handler (Records 스타일: 같은 열 재클릭 시 desc→asc→null 순환) ---
+    const handleRankingSort = (field) => {
+        if (rankingsSortBy !== field) {
+            setRankingsSortBy(field);
+            setRankingsSortOrder("desc");
+        } else {
+            if (rankingsSortOrder === "desc") {
+                setRankingsSortOrder("asc");
+            } else if (rankingsSortOrder === "asc") {
+                // 기본 정렬로 초기화
+                setRankingsSortBy(ratingMode === "potential" ? "potential" : "total");
+                setRankingsSortOrder("desc");
+            }
+        }
+    };
+
+    const renderSortIndicator = (field) => {
+        if (rankingsSortBy !== field) return null;
+        return rankingsSortOrder === "asc" ? " ▲" : " ▼";
+    };
 
     // --- Fetch Rankings ---
     useEffect(() => {
@@ -123,6 +147,17 @@ export const Ranking = ({
         myClearCount,
     ]);
 
+    // 클릭 가능한 th 공통 스타일
+    const sortableThStyle = (field) => ({
+        padding: "1rem 0rem",
+        textAlign: "center",
+        cursor: "pointer",
+        userSelect: "none",
+        whiteSpace: "nowrap",
+        transition: "color 0.15s",
+        color: rankingsSortBy === field ? "var(--color-cyan)" : "var(--text-secondary)",
+    });
+
     return (
         <section className="glass-panel" style={{ padding: "2rem" }}>
             <div className="section-title-bar">
@@ -142,11 +177,11 @@ export const Ranking = ({
                 </div>
             </div>
 
-            {/* Search & Sort Filters */}
+            {/* Search Filter */}
             <div className="table-filters-expanded" style={{ display: "block", marginBottom: "1.5rem" }}>
                 <div
                     className="filters-row constants-filters-grid"
-                    style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr auto", gap: "1rem" }}
+                    style={{ display: "grid", gridTemplateColumns: "1.5fr", gap: "1rem" }}
                 >
                     <div className="filter-group">
                         <label className="filter-label">닉네임 검색</label>
@@ -171,48 +206,6 @@ export const Ranking = ({
                             />
                         </div>
                     </div>
-
-                    <div className="filter-group">
-                        <label className="filter-label">정렬 기준</label>
-                        <select
-                            className="form-control"
-                            style={{ width: "100%", cursor: "pointer" }}
-                            value={rankingsSortBy}
-                            onChange={(e) => setRankingsSortBy(e.target.value)}
-                        >
-                            {ratingMode === "potential" ? (
-                                <>
-                                    <option value="potential">Potential</option>
-                                    <option value="ap">AP 수</option>
-                                    <option value="fc">FC 수</option>
-                                    <option value="clear">C 수</option>
-                                </>
-                            ) : (
-                                <>
-                                    <option value="total">Total R</option>
-                                    <option value="normal">Player R</option>
-                                    <option value="append">Append R</option>
-                                    <option value="ap">AP 수</option>
-                                    <option value="fc">FC 수</option>
-                                    <option value="clear">C 수</option>
-                                </>
-                            )}
-                        </select>
-                    </div>
-
-                    <div
-                        className="filter-group"
-                        style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}
-                    >
-                        <button
-                            type="button"
-                            className="btn btn-outline"
-                            style={{ height: "42px", padding: "0 1rem" }}
-                            onClick={() => setRankingsSortOrder(rankingsSortOrder === "desc" ? "asc" : "desc")}
-                        >
-                            {rankingsSortOrder === "desc" ? "내림차순 ↓" : "올림차순 ↑"}
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -226,40 +219,125 @@ export const Ranking = ({
                     조건에 부합하는 랭킹 정보가 없습니다.
                 </div>
             ) : (
-                <div style={{ overflowX: "auto" }}>
+                <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
                     <table
                         style={{
                             width: "100%",
+                            tableLayout: "fixed",
                             borderCollapse: "collapse",
-                            minWidth: "600px",
+                            minWidth: "640px",
                             textAlign: "left",
                         }}
                     >
+                        <colgroup>
+                            {ratingMode === "potential" ? (
+                                <>
+                                    <col style={{ width: "8%" }} />
+                                    <col style={{ width: "56%" }} />
+                                    <col style={{ width: "12%" }} />
+                                    <col style={{ width: "8%" }} />
+                                    <col style={{ width: "8%" }} />
+                                    <col style={{ width: "8%" }} />
+                                </>
+                            ) : (
+                                <>
+                                    <col style={{ width: "8%" }} />
+                                    <col style={{ width: "41%" }} />
+                                    <col style={{ width: "9%" }} />
+                                    <col style={{ width: "9%" }} />
+                                    <col style={{ width: "9%" }} />
+                                    <col style={{ width: "8%" }} />
+                                    <col style={{ width: "8%" }} />
+                                    <col style={{ width: "8%" }} />
+                                </>
+                            )}
+                        </colgroup>
                         <thead>
                             <tr
                                 style={{
                                     borderBottom: "2px solid var(--border-color)",
-                                    color: "var(--text-secondary)",
                                     fontSize: "0.85rem",
                                     fontWeight: "700",
                                 }}
                             >
-                                <th style={{ padding: "1rem", textAlign: "center" }}>순위</th>
-                                <th style={{ padding: "1rem", textAlign: "left" }}>닉네임</th>
+                                <th
+                                    style={{
+                                        padding: "1rem",
+                                        textAlign: "center",
+                                        color: "var(--text-secondary)",
+                                        userSelect: "none",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    순위
+                                </th>
+                                <th
+                                    style={{
+                                        padding: "1rem",
+                                        textAlign: "left",
+                                        color: "var(--text-secondary)",
+                                        userSelect: "none",
+                                    }}
+                                >
+                                    닉네임
+                                </th>
                                 {ratingMode === "potential" ? (
-                                    <th style={{ padding: "1rem 0.75rem", textAlign: "center", color: "#c77dff" }}>
-                                        Potential
+                                    <th
+                                        style={{
+                                            ...sortableThStyle("potential"),
+                                            color: rankingsSortBy === "potential" ? "var(--color-cyan)" : "#c77dff",
+                                        }}
+                                        onClick={() => handleRankingSort("potential")}
+                                        title="클릭하여 정렬"
+                                    >
+                                        Potential{renderSortIndicator("potential")}
                                     </th>
                                 ) : (
                                     <>
-                                        <th style={{ padding: "1rem 0rem", textAlign: "center" }}>Total R</th>
-                                        <th style={{ padding: "1rem 0rem", textAlign: "center" }}>Player R</th>
-                                        <th style={{ padding: "1rem 0rem", textAlign: "center" }}>Append R</th>
+                                        <th
+                                            style={sortableThStyle("total")}
+                                            onClick={() => handleRankingSort("total")}
+                                            title="클릭하여 정렬"
+                                        >
+                                            Total R{renderSortIndicator("total")}
+                                        </th>
+                                        <th
+                                            style={sortableThStyle("normal")}
+                                            onClick={() => handleRankingSort("normal")}
+                                            title="클릭하여 정렬"
+                                        >
+                                            Player R{renderSortIndicator("normal")}
+                                        </th>
+                                        <th
+                                            style={sortableThStyle("append")}
+                                            onClick={() => handleRankingSort("append")}
+                                            title="클릭하여 정렬"
+                                        >
+                                            Append R{renderSortIndicator("append")}
+                                        </th>
                                     </>
                                 )}
-                                <th style={{ padding: "1rem 0.5rem 1rem 2.5rem", textAlign: "center" }}>AP</th>
-                                <th style={{ padding: "1rem 0.5rem", textAlign: "center" }}>FC</th>
-                                <th style={{ padding: "1rem 1.5rem 1rem 0.5rem", textAlign: "center" }}>C</th>
+                                <th
+                                    style={{ ...sortableThStyle("ap"), padding: "1rem 0.5rem" }}
+                                    onClick={() => handleRankingSort("ap")}
+                                    title="클릭하여 정렬"
+                                >
+                                    AP{renderSortIndicator("ap")}
+                                </th>
+                                <th
+                                    style={{ ...sortableThStyle("fc"), padding: "1rem 0.5rem" }}
+                                    onClick={() => handleRankingSort("fc")}
+                                    title="클릭하여 정렬"
+                                >
+                                    FC{renderSortIndicator("fc")}
+                                </th>
+                                <th
+                                    style={{ ...sortableThStyle("clear"), padding: "1rem 0.5rem" }}
+                                    onClick={() => handleRankingSort("clear")}
+                                    title="클릭하여 정렬"
+                                >
+                                    C{renderSortIndicator("clear")}
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -312,7 +390,16 @@ export const Ranking = ({
                                                 `#${user.absoluteRank}`
                                             )}
                                         </td>
-                                        <td style={{ padding: "1rem", textAlign: "left" }}>
+                                        <td
+                                            style={{
+                                                padding: "1rem",
+                                                textAlign: "left",
+                                                overflow: "hidden",
+                                                textOverflow: "ellipsis",
+                                                whiteSpace: "nowrap",
+                                                maxWidth: 0,
+                                            }}
+                                        >
                                             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                                 {isMe && (
                                                     <span
@@ -387,7 +474,7 @@ export const Ranking = ({
                                         )}
                                         <td
                                             style={{
-                                                padding: "1rem 0.5rem 1rem 2.5rem",
+                                                padding: "1rem 0.5rem",
                                                 textAlign: "center",
                                                 color: "var(--color-ap)",
                                                 fontWeight: "700",
@@ -407,7 +494,7 @@ export const Ranking = ({
                                         </td>
                                         <td
                                             style={{
-                                                padding: "1rem 1.5rem 1rem 0.5rem",
+                                                padding: "1rem 0.5rem",
                                                 textAlign: "center",
                                                 color: "var(--color-clear)",
                                                 fontWeight: "700",
