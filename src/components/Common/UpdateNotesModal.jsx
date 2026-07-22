@@ -4,6 +4,18 @@ import { X, ChevronRight } from "lucide-react";
 
 export const UPDATE_NOTES = [
     {
+        version: "v1.4.0",
+        date: "2026-07-22",
+        title: "성과 일자 기록 추가",
+        categories: [
+            {
+                name: "신규 기능",
+                type: "new",
+                items: ["곡 성과 달성 일자 기록 기능 추가", "타임라인 탭 추가"],
+            },
+        ],
+    },
+    {
         version: "v1.3.0",
         date: "2026-07-04",
         title: "편의성 개선",
