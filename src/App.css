@@ -1977,7 +1977,42 @@ input[type="number"] {
     background: rgba(32, 41, 69, 0.9) !important;
 }
 
+/* Timeline Gap Spacer & Badge Styles */
+.timeline-gap-container {
+    position: relative;
+    width: 100%;
+}
+
+.timeline-gap-badge {
+    position: absolute;
+    left: 22px;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(13, 18, 33, 0.95);
+    border: 1px dashed var(--color-cyan);
+    color: var(--color-cyan);
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 0.15rem 0.4rem;
+    border-radius: 10px;
+    white-space: nowrap;
+    z-index: 3;
+    pointer-events: none;
+    box-shadow: 0 0 8px rgba(0, 242, 254, 0.25);
+    backdrop-filter: blur(4px);
+    transition: all 0.25s ease;
+}
+
+.timeline-gap-container:hover .timeline-gap-badge {
+    border-style: solid;
+    box-shadow: 0 0 12px rgba(0, 242, 254, 0.5);
+    transform: translate(-50%, -50%) scale(1.05);
+}
+
 @media (max-width: 600px) {
+    .timeline-gap-badge {
+        left: 14px !important;
+    }
     .timeline-spine {
         left: 14px !important;
     }

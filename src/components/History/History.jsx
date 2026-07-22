@@ -189,8 +189,7 @@ export default function History({
             if (!currentGroup || currentGroup.date !== item.date) {
                 currentGroup = {
                     date: item.date,
-                    formattedDate: dayjs(item.date).format("YYYY년 MM월 DD일"),
-                    dayOfWeek: dayjs(item.date).format("ddd"),
+                    formattedDate: dayjs(item.date).format("YYYY-MM-DD"),
                     items: [],
                 };
                 groups.push(currentGroup);
@@ -369,7 +368,7 @@ export default function History({
                                 fontWeight: 700,
                             }}
                         >
-                            AP ({rawHistoryList.filter((e) => e.type === "ap").length})
+                            AP
                         </button>
                         <button
                             type="button"
@@ -384,7 +383,7 @@ export default function History({
                                 fontWeight: 700,
                             }}
                         >
-                            FC ({rawHistoryList.filter((e) => e.type === "fc").length})
+                            FC
                         </button>
 
                         {/* Breakthrough Only Toggle */}
@@ -519,7 +518,7 @@ export default function History({
                             title="정렬 순서 변경"
                         >
                             <ArrowUpDown size={14} />
-                            <span>{sortOrder === "desc" ? "최신순 (내림차순)" : "오래된순 (오름차순)"}</span>
+                            <span>{sortOrder === "desc" ? "최신순" : "오래된순"}</span>
                         </button>
                     </div>
                 </div>
@@ -548,7 +547,7 @@ export default function History({
                         기록된 FC / AP 달성 날짜가 없습니다
                     </h3>
                     <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: "1.5rem" }}>
-                        '개인 기록' 탭에서 곡을 클릭하여 FC 또는 AP를 한 날짜를 기록해 보세요!
+                        개인 기록 탭에서 곡을 클릭하여 FC 또는 AP를 한 날짜를 기록해 보세요!
                     </p>
                     {setActiveTab && (
                         <button
@@ -591,177 +590,210 @@ export default function History({
                     <div className="timeline-spine" />
 
                     {/* Timeline Date Groups */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-                        {groupedTimeline.map((group) => (
-                            <div key={group.date} className="timeline-group">
-                                {/* Spine Node Marker Dot */}
-                                <div className="timeline-marker-dot" />
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                        {groupedTimeline.map((group, index) => {
+                            // Calculate date gap spacer
+                            let gapSpacer = null;
+                            if (index > 0) {
+                                const prevGroup = groupedTimeline[index - 1];
+                                const d1 = dayjs(group.date);
+                                const d2 = dayjs(prevGroup.date);
+                                const diffDays = Math.abs(d1.diff(d2, "day"));
 
-                                {/* Date Node Header */}
-                                <div className="timeline-date-header">
-                                    <div className="date-pill">
-                                        <Calendar size={14} />
-                                        <span>{group.formattedDate}</span>
-                                        <span style={{ fontSize: "0.75rem", opacity: 0.8 }}>({group.dayOfWeek})</span>
-                                        <span
-                                            style={{
-                                                fontSize: "0.75rem",
-                                                color: "var(--text-muted)",
-                                                marginLeft: "0.25rem",
-                                            }}
-                                        >
-                                            • {group.items.length}개 달성
-                                        </span>
-                                    </div>
-                                </div>
+                                if (diffDays > 0) {
+                                    // Visual height is proportional to the square root of the days difference, clamped to avoid extremely long lines.
+                                    // 24px base spacing + proportional scaling up to a max of 220px.
+                                    const spacerHeight = 24 + Math.min(Math.sqrt(diffDays - 1) * 36, 196);
 
-                                {/* Items in this Date Group */}
-                                <div className="timeline-group-items">
-                                    {group.items.map((item) => {
-                                        const isAp = item.type === "ap";
-                                        const isBreakthrough = item.isBreakthrough;
-                                        const breakthroughClass = isBreakthrough
-                                            ? isAp
-                                                ? "breakthrough-card-ap"
-                                                : "breakthrough-card-fc"
-                                            : "";
+                                    gapSpacer = (
+                                        <div
+                                            className="timeline-gap-container"
+                                            style={{ height: `${spacerHeight}px` }}
+                                        />
+                                    );
+                                }
+                            }
 
-                                        return (
-                                            <div
-                                                key={item.id}
-                                                className={`history-card glass-panel ${breakthroughClass}`}
-                                                onClick={() =>
-                                                    setSelectedJacketSong &&
-                                                    setSelectedJacketSong({ song: item.song, diff: item.diff })
-                                                }
-                                                style={{
-                                                    padding: "0.85rem 1rem",
-                                                    borderRadius: "12px",
-                                                    cursor: "pointer",
-                                                    transition: "all 0.25s ease",
-                                                    display: "flex",
-                                                    gap: "0.85rem",
-                                                    alignItems: "center",
-                                                    border: !isBreakthrough
-                                                        ? isAp
-                                                            ? "1px solid rgba(56, 189, 248, 0.25)"
-                                                            : "1px solid rgba(192, 132, 252, 0.25)"
-                                                        : undefined,
-                                                    background: !isBreakthrough
-                                                        ? isAp
-                                                            ? "rgba(56, 189, 248, 0.04)"
-                                                            : "rgba(192, 132, 252, 0.04)"
-                                                        : undefined,
-                                                    position: "relative",
-                                                    overflow: "hidden",
-                                                }}
-                                            >
-                                                {/* Jacket Image */}
-                                                <div
+                            return (
+                                <React.Fragment key={group.date}>
+                                    {gapSpacer}
+                                    <div className="timeline-group">
+                                        {/* Spine Node Marker Dot */}
+                                        <div className="timeline-marker-dot" />
+
+                                        {/* Date Node Header */}
+                                        <div className="timeline-date-header">
+                                            <div className="date-pill">
+                                                <Calendar size={14} />
+                                                <span>{group.formattedDate}</span>
+                                                <span
                                                     style={{
-                                                        flexShrink: 0,
-                                                        width: "52px",
-                                                        height: "52px",
-                                                        borderRadius: "8px",
-                                                        overflow: "hidden",
-                                                        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                                                        fontSize: "0.75rem",
+                                                        color: "var(--text-muted)",
+                                                        marginLeft: "0.25rem",
                                                     }}
                                                 >
-                                                    <JacketImage
-                                                        songId={item.song.id}
-                                                        size={52}
-                                                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                                                    />
-                                                </div>
+                                                    • {group.items.length} Record
+                                                </span>
+                                            </div>
+                                        </div>
 
-                                                {/* Song & Achievement Details */}
-                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                        {/* Items in this Date Group */}
+                                        <div className="timeline-group-items">
+                                            {group.items.map((item) => {
+                                                const isAp = item.type === "ap";
+                                                const isBreakthrough = item.isBreakthrough;
+                                                const breakthroughClass = isBreakthrough
+                                                    ? isAp
+                                                        ? "breakthrough-card-ap"
+                                                        : "breakthrough-card-fc"
+                                                    : "";
+
+                                                return (
                                                     <div
+                                                        key={item.id}
+                                                        className={`history-card glass-panel ${breakthroughClass}`}
+                                                        onClick={() =>
+                                                            setSelectedJacketSong &&
+                                                            setSelectedJacketSong({ song: item.song, diff: item.diff })
+                                                        }
                                                         style={{
+                                                            padding: "0.85rem 1rem",
+                                                            borderRadius: "12px",
+                                                            cursor: "pointer",
+                                                            transition: "all 0.25s ease",
                                                             display: "flex",
+                                                            gap: "0.85rem",
                                                             alignItems: "center",
-                                                            gap: "0.4rem",
-                                                            marginBottom: "0.25rem",
-                                                            flexWrap: "wrap",
+                                                            border: !isBreakthrough
+                                                                ? isAp
+                                                                    ? "1px solid rgba(56, 189, 248, 0.25)"
+                                                                    : "1px solid rgba(192, 132, 252, 0.25)"
+                                                                : undefined,
+                                                            background: !isBreakthrough
+                                                                ? isAp
+                                                                    ? "rgba(56, 189, 248, 0.04)"
+                                                                    : "rgba(192, 132, 252, 0.04)"
+                                                                : undefined,
+                                                            position: "relative",
+                                                            overflow: "hidden",
                                                         }}
                                                     >
-                                                        <span
-                                                            className={`diff-badge diff-${item.diff}`}
-                                                            style={{ fontSize: "0.68rem", padding: "0.1rem 0.35rem" }}
-                                                        >
-                                                            {diffNames[item.diff]}
-                                                        </span>
-                                                        <span
+                                                        {/* Jacket Image */}
+                                                        <div
                                                             style={{
-                                                                fontSize: "0.75rem",
-                                                                fontWeight: 800,
-                                                                color: "var(--text-secondary)",
+                                                                flexShrink: 0,
+                                                                width: "52px",
+                                                                height: "52px",
+                                                                borderRadius: "8px",
+                                                                overflow: "hidden",
+                                                                boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
                                                             }}
                                                         >
-                                                            Lv.{item.level}
-                                                        </span>
-                                                        {(item.fcConstant || item.apConstant) && (
-                                                            <span
+                                                            <JacketImage
+                                                                songId={item.song.id}
+                                                                size={52}
                                                                 style={{
-                                                                    fontSize: "0.72rem",
-                                                                    color: "var(--text-muted)",
+                                                                    width: "100%",
+                                                                    height: "100%",
+                                                                    objectFit: "cover",
+                                                                }}
+                                                            />
+                                                        </div>
+
+                                                        {/* Song & Achievement Details */}
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div
+                                                                style={{
+                                                                    display: "flex",
+                                                                    alignItems: "center",
+                                                                    gap: "0.4rem",
+                                                                    marginBottom: "0.25rem",
+                                                                    flexWrap: "wrap",
                                                                 }}
                                                             >
-                                                                (
-                                                                {item.type === "ap"
-                                                                    ? item.apConstant?.toFixed(1) || item.level
-                                                                    : item.fcConstant?.toFixed(1) || item.level}
-                                                                )
+                                                                <span
+                                                                    className={`diff-badge diff-${item.diff}`}
+                                                                    style={{
+                                                                        fontSize: "0.68rem",
+                                                                        padding: "0.1rem 0.35rem",
+                                                                    }}
+                                                                >
+                                                                    {diffNames[item.diff]}
+                                                                </span>
+                                                                <span
+                                                                    style={{
+                                                                        fontSize: "0.75rem",
+                                                                        fontWeight: 800,
+                                                                        color: "var(--text-secondary)",
+                                                                    }}
+                                                                >
+                                                                    Lv.{item.level}
+                                                                </span>
+                                                                {(item.fcConstant || item.apConstant) && (
+                                                                    <span
+                                                                        style={{
+                                                                            fontSize: "0.72rem",
+                                                                            color: "var(--text-muted)",
+                                                                        }}
+                                                                    >
+                                                                        (
+                                                                        {item.type === "ap"
+                                                                            ? item.apConstant?.toFixed(1) || item.level
+                                                                            : item.fcConstant?.toFixed(1) || item.level}
+                                                                        )
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            <div
+                                                                style={{
+                                                                    fontSize: "0.9rem",
+                                                                    fontWeight: 700,
+                                                                    color: "var(--text-primary)",
+                                                                    whiteSpace: "nowrap",
+                                                                    overflow: "hidden",
+                                                                    textOverflow: "ellipsis",
+                                                                }}
+                                                                title={getSongTitle(item.song, settingsTitleLang)}
+                                                            >
+                                                                {getSongTitle(item.song, settingsTitleLang)}
+                                                            </div>
+
+                                                            <div
+                                                                style={{
+                                                                    fontSize: "0.75rem",
+                                                                    color: "var(--text-muted)",
+                                                                    whiteSpace: "nowrap",
+                                                                    overflow: "hidden",
+                                                                    textOverflow: "ellipsis",
+                                                                    marginTop: "0.15rem",
+                                                                }}
+                                                            >
+                                                                {item.song.composer || "Unknown"}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Achievement Badge (AP or FC) */}
+                                                        <div style={{ flexShrink: 0, textAlign: "right" }}>
+                                                            <span
+                                                                className={`record-status-badge status-${item.type === "ap" ? "full_perfect" : "full_combo"}`}
+                                                                style={{
+                                                                    fontSize: "0.8rem",
+                                                                    padding: "0.3rem 0.65rem",
+                                                                }}
+                                                            >
+                                                                {item.type === "ap" ? "AP" : "FC"}
                                                             </span>
-                                                        )}
+                                                        </div>
                                                     </div>
-
-                                                    <div
-                                                        style={{
-                                                            fontSize: "0.9rem",
-                                                            fontWeight: 700,
-                                                            color: "var(--text-primary)",
-                                                            whiteSpace: "nowrap",
-                                                            overflow: "hidden",
-                                                            textOverflow: "ellipsis",
-                                                        }}
-                                                        title={getSongTitle(item.song, settingsTitleLang)}
-                                                    >
-                                                        {getSongTitle(item.song, settingsTitleLang)}
-                                                    </div>
-
-                                                    <div
-                                                        style={{
-                                                            fontSize: "0.75rem",
-                                                            color: "var(--text-muted)",
-                                                            whiteSpace: "nowrap",
-                                                            overflow: "hidden",
-                                                            textOverflow: "ellipsis",
-                                                            marginTop: "0.15rem",
-                                                        }}
-                                                    >
-                                                        {item.song.composer || "Unknown"}
-                                                    </div>
-                                                </div>
-
-                                                {/* Achievement Badge (AP or FC) */}
-                                                <div style={{ flexShrink: 0, textAlign: "right" }}>
-                                                    <span
-                                                        className={`record-status-badge status-${item.type === "ap" ? "full_perfect" : "full_combo"}`}
-                                                        style={{
-                                                            fontSize: "0.8rem",
-                                                            padding: "0.3rem 0.65rem",
-                                                        }}
-                                                    >
-                                                        {item.type === "ap" ? "AP" : "FC"}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        ))}
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </React.Fragment>
+                            );
+                        })}
                     </div>
                 </div>
             )}
