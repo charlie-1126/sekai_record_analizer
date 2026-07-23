@@ -198,12 +198,11 @@ export function computeIDF(candidateCharts, allTags) {
  * @param {object}           song
  * @param {string}           diff
  * @param {string[]}         allTags
- * @param {Map<string,number>} idfMap
  * @returns {number[]}
  */
-export function computeSongVector(song, diff, allTags, idfMap) {
+export function computeSongVector(song, diff, allTags) {
     const tags = new Set(getSongDiffTags(song, diff));
-    return allTags.map((t) => (tags.has(t) ? idfMap.get(t) || 0 : 0));
+    return allTags.map((t) => (tags.has(t) ? 1 : 0));
 }
 
 // ─────────────────────────────────────────
@@ -336,10 +335,8 @@ export function recommendB39Normal({ songs, userScoresMap, b39List, goalStatus =
     const { mu, muFC, muAP, top39Entries } = computeUserMu(songs, userScoresMap);
     const muTarget = goalStatus === "full_perfect" ? muAP : muFC;
 
-    // 전체 태그 & IDF 계산용 후보 채보
-    const candidateCharts = filterCandidateCharts(songs, mu, "normal");
+    // 전체 태그
     const allTags = extractAllTags(songs);
-    const idfMap = computeIDF(candidateCharts, allTags);
 
     // 유저 성향 벡터
     const userVec = computeUserVector(top39Entries, mu, allTags);
@@ -384,7 +381,7 @@ export function recommendB39Normal({ songs, userScoresMap, b39List, goalStatus =
             const prob = achieveProbability(x, muTarget);
 
             // 곡 태그 벡터 (유저 벡터가 영벡터면 sim = 0 강제)
-            const sim = userVecIsZero ? 0 : cosineSimilarity(userVec, computeSongVector(song, diff, allTags, idfMap));
+            const sim = userVecIsZero ? 0 : cosineSimilarity(userVec, computeSongVector(song, diff, allTags));
 
             const finalScore = delta * prob * (1 + ALPHA * sim);
 
@@ -489,9 +486,7 @@ export function recommendB39Append({ songs, userScoresMap, appendB15List, goalSt
     const muTarget = goalStatus === "full_perfect" ? muAP_apd : muFC_apd;
     // ────────────────────────────────────────────────────────────────
 
-    const candidateCharts = filterCandidateCharts(songs, mu, "append");
     const allTags = extractAllTags(songs);
-    const idfMap = computeIDF(candidateCharts, allTags);
     // 성향 벡터: 어펜드 상위 15개 기준 (mu 대신 muFC_apd 기준으로 편차 계산)
     const userVec = computeUserVector(apdTop15Entries, muFC_apd, allTags);
     const userVecIsZero = isZeroVector(userVec);
@@ -527,7 +522,7 @@ export function recommendB39Append({ songs, userScoresMap, appendB15List, goalSt
         const prob = achieveProbability(x, muTarget);
 
         // 유저 벡터가 영벡터면 sim = 0 강제
-        const sim = userVecIsZero ? 0 : cosineSimilarity(userVec, computeSongVector(song, "append", allTags, idfMap));
+        const sim = userVecIsZero ? 0 : cosineSimilarity(userVec, computeSongVector(song, "append", allTags));
 
         const finalScore = delta * prob * (1 + ALPHA * sim);
 
@@ -598,9 +593,7 @@ export function recommendPotential({
     const { muFC_apd, muAP_apd, apdTop15Entries } = computeApdMu(songs, userScoresMap, mu);
     // ────────────────────────────────────────────────────────────────
 
-    const candidateCharts = filterCandidateCharts(songs, mu, "all");
     const allTags = extractAllTags(songs);
-    const idfMap = computeIDF(candidateCharts, allTags);
     const userVec = computeUserVector(top39Entries, mu, allTags);
     const userVecIsZero = isZeroVector(userVec);
 
@@ -672,7 +665,7 @@ export function recommendPotential({
             // ────────────────────────────────────────────────────────
 
             // 유저 벡터가 영벡터면 sim = 0 강제
-            const sim = vecIsZero ? 0 : cosineSimilarity(vec, computeSongVector(song, diff, allTags, idfMap));
+            const sim = vecIsZero ? 0 : cosineSimilarity(vec, computeSongVector(song, diff, allTags));
 
             // 어펜드 가중치
             const W_factor = isAppendChart ? 1 + GAMMA * W_apd : 1 + GAMMA * (1 - W_apd);

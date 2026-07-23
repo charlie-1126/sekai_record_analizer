@@ -2,80 +2,37 @@
    Recommend.css — 간소화 버전
    ───────────────────────────────────────── */
 
-/* ── 컨테이너 ── */
-.recommend-container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 1.5rem 1rem 3rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-}
-
-/* ── 헤더 ── */
-.recommend-header {
-    background: linear-gradient(135deg, rgba(139,92,246,0.12) 0%, rgba(0,242,254,0.08) 100%);
-    border: 1px solid rgba(139,92,246,0.25);
-    border-radius: 1rem;
-    padding: 1.5rem 1.75rem;
-    backdrop-filter: blur(8px);
-}
-
-.recommend-title-row {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    margin-bottom: 0.4rem;
-}
-
-.recommend-icon { color: #a78bfa; flex-shrink: 0; }
-
-.recommend-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, #a78bfa 0%, #00f2fe 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin: 0;
-}
-
-.rec-info-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--color-text-muted, #6b7280);
-    padding: 0.25rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    transition: color 0.2s, background 0.2s;
-    margin-left: auto;
-}
-.rec-info-btn:hover { color: #a78bfa; background: rgba(139,92,246,0.15); }
-
-.recommend-subtitle {
-    font-size: 0.85rem;
-    color: var(--color-text-muted, #9ca3af);
-    margin: 0 0 1rem;
-}
-
 /* 유저 체급 */
-.rec-mu-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.rec-mu-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
 
 .rec-mu-chip {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 0.6rem;
-    padding: 0.5rem 0.9rem;
-    min-width: 90px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.35rem 0.75rem;
+    min-width: 75px;
 }
 
-.mu-label { font-size: 0.7rem; color: var(--color-text-muted,#6b7280); text-transform: uppercase; letter-spacing: 0.05em; }
-.mu-value { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; }
+.mu-label {
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.1rem;
+}
+
+.mu-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
 
 /* ── 알고리즘 설명 ── */
 .rec-info-panel {

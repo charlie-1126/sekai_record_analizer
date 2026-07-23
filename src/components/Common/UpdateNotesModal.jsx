@@ -4,6 +4,18 @@ import { X, ChevronRight } from "lucide-react";
 
 export const UPDATE_NOTES = [
     {
+        version: "v1.5.0",
+        date: "2026-07-23",
+        title: "곡 추천 탭 추가",
+        categories: [
+            {
+                name: "신규 기능",
+                type: "new",
+                items: ["곡 추천 기능 추가"],
+            },
+        ],
+    },
+    {
         version: "v1.4.1",
         date: "2026-07-22",
         title: "B39 순위 역전현상",

@@ -119,7 +119,11 @@ function RecommendCard({ item, rank, settingsTitleLang, onJacketClick }) {
                     {currentLabel && (
                         <span
                             className="rec-current-badge"
-                            style={{ color: currentColor, borderColor: `${currentColor}55`, background: `${currentColor}18` }}
+                            style={{
+                                color: currentColor,
+                                borderColor: `${currentColor}55`,
+                                background: `${currentColor}18`,
+                            }}
                         >
                             현재: {currentLabel}
                         </span>
@@ -144,7 +148,7 @@ function RecommendCard({ item, rank, settingsTitleLang, onJacketClick }) {
                         </span>
                     </div>
                     <div className="rec-score-chip">
-                        <span className="chip-label">취향 적합도</span>
+                        <span className="chip-label">패턴 적합도</span>
                         <span className="chip-value" style={{ color: "#c084fc" }}>
                             {fmt2(sim)}
                         </span>
@@ -221,12 +225,23 @@ export function Recommend({
     const isAppendSection = ratingMode === "b39" && activeSection === "append";
 
     return (
-        <div className="recommend-container">
+        <section className="glass-panel recommend-panel" style={{ padding: "2rem" }}>
             {/* 헤더 */}
-            <div className="recommend-header">
-                <div className="recommend-title-row">
-                    <Star size={22} className="recommend-icon" />
-                    <h2 className="recommend-title">곡 추천</h2>
+            <div
+                className="section-title-bar"
+                style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: "1.5rem",
+                    flexWrap: "wrap",
+                    gap: "1rem",
+                }}
+            >
+                <div>
+                    <h2 className="section-title" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <Star size={22} style={{ color: "var(--color-cyan)" }} /> 곡 추천
+                    </h2>
                 </div>
 
                 {/* 유저 체급 */}
@@ -253,7 +268,10 @@ export function Recommend({
             </div>
 
             {/* 컨트롤 바 */}
-            <div className="rec-controls">
+            <div
+                className="rec-controls"
+                style={{ paddingBottom: "1rem", borderBottom: "1px solid var(--border-color)", marginBottom: "1.5rem" }}
+            >
                 {/* B39 모드일 때만 섹션 탭 */}
                 {ratingMode === "b39" && (
                     <div className="rec-section-tabs">
@@ -263,7 +281,6 @@ export function Recommend({
                                 className={`rec-section-tab ${activeSection === tab.key ? "active" : ""}`}
                                 onClick={() => setActiveSection(tab.key)}
                             >
-                                {tab.icon}
                                 {tab.label}
                             </button>
                         ))}
@@ -273,10 +290,7 @@ export function Recommend({
                 {/* 포텐셜 모드 레이블 */}
                 {ratingMode === "potential" && (
                     <div className="rec-section-tabs">
-                        <div className="rec-section-tab active">
-                            <Star size={14} />
-                            포텐셜
-                        </div>
+                        <div className="rec-section-tab active">포텐셜</div>
                     </div>
                 )}
 
@@ -295,7 +309,6 @@ export function Recommend({
 
                 {/* 표시 개수 */}
                 <div className="rec-topn-control">
-                    <Filter size={14} />
                     <select value={topN} onChange={(e) => setTopN(Number(e.target.value))} className="rec-topn-select">
                         <option value={10}>TOP 10</option>
                         <option value={20}>TOP 20</option>
@@ -331,6 +344,6 @@ export function Recommend({
                     ))}
                 </div>
             )}
-        </div>
+        </section>
     );
 }
