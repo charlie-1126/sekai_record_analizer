@@ -21,7 +21,9 @@ import { isNewSong } from "./potentialUtils";
 /** 취향 가중치 상수 */
 const ALPHA = 0.3;
 /** 어펜드 가중치 상수 */
-const GAMMA = 0.3;
+const GAMMA = 0.5;
+/** 성과 비율 가중치 배율 (상수) */
+const BETA = 0.5;
 /** 로지스틱 상수 */
 const K = 2.3;
 /** 베이지안 신뢰도 임계값 */
@@ -331,6 +333,14 @@ export function recommendB39Normal({ songs, userScoresMap, b39List, goalStatus =
     const T_gen = b39List.length >= 39 ? b39List[38].rating : 0;
     const multiplier = B39_MULTIPLIERS[goalStatus] || 7.5;
 
+    // FC/AP 성과 비율 계산
+    const listLen = Math.max(1, b39List.length);
+    const fcCount = b39List.filter((item) => item.status === "full_combo").length;
+    const apCount = b39List.filter((item) => item.status === "full_perfect").length;
+    const fcRatio = fcCount / listLen;
+    const apRatio = apCount / listLen;
+    const ratio = goalStatus === "full_perfect" ? apRatio : fcRatio;
+
     // 유저 체급 계산
     const { mu, muFC, muAP, top39Entries } = computeUserMu(songs, userScoresMap);
     const muTarget = goalStatus === "full_perfect" ? muAP : muFC;
@@ -383,7 +393,7 @@ export function recommendB39Normal({ songs, userScoresMap, b39List, goalStatus =
             // 곡 태그 벡터 (유저 벡터가 영벡터면 sim = 0 강제)
             const sim = userVecIsZero ? 0 : cosineSimilarity(userVec, computeSongVector(song, diff, allTags));
 
-            const finalScore = delta * prob * (1 + ALPHA * sim);
+            const finalScore = delta * prob * (1 + ALPHA * sim + BETA * ratio);
 
             results.push({
                 song,
@@ -475,6 +485,14 @@ export function recommendB39Append({ songs, userScoresMap, appendB15List, goalSt
     const T_apd = appendB15List.length >= 15 ? appendB15List[14].rating : 0;
     const multiplier = B39_MULTIPLIERS[goalStatus] || 7.5;
 
+    // FC/AP 성과 비율 계산
+    const listLen = Math.max(1, appendB15List.length);
+    const fcCount = appendB15List.filter((item) => item.status === "full_combo").length;
+    const apCount = appendB15List.filter((item) => item.status === "full_perfect").length;
+    const fcRatio = fcCount / listLen;
+    const apRatio = apCount / listLen;
+    const ratio = goalStatus === "full_perfect" ? apRatio : fcRatio;
+
     // 전체 체급 (태그 벡터 및 폴백용)
     const { mu, top39Entries } = computeUserMu(songs, userScoresMap);
 
@@ -524,7 +542,7 @@ export function recommendB39Append({ songs, userScoresMap, appendB15List, goalSt
         // 유저 벡터가 영벡터면 sim = 0 강제
         const sim = userVecIsZero ? 0 : cosineSimilarity(userVec, computeSongVector(song, "append", allTags));
 
-        const finalScore = delta * prob * (1 + ALPHA * sim);
+        const finalScore = delta * prob * (1 + ALPHA * sim + BETA * ratio);
 
         results.push({
             song,
@@ -592,6 +610,22 @@ export function recommendPotential({
     // (기록 없으면 전체 mu 폴백)
     const { muFC_apd, muAP_apd, apdTop15Entries } = computeApdMu(songs, userScoresMap, mu);
     // ────────────────────────────────────────────────────────────────
+
+    // 일반 상위 39개(top39Entries) 기준 FC/AP 비율
+    const normLen = Math.max(1, top39Entries.length);
+    const normFcCount = top39Entries.filter((e) => e.status === "full_combo").length;
+    const normApCount = top39Entries.filter((e) => e.status === "full_perfect").length;
+    const normFcRatio = normFcCount / normLen;
+    const normApRatio = normApCount / normLen;
+    const normRatio = goalStatus === "full_perfect" ? normApRatio : normFcRatio;
+
+    // 어펜드 상위 15개(apdTop15Entries) 기준 FC/AP 비율
+    const apdLen = Math.max(1, apdTop15Entries.length);
+    const apdFcCount = apdTop15Entries.filter((e) => e.status === "full_combo").length;
+    const apdApCount = apdTop15Entries.filter((e) => e.status === "full_perfect").length;
+    const apdFcRatio = apdFcCount / apdLen;
+    const apdApRatio = apdApCount / apdLen;
+    const apdRatio = goalStatus === "full_perfect" ? apdApRatio : apdFcRatio;
 
     const allTags = extractAllTags(songs);
     const userVec = computeUserVector(top39Entries, mu, allTags);
@@ -667,11 +701,17 @@ export function recommendPotential({
             // 유저 벡터가 영벡터면 sim = 0 강제
             const sim = vecIsZero ? 0 : cosineSimilarity(vec, computeSongVector(song, diff, allTags));
 
-            // 어펜드 가중치
-            const W_factor = isAppendChart ? 1 + GAMMA * W_apd : 1 + GAMMA * (1 - W_apd);
+            // 어펜드 가중치 성분
+            const appendTerm = GAMMA * (isAppendChart ? W_apd : 1 - W_apd);
+
+            // 성과 비율 가중치 성분
+            const ratioTerm = BETA * (isAppendChart ? apdRatio : normRatio);
+
+            // 합연산 가중치 결합
+            const combinedWeight = 1 + ALPHA * sim + appendTerm + ratioTerm;
 
             // 포텐셜 최종 점수 스케일을 B39 수준으로 보정하기 위해 400배 곱해줍니다.
-            const finalScore = delta * prob * (1 + ALPHA * sim) * W_factor * 400;
+            const finalScore = delta * prob * combinedWeight * 400;
 
             results.push({
                 song,
