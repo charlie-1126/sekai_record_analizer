@@ -19,9 +19,9 @@ import { isNewSong } from "./potentialUtils";
 // ─────────────────────────────────────────
 
 /** 취향 가중치 상수 */
-const ALPHA = 0.5;
+const ALPHA = 0.3;
 /** 어펜드 가중치 상수 */
-const GAMMA = 0.5;
+const GAMMA = 0.3;
 /** 로지스틱 상수 */
 const K = 2.3;
 /** 베이지안 신뢰도 임계값 */
