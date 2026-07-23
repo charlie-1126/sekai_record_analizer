@@ -15,6 +15,7 @@ export default function JacketDetailsModal({
     isLoggedIn = false,
     scores = [],
     onNavigateToCalculator,
+    viewedUser,
 }) {
     if (!selectedJacketSong) return null;
 
@@ -169,9 +170,11 @@ export default function JacketDetailsModal({
                     {!isLoggedIn && (
                         <div
                             style={{
-                                background: "rgba(239, 68, 68, 0.08)",
-                                border: "1px solid rgba(239, 68, 68, 0.2)",
-                                color: "#fca5a5",
+                                background: viewedUser ? "rgba(59, 130, 246, 0.08)" : "rgba(239, 68, 68, 0.08)",
+                                border: viewedUser
+                                    ? "1px solid rgba(59, 130, 246, 0.2)"
+                                    : "1px solid rgba(239, 68, 68, 0.2)",
+                                color: viewedUser ? "#93c5fd" : "#fca5a5",
                                 borderRadius: "8px",
                                 padding: "0.5rem",
                                 fontSize: "0.8rem",
@@ -183,7 +186,9 @@ export default function JacketDetailsModal({
                                 gap: "0.3rem",
                             }}
                         >
-                            성과를 기록하려면 로그인이 필요합니다.
+                            {viewedUser
+                                ? `${viewedUser.nickname || viewedUser.username}의 성과 조회 중`
+                                : "성과를 기록하려면 로그인이 필요합니다."}
                         </div>
                     )}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.5rem" }}>
@@ -259,7 +264,16 @@ export default function JacketDetailsModal({
                                 marginTop: "0.25rem",
                             }}
                         >
-                            <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                            <div
+                                style={{
+                                    fontSize: "0.85rem",
+                                    fontWeight: 700,
+                                    color: "var(--text-primary)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "0.4rem",
+                                }}
+                            >
                                 <Calendar size={14} style={{ color: "var(--color-cyan)" }} />
                                 <span>달성 날짜 기록 (FC / AP)</span>
                             </div>
@@ -273,7 +287,10 @@ export default function JacketDetailsModal({
                                         <input
                                             type="date"
                                             value={dates.fc || ""}
-                                            onChange={(e) => handleDateChange && handleDateChange(song.id, diff, "fc", e.target.value)}
+                                            onChange={(e) =>
+                                                handleDateChange &&
+                                                handleDateChange(song.id, diff, "fc", e.target.value)
+                                            }
                                             style={{
                                                 flex: 1,
                                                 background: "rgba(0, 0, 0, 0.3)",
@@ -284,15 +301,23 @@ export default function JacketDetailsModal({
                                                 fontSize: "0.75rem",
                                                 colorScheme: "dark",
                                                 width: "100%",
-                                                boxSizing: "border-box"
+                                                boxSizing: "border-box",
                                             }}
                                         />
                                         <button
                                             className="btn"
                                             type="button"
                                             title="오늘 날짜 입력"
-                                            onClick={() => handleDateChange && handleDateChange(song.id, diff, "fc", getTodayString())}
-                                            style={{ padding: "0.35rem 0.5rem", display: "flex", alignItems: "center", justifyContent: "center" }}
+                                            onClick={() =>
+                                                handleDateChange &&
+                                                handleDateChange(song.id, diff, "fc", getTodayString())
+                                            }
+                                            style={{
+                                                padding: "0.35rem 0.5rem",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                            }}
                                         >
                                             <CalendarCheck size={14} />
                                         </button>
@@ -308,7 +333,10 @@ export default function JacketDetailsModal({
                                         <input
                                             type="date"
                                             value={dates.ap || ""}
-                                            onChange={(e) => handleDateChange && handleDateChange(song.id, diff, "ap", e.target.value)}
+                                            onChange={(e) =>
+                                                handleDateChange &&
+                                                handleDateChange(song.id, diff, "ap", e.target.value)
+                                            }
                                             style={{
                                                 flex: 1,
                                                 background: "rgba(0, 0, 0, 0.3)",
@@ -319,15 +347,23 @@ export default function JacketDetailsModal({
                                                 fontSize: "0.75rem",
                                                 colorScheme: "dark",
                                                 width: "100%",
-                                                boxSizing: "border-box"
+                                                boxSizing: "border-box",
                                             }}
                                         />
                                         <button
                                             className="btn"
                                             type="button"
                                             title="오늘 날짜 입력"
-                                            onClick={() => handleDateChange && handleDateChange(song.id, diff, "ap", getTodayString())}
-                                            style={{ padding: "0.35rem 0.5rem", display: "flex", alignItems: "center", justifyContent: "center" }}
+                                            onClick={() =>
+                                                handleDateChange &&
+                                                handleDateChange(song.id, diff, "ap", getTodayString())
+                                            }
+                                            style={{
+                                                padding: "0.35rem 0.5rem",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                            }}
                                         >
                                             <CalendarCheck size={14} />
                                         </button>

@@ -7,7 +7,16 @@ import { useSessionState } from "../../utils/useSessionState";
 import { defaultSort } from "../../utils/scoreUtils";
 import { computeUpdatedDatesOnStatusChange, updateDatesForDiff, getFcApDates, getTodayString } from "../../utils/dateUtils";
 
-export const Records = ({ songs, scores, updateScores, settingsTitleLang, ratingMode = "b39", isLoggedIn = false, onJacketClick }) => {
+export const Records = ({
+    songs,
+    scores,
+    updateScores,
+    settingsTitleLang,
+    ratingMode = "b39",
+    isLoggedIn = false,
+    onJacketClick,
+    viewedUser,
+}) => {
     // --- States ---
     const [isRecordFilterExpanded, setIsRecordFilterExpanded] = useSessionState("pjsk_record_filter_expanded", true);
     const [recordSearchInput, setRecordSearchInput] = useSessionState("pjsk_record_search_input", "");
@@ -404,7 +413,7 @@ export const Records = ({ songs, scores, updateScores, settingsTitleLang, rating
 
     return (
         <section className="glass-panel" style={{ padding: "2rem" }}>
-            {!isLoggedIn && (
+            {!viewedUser && !isLoggedIn && (
                 <div
                     style={{
                         background: "rgba(239, 68, 68, 0.08)",

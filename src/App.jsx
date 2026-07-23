@@ -98,12 +98,18 @@ function App() {
     };
     const activeTab = getActiveTab();
 
-    const setActiveTab = (tab) => {
-        navigate("/" + tab);
-    };
+    const matchRoute = location.pathname.match(
+        /^\/(?:dashboard|records|history|constants|pattern|tour|calculator|compare|distributions|ranking|recommend|settings|admin)(?:\/([^/]+))?\/?$/,
+    );
+    const routeUsername = matchRoute ? matchRoute[1] : undefined;
 
-    const matchDashboard = location.pathname.match(/^\/dashboard(?:\/([^/]+))?\/?$/);
-    const routeUsername = matchDashboard ? matchDashboard[1] : undefined;
+    const setActiveTab = (tab) => {
+        if (routeUsername && !["settings", "admin"].includes(tab)) {
+            navigate("/" + tab + "/" + routeUsername);
+        } else {
+            navigate("/" + tab);
+        }
+    };
 
     // --- Viewed User States ---
     const [viewedUser, setViewedUser] = useState(null);
@@ -170,8 +176,8 @@ function App() {
         }
     });
 
-    const effectiveScores = activeTab === "dashboard" && viewedScores ? viewedScores : scores;
-    const effectiveUser = activeTab === "dashboard" && viewedUser ? viewedUser : currentUser;
+    const effectiveScores = viewedScores ? viewedScores : scores;
+    const effectiveUser = viewedUser ? viewedUser : currentUser;
     const [showAuthModal, setShowAuthModal] = useState(false);
 
     // --- Friends & Settings States ---
@@ -481,6 +487,7 @@ function App() {
     };
 
     const handleJacketClick = (song, diff, currentStatus) => {
+        if (viewedUser) return;
         setSelectedJacketSong({ song, diff, status: currentStatus });
     };
 
@@ -638,8 +645,9 @@ function App() {
 
         // Fast lookup map for user's play records
         const scoreMap = new Map();
-        if (scores && Array.isArray(scores)) {
-            scores.forEach((s) => {
+        const scoresToExport = effectiveScores;
+        if (scoresToExport && Array.isArray(scoresToExport)) {
+            scoresToExport.forEach((s) => {
                 if (s && s.id) {
                     scoreMap.set(String(s.id), s);
                 }
@@ -678,7 +686,11 @@ function App() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = "sekai_scores.json";
+        const exportUser = effectiveUser;
+        const filename = exportUser
+            ? `${exportUser.nickname || exportUser.username}_sekai_scores.json`
+            : "sekai_scores.json";
+        link.download = filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -979,7 +991,7 @@ function App() {
         let fcCount = 0;
         let clearCount = 0;
 
-        scores.forEach((s) => {
+        effectiveScores.forEach((s) => {
             const diffs = ["easy", "normal", "hard", "expert", "master", "append"];
             diffs.forEach((d) => {
                 if (s[d]) {
@@ -997,7 +1009,7 @@ function App() {
             fcCount,
             clearCount,
         };
-    }, [scores]);
+    }, [effectiveScores]);
 
     return (
         <div className="app-wrapper">
@@ -1011,11 +1023,71 @@ function App() {
                         accept=".json"
                         style={{ display: "none" }}
                     />
-                    <div className="logo-section">
-                        <span className="logo-icon">🎵</span>
-                        <div>
+                    <div className="logo-section" style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        <div
+                            style={{ display: "flex", alignItems: "center", gap: "0.25rem", cursor: "pointer" }}
+                            onClick={() => {
+                                if (routeUsername) {
+                                    navigate("/dashboard/" + routeUsername);
+                                } else {
+                                    navigate("/dashboard");
+                                }
+                            }}
+                        >
+                            <span className="logo-icon">🎵</span>
                             <h1 className="logo-text">SEKAITOOL</h1>
                         </div>
+                        {viewedUser && (
+                            <div
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "0.4rem",
+                                    background: "rgba(0, 242, 254, 0.1)",
+                                    border: "1px solid rgba(0, 242, 254, 0.25)",
+                                    color: "#00f2fe",
+                                    padding: "0.25rem 0.6rem",
+                                    borderRadius: "9999px",
+                                    fontSize: "0.75rem",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                    userSelect: "none",
+                                    transition: "all 0.2s",
+                                }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate("/" + activeTab);
+                                }}
+                                title="내 정보로 돌아가기"
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = "rgba(0, 242, 254, 0.2)";
+                                    e.currentTarget.style.borderColor = "rgba(0, 242, 254, 0.4)";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = "rgba(0, 242, 254, 0.1)";
+                                    e.currentTarget.style.borderColor = "rgba(0, 242, 254, 0.25)";
+                                }}
+                            >
+                                <span>{viewedUser.nickname || viewedUser.username}</span>
+                                <span
+                                    style={{
+                                        marginLeft: "0.25rem",
+                                        opacity: 0.7,
+                                        fontSize: "0.7rem",
+                                        background: "rgba(255,255,255,0.15)",
+                                        borderRadius: "50%",
+                                        width: "12px",
+                                        height: "12px",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontWeight: "normal",
+                                    }}
+                                >
+                                    ✕
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Desktop Navigation */}
@@ -1219,11 +1291,17 @@ function App() {
 
                         {/* User Profile Info */}
                         <div className="drawer-user-section">
-                            {currentUser ? (
+                            {effectiveUser ? (
                                 <div className="drawer-user-info">
                                     <div className="user-name">
-                                        <UserCheck size={18} style={{ color: "var(--color-cyan)" }} />
-                                        <span>{currentUser.nickname}님</span>
+                                        <UserCheck
+                                            size={18}
+                                            style={{ color: viewedUser ? "var(--color-purple)" : "var(--color-cyan)" }}
+                                        />
+                                        <span>
+                                            {effectiveUser.nickname}
+                                            {viewedUser ? " (조회 중)" : "님"}
+                                        </span>
                                     </div>
                                     <div className="user-ratings">
                                         {ratingMode === "b39" ? (
@@ -1510,9 +1588,10 @@ function App() {
                 handleScoreChange={handleScoreChange}
                 handleDateChange={handleDateChange}
                 trainerSpeed={trainerSpeed}
-                isLoggedIn={!!currentUser}
-                scores={scores}
+                isLoggedIn={!viewedUser && !!currentUser}
+                scores={effectiveScores}
                 onNavigateToCalculator={handleNavigateToCalculator}
+                viewedUser={viewedUser}
             />
 
             <AuthModal
@@ -1554,7 +1633,7 @@ function App() {
 
                 {activeTab === "ranking" && (
                     <Ranking
-                        currentUser={currentUser}
+                        currentUser={effectiveUser}
                         ratingMode={ratingMode}
                         myNormalRating={playerRating}
                         myAppendRating={playerAppendRating}
@@ -1568,19 +1647,20 @@ function App() {
                 {activeTab === "records" && (
                     <Records
                         songs={visibleSongs}
-                        scores={scores}
+                        scores={effectiveScores}
                         updateScores={updateScores}
                         settingsTitleLang={settingsTitleLang}
                         ratingMode={ratingMode}
-                        isLoggedIn={!!currentUser}
+                        isLoggedIn={!viewedUser && !!currentUser}
                         onJacketClick={handleJacketClick}
+                        viewedUser={viewedUser}
                     />
                 )}
 
                 {activeTab === "history" && (
                     <History
                         songs={visibleSongs}
-                        scores={scores}
+                        scores={effectiveScores}
                         settingsTitleLang={settingsTitleLang}
                         setSelectedJacketSong={setSelectedJacketSong}
                         setActiveTab={setActiveTab}
@@ -1590,7 +1670,7 @@ function App() {
                 {activeTab === "constants" && (
                     <Constants
                         songs={visibleSongs}
-                        scores={scores}
+                        scores={effectiveScores}
                         onJacketClick={handleJacketClick}
                         settingsTitleLang={settingsTitleLang}
                         ratingMode={ratingMode}
@@ -1606,7 +1686,7 @@ function App() {
                 {activeTab === "tour" && (
                     <Tour
                         songs={visibleSongs}
-                        scores={scores}
+                        scores={effectiveScores}
                         onJacketClick={handleJacketClick}
                         settingsTitleLang={settingsTitleLang}
                         ratingMode={ratingMode}
@@ -1633,8 +1713,8 @@ function App() {
 
                 {activeTab === "compare" && (
                     <Compare
-                        currentUser={currentUser}
-                        scores={scores}
+                        currentUser={effectiveUser}
+                        scores={effectiveScores}
                         songs={visibleSongs}
                         friendsList={friendsList}
                         fetchFriendsList={fetchFriendsList}
