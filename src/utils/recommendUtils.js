@@ -4,7 +4,7 @@
  * 레이팅 상승 효율 기반 곡 추천 알고리즘
  *
  * 핵심 공식:
- *   Final Score = (Δ × P(x)) × (1 + α × sim(U, Sw))
+ *   Final Score = (Δ × P(x)) × (1 + α × sim(U, Sw)) × (β × ratio) × (1 + γ × append_weight)
  *
  * 모드:
  *   - b39: 일반 B39 + APD B15 분리 추천
@@ -23,7 +23,7 @@ const ALPHA = 0.3;
 /** 어펜드 가중치 상수 */
 const GAMMA = 0.5;
 /** 성과 비율 가중치 배율 (상수) */
-const BETA = 0.5;
+const BETA = 1;
 /** 로지스틱 상수 */
 const K = 2.3;
 /** 베이지안 신뢰도 임계값 */
@@ -393,7 +393,7 @@ export function recommendB39Normal({ songs, userScoresMap, b39List, goalStatus =
             // 곡 태그 벡터 (유저 벡터가 영벡터면 sim = 0 강제)
             const sim = userVecIsZero ? 0 : cosineSimilarity(userVec, computeSongVector(song, diff, allTags));
 
-            const finalScore = delta * prob * (1 + ALPHA * sim + BETA * ratio);
+            const finalScore = delta * prob * (1 + ALPHA * sim) * Math.max(0.01, BETA * ratio);
 
             results.push({
                 song,
@@ -542,7 +542,7 @@ export function recommendB39Append({ songs, userScoresMap, appendB15List, goalSt
         // 유저 벡터가 영벡터면 sim = 0 강제
         const sim = userVecIsZero ? 0 : cosineSimilarity(userVec, computeSongVector(song, "append", allTags));
 
-        const finalScore = delta * prob * (1 + ALPHA * sim + BETA * ratio);
+        const finalScore = delta * prob * (1 + ALPHA * sim) * Math.max(0.01, BETA * ratio);
 
         results.push({
             song,
@@ -707,8 +707,8 @@ export function recommendPotential({
             // 성과 비율 가중치 성분
             const ratioTerm = BETA * (isAppendChart ? apdRatio : normRatio);
 
-            // 합연산 가중치 결합
-            const combinedWeight = 1 + ALPHA * sim + appendTerm + ratioTerm;
+            // 곱연산 가중치 결합
+            const combinedWeight = (1 + ALPHA * sim) * (1 + appendTerm) * Math.max(0.01, ratioTerm);
 
             // 포텐셜 최종 점수 스케일을 B39 수준으로 보정하기 위해 400배 곱해줍니다.
             const finalScore = delta * prob * combinedWeight * 400;
