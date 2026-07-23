@@ -34,6 +34,7 @@ import {
     Lock,
     Trophy,
     Clock,
+    Star,
 } from "lucide-react";
 import "./App.css";
 
@@ -50,6 +51,7 @@ import { Ranking } from "./components/Ranking/Ranking";
 import Distributions from "./components/Distributions/Distributions";
 import SettingsTab from "./components/Settings/Settings";
 import Admin from "./components/Admin/Admin";
+import { Recommend } from "./components/Recommend/Recommend";
 import AuthModal from "./components/Auth/AuthModal";
 import ImportPreviewModal from "./components/Records/ImportPreviewModal";
 import JacketDetailsModal from "./components/Common/JacketDetailsModal";
@@ -89,6 +91,7 @@ function App() {
         if (path.startsWith("/compare")) return "compare";
         if (path.startsWith("/distributions")) return "distributions";
         if (path.startsWith("/ranking")) return "ranking";
+        if (path.startsWith("/recommend")) return "recommend";
         if (path.startsWith("/settings")) return "settings";
         if (path.startsWith("/admin")) return "admin";
         return "dashboard"; // fallback
@@ -1061,12 +1064,19 @@ function App() {
 
                         {/* Dropdown 2: 도구 */}
                         <div
-                            className={`nav-dropdown ${["distributions", "tour", "calculator", "compare"].includes(activeTab) ? "active" : ""}`}
+                            className={`nav-dropdown ${["distributions", "tour", "calculator", "compare", "recommend"].includes(activeTab) ? "active" : ""}`}
                         >
                             <button className={`btn btn-outline dropdown-trigger`}>
                                 <Calculator size={16} /> 도구 <ChevronDown size={14} />
                             </button>
                             <div className="nav-dropdown-menu">
+                                <button
+                                    className={`nav-dropdown-item ${activeTab === "recommend" ? "active" : ""}`}
+                                    onClick={() => setActiveTab("recommend")}
+                                    style={{ color: activeTab === "recommend" ? "#a78bfa" : undefined }}
+                                >
+                                    <Star size={14} /> 곡 추천
+                                </button>
                                 <button
                                     className={`nav-dropdown-item ${activeTab === "tour" ? "active" : ""}`}
                                     onClick={() => setActiveTab("tour")}
@@ -1328,7 +1338,7 @@ function App() {
                             <div className="drawer-accordion">
                                 <button
                                     className={`drawer-accordion-trigger ${
-                                        ["distributions", "tour", "calculator", "compare"].includes(activeTab)
+                                        ["distributions", "tour", "calculator", "compare", "recommend"].includes(activeTab)
                                             ? "active-parent"
                                             : ""
                                     }`}
@@ -1345,6 +1355,16 @@ function App() {
                                     {openMobileAccordions.tools ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                 </button>
                                 <div className={`drawer-accordion-content ${openMobileAccordions.tools ? "open" : ""}`}>
+                                    <button
+                                        className={`drawer-sub-item ${activeTab === "recommend" ? "active" : ""}`}
+                                        onClick={() => {
+                                            setActiveTab("recommend");
+                                            setIsMobileMenuOpen(false);
+                                        }}
+                                        style={{ color: activeTab === "recommend" ? "#a78bfa" : undefined }}
+                                    >
+                                        곡 추천 ✨
+                                    </button>
                                     <button
                                         className={`drawer-sub-item ${activeTab === "tour" ? "active" : ""}`}
                                         onClick={() => {
@@ -1648,6 +1668,19 @@ function App() {
 
                 {activeTab === "distributions" && (
                     <Distributions songs={visibleSongs} userScoresMap={userScoresMap} ratingMode={ratingMode} />
+                )}
+
+                {activeTab === "recommend" && (
+                    <Recommend
+                        songs={visibleSongs}
+                        userScoresMap={userScoresMap}
+                        b39List={b39List}
+                        appendB15List={appendB15List}
+                        potentialData={potentialData}
+                        ratingMode={ratingMode}
+                        settingsTitleLang={settingsTitleLang}
+                        onJacketClick={handleJacketClick}
+                    />
                 )}
             </main>
 
