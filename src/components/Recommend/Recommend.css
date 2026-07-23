@@ -1,6 +1,20 @@
 /* ─────────────────────────────────────────
-   Recommend.css — 간소화 버전
+   Recommend.css
    ───────────────────────────────────────── */
+
+/* ── 패널 & 헤더 ── */
+.recommend-panel {
+    padding: 2rem;
+}
+
+.recommend-panel .section-title-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
 
 /* 유저 체급 */
 .rec-mu-row {
@@ -60,6 +74,9 @@
     align-items: center;
     gap: 0.75rem;
     flex-wrap: wrap;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
 }
 
 .rec-section-tabs {
@@ -267,15 +284,21 @@
     background: rgba(96,165,250,0.1);
 }
 
-/* 핵심 수치 칩 */
-.rec-scores-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+/* 핵심 수치 칩 (데스크톱) */
+.rec-scores-row {
+    display: flex;
+    gap: 0.4rem;
+    flex-shrink: 0;
+    margin-left: auto;
+    margin-right: 0.5rem;
+}
 
 .rec-score-chip {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 0.45rem;
     padding: 0.25rem 0.5rem;
     min-width: 65px;
@@ -310,17 +333,156 @@
     margin-top: 0.15rem;
 }
 
-/* ── 반응형 ── */
+/* ── 반응형 (모바일) ── */
 @media (max-width: 640px) {
-    .recommend-header { padding: 1.1rem 1rem; }
-    .rec-controls { gap: 0.5rem; }
-    .rec-topn-control { margin-left: 0; }
-    .rec-card { gap: 0.6rem; padding: 0.6rem 0.75rem; }
-    .rec-rank-badge { font-size: 0.9rem; min-width: 1.6rem; }
-    .rec-jacket-wrap { width: 44px; height: 44px; }
-    .rec-title { font-size: 0.82rem; }
-    .rec-score-section { min-width: 70px; padding-left: 0.5rem; }
-    .rec-final-score { font-size: 0.95rem; }
-    .rec-final-label { font-size: 0.55rem; }
-    .rec-score-chip { min-width: 55px; }
+    .recommend-panel {
+        padding: 1rem !important;
+    }
+
+    .recommend-panel .section-title-bar {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.75rem !important;
+    }
+
+    .rec-mu-row {
+        width: 100%;
+        gap: 0.4rem;
+    }
+
+    .rec-mu-chip {
+        flex: 1;
+        min-width: 0;
+        padding: 0.3rem 0.5rem;
+    }
+
+    .rec-controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .rec-controls > * {
+        margin: 0 !important;
+    }
+
+    .rec-section-tabs {
+        width: 100%;
+        display: flex;
+    }
+
+    .rec-section-tabs .rec-section-tab {
+        flex: 1;
+        justify-content: center;
+        padding: 0.4rem 0.5rem;
+        font-size: 0.78rem;
+    }
+
+    .rec-topn-control {
+        grid-column: span 2;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .rec-topn-select {
+        flex: 1;
+        width: 100%;
+        text-align: center;
+        padding: 0.3rem 0.5rem;
+        font-size: 0.78rem;
+    }
+
+    /* 카드 그리드 레이아웃 적용 */
+    .rec-card {
+        display: grid;
+        grid-template-areas:
+            "rank jacket info score"
+            "stats stats stats stats";
+        grid-template-columns: auto auto 1fr auto;
+        gap: 0.6rem;
+        padding: 0.65rem 0.8rem;
+        align-items: center;
+    }
+
+    .rec-rank-badge {
+        grid-area: rank;
+        min-width: 1.8rem;
+        font-size: 0.95rem;
+    }
+
+    .rec-jacket-wrap {
+        grid-area: jacket;
+        width: 44px;
+        height: 44px;
+    }
+
+    .rec-info {
+        grid-area: info;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .rec-title {
+        font-size: 0.82rem;
+        line-height: 1.2;
+    }
+
+    .rec-meta {
+        gap: 0.25rem;
+    }
+
+    .rec-diff-badge, .rec-goal-badge, .rec-const-badge, .rec-current-badge {
+        font-size: 0.65rem;
+        padding: 0.1rem 0.35rem;
+    }
+
+    /* 하단 핵심 수치 칩 배치 */
+    .rec-scores-row {
+        grid-area: stats;
+        display: flex;
+        gap: 0.4rem;
+        margin: 0;
+        padding-top: 0.5rem;
+        border-top: 1px dashed rgba(255, 255, 255, 0.06);
+        width: 100%;
+    }
+
+    .rec-score-chip {
+        flex: 1;
+        min-width: 0;
+        padding: 0.2rem 0.4rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 0.35rem;
+    }
+
+    .chip-label {
+        font-size: 0.58rem;
+    }
+
+    .chip-value {
+        font-size: 0.78rem;
+    }
+
+    .rec-score-section {
+        grid-area: score;
+        border-left: none;
+        padding-left: 0;
+        min-width: 65px;
+        align-items: flex-end;
+    }
+
+    .rec-final-score {
+        font-size: 0.95rem;
+        font-weight: 800;
+    }
+
+    .rec-final-label {
+        font-size: 0.55rem;
+    }
 }

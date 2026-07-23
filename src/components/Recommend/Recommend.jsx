@@ -129,30 +129,30 @@ function RecommendCard({ item, rank, settingsTitleLang, onJacketClick }) {
                         </span>
                     )}
                 </div>
+            </div>
 
-                {/* 핵심 수치: 달성 확률 + 상승폭 + 취향 적합도 */}
-                <div className="rec-scores-row">
-                    <div className="rec-score-chip">
-                        <span className="chip-label">달성 확률</span>
-                        <span
-                            className="chip-value"
-                            style={{ color: prob > 0.5 ? "#4ade80" : prob > 0.2 ? "#fbbf24" : "#f87171" }}
-                        >
-                            {pct(prob)}
-                        </span>
-                    </div>
-                    <div className="rec-score-chip">
-                        <span className="chip-label">레이팅</span>
-                        <span className="chip-value" style={{ color: "#60a5fa" }}>
-                            {deltaStr}
-                        </span>
-                    </div>
-                    <div className="rec-score-chip">
-                        <span className="chip-label">패턴 적합도</span>
-                        <span className="chip-value" style={{ color: "#c084fc" }}>
-                            {fmt2(sim)}
-                        </span>
-                    </div>
+            {/* 핵심 수치: 달성 확률 + 상승폭 + 취향 적합도 */}
+            <div className="rec-scores-row">
+                <div className="rec-score-chip">
+                    <span className="chip-label">달성 확률</span>
+                    <span
+                        className="chip-value"
+                        style={{ color: prob > 0.5 ? "#4ade80" : prob > 0.2 ? "#fbbf24" : "#f87171" }}
+                    >
+                        {pct(prob)}
+                    </span>
+                </div>
+                <div className="rec-score-chip">
+                    <span className="chip-label">레이팅</span>
+                    <span className="chip-value" style={{ color: "#60a5fa" }}>
+                        {deltaStr}
+                    </span>
+                </div>
+                <div className="rec-score-chip">
+                    <span className="chip-label">패턴 적합도</span>
+                    <span className="chip-value" style={{ color: "#c084fc" }}>
+                        {fmt2(sim)}
+                    </span>
                 </div>
             </div>
 
@@ -225,19 +225,9 @@ export function Recommend({
     const isAppendSection = ratingMode === "b39" && activeSection === "append";
 
     return (
-        <section className="glass-panel recommend-panel" style={{ padding: "2rem" }}>
+        <section className="glass-panel recommend-panel">
             {/* 헤더 */}
-            <div
-                className="section-title-bar"
-                style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    marginBottom: "1.5rem",
-                    flexWrap: "wrap",
-                    gap: "1rem",
-                }}
-            >
+            <div className="section-title-bar">
                 <div>
                     <h2 className="section-title" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                         <Star size={22} style={{ color: "var(--color-cyan)" }} /> 곡 추천
@@ -268,10 +258,7 @@ export function Recommend({
             </div>
 
             {/* 컨트롤 바 */}
-            <div
-                className="rec-controls"
-                style={{ paddingBottom: "1rem", borderBottom: "1px solid var(--border-color)", marginBottom: "1.5rem" }}
-            >
+            <div className="rec-controls">
                 {/* B39 모드일 때만 섹션 탭 */}
                 {ratingMode === "b39" && (
                     <div className="rec-section-tabs">
