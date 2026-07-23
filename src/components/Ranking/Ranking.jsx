@@ -25,6 +25,14 @@ export const Ranking = ({
     ); // total, normal, append, ap, fc, clear, potential
     const [rankingsSortOrder, setRankingsSortOrder] = useSessionState("pjsk_rankings_sort_order", "desc");
 
+    const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsDesktop(window.innerWidth >= 768);
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
     // --- Sort Handler (Records 스타일: 같은 열 재클릭 시 desc→asc→null 순환) ---
     const handleRankingSort = (field) => {
         if (rankingsSortBy !== field) {
@@ -242,10 +250,10 @@ export const Ranking = ({
                             ) : (
                                 <>
                                     <col style={{ width: "8%" }} />
-                                    <col style={{ width: "41%" }} />
-                                    <col style={{ width: "9%" }} />
-                                    <col style={{ width: "9%" }} />
-                                    <col style={{ width: "9%" }} />
+                                    <col style={{ width: isDesktop ? "41%" : "35%" }} />
+                                    <col style={{ width: isDesktop ? "9%" : "11%" }} />
+                                    <col style={{ width: isDesktop ? "9%" : "11%" }} />
+                                    <col style={{ width: isDesktop ? "9%" : "11%" }} />
                                     <col style={{ width: "8%" }} />
                                     <col style={{ width: "8%" }} />
                                     <col style={{ width: "8%" }} />
