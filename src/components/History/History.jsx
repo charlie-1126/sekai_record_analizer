@@ -146,7 +146,9 @@ export default function History({
                 if (selectedDiff !== "all" && item.diff !== selectedDiff) return false;
 
                 // Level filter
-                if (item.level < minLevel || item.level > maxLevel) return false;
+                const min = minLevel === "" ? 0 : Number(minLevel);
+                const max = maxLevel === "" ? 99 : Number(maxLevel);
+                if (item.level < min || item.level > max) return false;
 
                 // Search query filter
                 if (searchQuery.trim()) {
@@ -470,7 +472,10 @@ export default function History({
                                 min={5}
                                 max={38}
                                 value={minLevel}
-                                onChange={(e) => setMinLevel(Number(e.target.value))}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setMinLevel(val === "" ? "" : Number(val));
+                                }}
                                 style={{
                                     width: "42px",
                                     padding: "0.25rem",
@@ -487,7 +492,10 @@ export default function History({
                                 min={5}
                                 max={38}
                                 value={maxLevel}
-                                onChange={(e) => setMaxLevel(Number(e.target.value))}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setMaxLevel(val === "" ? "" : Number(val));
+                                }}
                                 style={{
                                     width: "42px",
                                     padding: "0.25rem",
