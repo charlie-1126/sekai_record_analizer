@@ -343,7 +343,7 @@ export function recommendB39Normal({ songs, userScoresMap, b39List, goalStatus =
 
     // 유저 성향 벡터
     const userVec = computeUserVector(top39Entries, mu, allTags);
-    // 유저 벡터가 영벡터이면 취향 유사도 연산을 건너뜀
+    // 유저 벡터가 영벡터이면 취향 유사도 연산을 건너뜜
     const userVecIsZero = isZeroVector(userVec);
 
     const results = [];
@@ -765,18 +765,42 @@ export function computeRecommendations({
         let rawAppend = [];
 
         if (filterGoal === "all" || filterGoal === "fc") {
-            const fcNormal = recommendB39Normal({ songs, userScoresMap, b39List, goalStatus: "full_combo", topN: bigN });
+            const fcNormal = recommendB39Normal({
+                songs,
+                userScoresMap,
+                b39List,
+                goalStatus: "full_combo",
+                topN: bigN,
+            });
             rawNormal = rawNormal.concat(fcNormal);
 
-            const fcAppend = recommendB39Append({ songs, userScoresMap, appendB15List, goalStatus: "full_combo", topN: bigN });
+            const fcAppend = recommendB39Append({
+                songs,
+                userScoresMap,
+                appendB15List,
+                goalStatus: "full_combo",
+                topN: bigN,
+            });
             rawAppend = rawAppend.concat(fcAppend);
         }
 
         if (filterGoal === "all" || filterGoal === "ap") {
-            const apNormal = recommendB39Normal({ songs, userScoresMap, b39List, goalStatus: "full_perfect", topN: bigN });
+            const apNormal = recommendB39Normal({
+                songs,
+                userScoresMap,
+                b39List,
+                goalStatus: "full_perfect",
+                topN: bigN,
+            });
             rawNormal = rawNormal.concat(apNormal);
 
-            const apAppend = recommendB39Append({ songs, userScoresMap, appendB15List, goalStatus: "full_perfect", topN: bigN });
+            const apAppend = recommendB39Append({
+                songs,
+                userScoresMap,
+                appendB15List,
+                goalStatus: "full_perfect",
+                topN: bigN,
+            });
             rawAppend = rawAppend.concat(apAppend);
         }
 
@@ -827,4 +851,3 @@ export function computeRecommendations({
         };
     }
 }
-
