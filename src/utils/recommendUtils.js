@@ -838,7 +838,7 @@ export function computeRecommendations({
         }
 
         const b39Normal = mergeAndDedup(rawNormal, topN);
-        const b39Append = mergeAndDedup(rawAppend, Math.floor(topN * 0.7));
+        const b39Append = mergeAndDedup(rawAppend, topN);
 
         return {
             b39Normal,
