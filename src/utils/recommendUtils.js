@@ -4,7 +4,7 @@
  * 레이팅 상승 효율 기반 곡 추천 알고리즘
  *
  * 핵심 공식:
- *   Final Score = (Δ × P(x)) × (1 + α × sim(U, Sw)) × (β × ratio) × (1 + γ × append_weight)
+ *   Final Score = (Δ × P(x)) × (1 + α × sim(U, Sw)) × (1.0 - max(0, (4 - count) * 0.24)) × (1 + γ × append_weight)
  *
  * 모드:
  *   - b39: 일반 B39 + APD B15 분리 추천
@@ -22,8 +22,6 @@ import { isNewSong } from "./potentialUtils";
 const ALPHA = 0.3;
 /** 어펜드 가중치 상수 */
 const GAMMA = 0.5;
-/** 성과 비율 가중치 배율 (상수) */
-const BETA = 1;
 /** 로지스틱 상수 */
 const K = 2.3;
 /** 베이지안 신뢰도 임계값 */
@@ -333,13 +331,11 @@ export function recommendB39Normal({ songs, userScoresMap, b39List, goalStatus =
     const T_gen = b39List.length >= 39 ? b39List[38].rating : 0;
     const multiplier = B39_MULTIPLIERS[goalStatus] || 7.5;
 
-    // FC/AP 성과 비율 계산
-    const listLen = Math.max(1, b39List.length);
+    // 성과 기록 개수 기반 신뢰도 가중치 계산
     const fcCount = b39List.filter((item) => item.status === "full_combo").length;
     const apCount = b39List.filter((item) => item.status === "full_perfect").length;
-    const fcRatio = fcCount / listLen;
-    const apRatio = apCount / listLen;
-    const ratio = goalStatus === "full_perfect" ? apRatio : fcRatio;
+    const count = goalStatus === "full_perfect" ? apCount : fcCount;
+    const confidenceWeight = 1.0 - Math.max(0, (4 - count) * 0.24);
 
     // 유저 체급 계산
     const { mu, muFC, muAP, top39Entries } = computeUserMu(songs, userScoresMap);
@@ -393,7 +389,7 @@ export function recommendB39Normal({ songs, userScoresMap, b39List, goalStatus =
             // 곡 태그 벡터 (유저 벡터가 영벡터면 sim = 0 강제)
             const sim = userVecIsZero ? 0 : cosineSimilarity(userVec, computeSongVector(song, diff, allTags));
 
-            const finalScore = delta * prob * (1 + ALPHA * sim) * Math.max(0.01, BETA * ratio);
+            const finalScore = delta * prob * (1 + ALPHA * sim) * confidenceWeight;
 
             results.push({
                 song,
@@ -485,13 +481,11 @@ export function recommendB39Append({ songs, userScoresMap, appendB15List, goalSt
     const T_apd = appendB15List.length >= 15 ? appendB15List[14].rating : 0;
     const multiplier = B39_MULTIPLIERS[goalStatus] || 7.5;
 
-    // FC/AP 성과 비율 계산
-    const listLen = Math.max(1, appendB15List.length);
+    // 성과 기록 개수 기반 신뢰도 가중치 계산
     const fcCount = appendB15List.filter((item) => item.status === "full_combo").length;
     const apCount = appendB15List.filter((item) => item.status === "full_perfect").length;
-    const fcRatio = fcCount / listLen;
-    const apRatio = apCount / listLen;
-    const ratio = goalStatus === "full_perfect" ? apRatio : fcRatio;
+    const count = goalStatus === "full_perfect" ? apCount : fcCount;
+    const confidenceWeight = 1.0 - Math.max(0, (4 - count) * 0.24);
 
     // 전체 체급 (태그 벡터 및 폴백용)
     const { mu, top39Entries } = computeUserMu(songs, userScoresMap);
@@ -542,7 +536,7 @@ export function recommendB39Append({ songs, userScoresMap, appendB15List, goalSt
         // 유저 벡터가 영벡터면 sim = 0 강제
         const sim = userVecIsZero ? 0 : cosineSimilarity(userVec, computeSongVector(song, "append", allTags));
 
-        const finalScore = delta * prob * (1 + ALPHA * sim) * Math.max(0.01, BETA * ratio);
+        const finalScore = delta * prob * (1 + ALPHA * sim) * confidenceWeight;
 
         results.push({
             song,
@@ -611,21 +605,13 @@ export function recommendPotential({
     const { muFC_apd, muAP_apd, apdTop15Entries } = computeApdMu(songs, userScoresMap, mu);
     // ────────────────────────────────────────────────────────────────
 
-    // 일반 상위 39개(top39Entries) 기준 FC/AP 비율
-    const normLen = Math.max(1, top39Entries.length);
+    // 일반 상위 39개(top39Entries) 기준 FC/AP 기록 개수
     const normFcCount = top39Entries.filter((e) => e.status === "full_combo").length;
     const normApCount = top39Entries.filter((e) => e.status === "full_perfect").length;
-    const normFcRatio = normFcCount / normLen;
-    const normApRatio = normApCount / normLen;
-    const normRatio = goalStatus === "full_perfect" ? normApRatio : normFcRatio;
 
-    // 어펜드 상위 15개(apdTop15Entries) 기준 FC/AP 비율
-    const apdLen = Math.max(1, apdTop15Entries.length);
+    // 어펜드 상위 15개(apdTop15Entries) 기준 FC/AP 기록 개수
     const apdFcCount = apdTop15Entries.filter((e) => e.status === "full_combo").length;
     const apdApCount = apdTop15Entries.filter((e) => e.status === "full_perfect").length;
-    const apdFcRatio = apdFcCount / apdLen;
-    const apdApRatio = apdApCount / apdLen;
-    const apdRatio = goalStatus === "full_perfect" ? apdApRatio : apdFcRatio;
 
     const allTags = extractAllTags(songs);
     const userVec = computeUserVector(top39Entries, mu, allTags);
@@ -704,11 +690,18 @@ export function recommendPotential({
             // 어펜드 가중치 성분
             const appendTerm = GAMMA * (isAppendChart ? W_apd : 1 - W_apd);
 
-            // 성과 비율 가중치 성분
-            const ratioTerm = BETA * (isAppendChart ? apdRatio : normRatio);
+            // 성과 신뢰도 가중치 성분 계산
+            const count = isAppendChart
+                ? goalStatus === "full_perfect"
+                    ? apdApCount
+                    : apdFcCount
+                : goalStatus === "full_perfect"
+                  ? normApCount
+                  : normFcCount;
+            const confidenceWeight = 1.0 - Math.max(0, (4 - count) * 0.24);
 
             // 곱연산 가중치 결합
-            const combinedWeight = (1 + ALPHA * sim) * (1 + appendTerm) * Math.max(0.01, ratioTerm);
+            const combinedWeight = (1 + ALPHA * sim) * (1 + appendTerm) * confidenceWeight;
 
             // 포텐셜 최종 점수 스케일을 B39 수준으로 보정하기 위해 400배 곱해줍니다.
             const finalScore = delta * prob * combinedWeight * 400;
