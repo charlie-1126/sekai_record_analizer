@@ -762,7 +762,129 @@ async function prefetchJacketsBackground(songs) {
   }
 }
 
-function processAndSaveSongs(songsArray, releaseDates = {}, songTypes = {}) {
+async function fetchWikiDifficultyData() {
+  const wikiDifficultyData = {
+    hard: {},
+    expert: {},
+    master: {},
+    append: {}
+  };
+  const wikiUrls = {
+    hard: "https://pjsekai.com/?%E6%A5%BD%E6%9B%B2%E9%9B%A3%E6%98%93%E5%BA%A6%E8%A1%A8HARD",
+    expert: "https://pjsekai.com/?%E6%A5%BD%E6%9B%B2%E9%9B%A3%E6%98%93%E5%BA%A6%E8%A1%A8EXPERT",
+    master: "https://pjsekai.com/?%E6%A5%BD%E6%9B%B2%E9%9B%A3%E6%98%93%E5%BA%A6%E8%A1%A8MASTER",
+    append: "https://pjsekai.com/?%E6%A5%BD%E6%9B%B2%E9%9B%A3%E6%98%93%E5%BA%A6%E8%A1%A8APPEND"
+  };
+
+  const EVAL_MAP = {
+    "最下位－": "-3",
+    "最下位": "-2",
+    "下位": "-1",
+    "適正": "0",
+    "上位": "+1",
+    "最上位": "+2",
+    "最上位＋": "+3",
+    "判定困難": "판정곤란"
+  };
+
+  const TAG_MAP = {
+    "物量": "물량",
+    "長時間": "장시간",
+    "乱打": "난타",
+    "トリル": "트릴",
+    "縦連": "종련",
+    "微縦連": "미세 종련",
+    "極小ノーツ": "극소 노트",
+    "トレース難": "트레이스 난",
+    "スライド難": "슬라이드 난",
+    "左右振り": "좌우 흔들기",
+    "移動2連打": "이동 2연타",
+    "フリック難": "플릭 난",
+    "持ち替え・交差": "손 교체,교차",
+    "盆踊り": "본오도리",
+    "くの字": "く자 배치",
+    "階段": "계단",
+    "多点押し": "다점 누르기",
+    "終点判定": "종점 판정",
+    "5k": "5k",
+    "6k": "6k",
+    "ハネリズム": "하네리듬",
+    "リズム難": "리듬난",
+    "変拍子": "변박",
+    "ポリリズム": "폴리리듬",
+    "認識難": "인식난",
+    "視認難": "시인난",
+    "局所難": "국소난",
+    "速度変化": "속도변화",
+    "譜面停止": "보면정지"
+  };
+
+  const normalizeNameForType = name => name ? name.toLowerCase().replace(/[\s\-\_\,\.\!\?\'\"\`\’\“\”\：\:\；\;\~\(\)\[\]\※]/g, '').replace(/[\uFF01-\uFF5E]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0)) : '';
+
+  for (const [diff, url] of Object.entries(wikiUrls)) {
+    try {
+      console.log(`[Auto Sync] Fetching song ${diff} difficulty wiki data...`);
+      const html = await fetchTextWithFallback(url);
+      const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+      let m;
+      while ((m = trRegex.exec(html)) !== null) {
+        const trContent = m[1];
+        const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+        const tds = [];
+        let tdMatch;
+        while ((tdMatch = tdRegex.exec(trContent)) !== null) {
+          tds.push(tdMatch[1]);
+        }
+        
+        if (tds.length >= 3 && !tds[0].includes("曲名")) {
+          const titleLinkMatch = tds[0].match(/<a[^>]*>([\s\S]*?)<\/a>/i);
+          let rawTitle = titleLinkMatch ? titleLinkMatch[1] : tds[0];
+          rawTitle = rawTitle.replace(/<[^>]*>/g, "").trim();
+          
+          if (!rawTitle) continue;
+
+          let rawEval = tds[1].replace(/<span[^>]*>[\s\S]*?<\/span>/gi, "").replace(/<[^>]*>/g, "").trim();
+          let mappedEval = EVAL_MAP[rawEval] || null;
+
+          const mappedTags = [];
+          const liRegex = /<li>([\s\S]*?)<\/li>/gi;
+          let liMatch;
+          while ((liMatch = liRegex.exec(tds[2])) !== null) {
+            let tagText = liMatch[1].replace(/<[^>]*>/g, "").trim();
+            let mappedTag = TAG_MAP[tagText];
+            if (!mappedTag) {
+              const lowerTagText = tagText.toLowerCase();
+              const foundKey = Object.keys(TAG_MAP).find(k => k.toLowerCase() === lowerTagText);
+              if (foundKey) {
+                mappedTag = TAG_MAP[foundKey];
+              }
+            }
+            if (mappedTag) {
+              mappedTags.push(mappedTag);
+            }
+          }
+
+          if (mappedEval || mappedTags.length > 0) {
+            const normTitle = normalizeNameForType(rawTitle);
+            const songInfo = {
+              evaluation: mappedEval,
+              tags: mappedTags
+            };
+            wikiDifficultyData[diff][normTitle] = songInfo;
+            wikiDifficultyData[diff][rawTitle] = songInfo;
+          }
+        }
+      }
+      console.log(`[Auto Sync] Successfully parsed ${Object.keys(wikiDifficultyData[diff]).length} songs for ${diff}.`);
+    } catch (err) {
+      console.error(`[Auto Sync] Failed to fetch/parse ${diff} from pjsekai.com:`, err.message);
+    }
+  }
+
+  return wikiDifficultyData;
+}
+
+function processAndSaveSongs(songsArray, releaseDates = {}, songTypes = {}, wikiDifficultyData = { hard: {}, expert: {}, master: {}, append: {} }) {
   const currentSongs = dbSongs.read();
   const currentMap = new Map(currentSongs.map(s => [s.id, s]));
   let updatedCount = 0;
@@ -843,6 +965,43 @@ function processAndSaveSongs(songsArray, releaseDates = {}, songTypes = {}) {
       isOriginal = true;
     }
 
+    const existingSong = currentMap.get(song.id);
+    let evaluationsVal = song.evaluations || existingSong?.evaluations || {};
+    let tagsVal = song.tags || existingSong?.tags || {};
+
+    if (wikiDifficultyData && wikiDifficultyData.hard && Object.keys(wikiDifficultyData.hard).length > 0) {
+      const evaluations = {};
+      const tags = {};
+      const difficulties = ['hard', 'expert', 'master', 'append'];
+      for (const d of difficulties) {
+        let matchData = null;
+        const normJp = normalizeNameForType(song.title_jp);
+        const normKo = normalizeNameForType(song.title_ko);
+        const normHangul = normalizeNameForType(song.title_hangul);
+
+        if (normJp && wikiDifficultyData[d][normJp]) {
+          matchData = wikiDifficultyData[d][normJp];
+        } else if (song.title_jp && wikiDifficultyData[d][song.title_jp]) {
+          matchData = wikiDifficultyData[d][song.title_jp];
+        } else if (normKo && wikiDifficultyData[d][normKo]) {
+          matchData = wikiDifficultyData[d][normKo];
+        } else if (normHangul && wikiDifficultyData[d][normHangul]) {
+          matchData = wikiDifficultyData[d][normHangul];
+        }
+
+        if (matchData) {
+          if (matchData.evaluation !== null) {
+            evaluations[d] = matchData.evaluation;
+          }
+          if (matchData.tags && matchData.tags.length > 0) {
+            tags[d] = matchData.tags;
+          }
+        }
+      }
+      evaluationsVal = evaluations;
+      tagsVal = tags;
+    }
+
     const refinedSong = {
       id: song.id,
       title_ko: song.title_ko || '',
@@ -856,7 +1015,9 @@ function processAndSaveSongs(songsArray, releaseDates = {}, songTypes = {}) {
       composer: song.composer || song.composer_jp || '',
       jacketUrl: `/jackets/jacket_s_${String(song.id).padStart(3, '0')}.webp`,
       publishedAt: publishedAtVal,
-      original: isOriginal
+      original: isOriginal,
+      evaluations: evaluationsVal,
+      tags: tagsVal
     };
 
     if (currentMap.has(song.id)) {
@@ -935,7 +1096,14 @@ async function syncSongsInternal(targetUrl = SONGS_API_URL) {
       console.error('[Auto Sync] Failed to fetch song types, fallback to empty:', e.message);
     }
 
-    return processAndSaveSongs(apiResponse, releaseDates, songTypes);
+    let wikiDifficultyData = { hard: {}, expert: {}, master: {}, append: {} };
+    try {
+      wikiDifficultyData = await fetchWikiDifficultyData();
+    } catch (e) {
+      console.error('[Auto Sync] Failed to fetch wiki difficulty data:', e.message);
+    }
+
+    return processAndSaveSongs(apiResponse, releaseDates, songTypes, wikiDifficultyData);
   } catch (error) {
     console.error('[Auto Sync] Error syncing songs:', error);
     throw error;
