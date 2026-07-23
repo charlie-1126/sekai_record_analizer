@@ -116,18 +116,6 @@ function RecommendCard({ item, rank, settingsTitleLang, onJacketClick }) {
                         {goalLabel}
                     </span>
                     <span className="rec-const-badge">상수 {fmt1(constant)}</span>
-                    {currentLabel && (
-                        <span
-                            className="rec-current-badge"
-                            style={{
-                                color: currentColor,
-                                borderColor: `${currentColor}55`,
-                                background: `${currentColor}18`,
-                            }}
-                        >
-                            현재: {currentLabel}
-                        </span>
-                    )}
                 </div>
             </div>
 

@@ -1338,7 +1338,9 @@ function App() {
                             <div className="drawer-accordion">
                                 <button
                                     className={`drawer-accordion-trigger ${
-                                        ["distributions", "tour", "calculator", "compare", "recommend"].includes(activeTab)
+                                        ["distributions", "tour", "calculator", "compare", "recommend"].includes(
+                                            activeTab,
+                                        )
                                             ? "active-parent"
                                             : ""
                                     }`}
@@ -1363,7 +1365,7 @@ function App() {
                                         }}
                                         style={{ color: activeTab === "recommend" ? "#a78bfa" : undefined }}
                                     >
-                                        곡 추천 ✨
+                                        곡 추천
                                     </button>
                                     <button
                                         className={`drawer-sub-item ${activeTab === "tour" ? "active" : ""}`}
