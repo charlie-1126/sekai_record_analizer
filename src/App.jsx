@@ -55,6 +55,7 @@ import Admin from "./components/Admin/Admin";
 import { Recommend } from "./components/Recommend/Recommend";
 import AuthModal from "./components/Auth/AuthModal";
 import ImportPreviewModal from "./components/Records/ImportPreviewModal";
+import ExportModal from "./components/Records/ExportModal";
 import JacketDetailsModal from "./components/Common/JacketDetailsModal";
 import UpdateNotesModal, { UPDATE_NOTES } from "./components/Common/UpdateNotesModal";
 
@@ -196,6 +197,7 @@ function App() {
     const [showImportPreview, setShowImportPreview] = useState(false);
     const [pendingImportScores, setPendingImportScores] = useState(null);
     const [previewCalculatedData, setPreviewCalculatedData] = useState(null);
+    const [showExportModal, setShowExportModal] = useState(false);
 
     const fileInputRef = useRef(null);
     const skipNextFetch = useRef(false);
@@ -618,9 +620,77 @@ function App() {
         reader.onload = (event) => {
             try {
                 const data = JSON.parse(event.target.result);
-                const newScores = data.scores || (Array.isArray(data) ? data : null);
+                let newScores = data.scores || (Array.isArray(data) ? data : null);
 
                 if (newScores && Array.isArray(newScores)) {
+                    // Check if the uploaded JSON is proprietary format or standard format
+                    const isSekaitoolFormat = data.format === "sekaitool" || newScores.some(s => s.dates && Object.keys(s.dates).length > 0);
+
+                    if (!isSekaitoolFormat) {
+                        // Sekaforce compatible format: merge existing dates so they aren't wiped out!
+                        const currentScoresMap = new Map();
+                        scores.forEach(s => {
+                            if (s && s.id) {
+                                currentScoresMap.set(String(s.id), s);
+                            }
+                        });
+
+                        newScores = newScores.map(importedItem => {
+                            const existingItem = currentScoresMap.get(String(importedItem.id));
+                            const mergedItem = { ...importedItem };
+                            let mergedDates = existingItem && existingItem.dates ? JSON.parse(JSON.stringify(existingItem.dates)) : {};
+
+                            // Clean up and merge dates based on imported status (no automatic today's date generation)
+                            const difficulties = ['easy', 'normal', 'hard', 'expert', 'master', 'append'];
+                            difficulties.forEach(diff => {
+                                const newStatus = importedItem[diff];
+
+                                if (!newStatus || newStatus === 'none') {
+                                    if (mergedDates[diff]) {
+                                        mergedDates[diff] = {
+                                            fc: null,
+                                            ap: null
+                                        };
+                                    }
+                                } else if (newStatus === 'full_combo') {
+                                    const currentFc = mergedDates[diff]?.fc || null;
+                                    mergedDates[diff] = {
+                                        fc: currentFc,
+                                        ap: null
+                                    };
+                                } else if (newStatus === 'full_perfect') {
+                                    const currentFc = mergedDates[diff]?.fc || null;
+                                    const currentAp = mergedDates[diff]?.ap || null;
+                                    mergedDates[diff] = {
+                                        fc: currentFc,
+                                        ap: currentAp
+                                    };
+                                }
+                            });
+
+                            mergedItem.dates = mergedDates;
+                            return mergedItem;
+                        });
+                    } else {
+                        // sekaitool proprietary format: load dates from file, fall back to existing dates for missing ones
+                        const currentScoresMap = new Map();
+                        scores.forEach(s => {
+                            if (s && s.id) {
+                                currentScoresMap.set(String(s.id), s);
+                            }
+                        });
+
+                        newScores = newScores.map(importedItem => {
+                            const existingItem = currentScoresMap.get(String(importedItem.id));
+                            const mergedItem = { ...importedItem };
+
+                            if (!mergedItem.dates && existingItem && existingItem.dates) {
+                                mergedItem.dates = JSON.parse(JSON.stringify(existingItem.dates));
+                            }
+                            return mergedItem;
+                        });
+                    }
+
                     const calculated = calculateTempRatings(newScores, songs);
                     setPendingImportScores(newScores);
                     setPreviewCalculatedData(calculated);
@@ -632,6 +702,7 @@ function App() {
                     alert("올바르지 않은 JSON 파일입니다.");
                 }
             } catch (err) {
+                console.error(err);
                 alert("JSON 파싱 에러.");
             }
         };
@@ -654,14 +725,18 @@ function App() {
         setPreviewCalculatedData(null);
     };
 
-    // --- Handle Custom File Download ---
+    // --- Open Export Format Selection Dialog ---
     const handleFileDownload = () => {
+        setShowExportModal(true);
+    };
+
+    // --- Export in Sekaforce Compatible Format (excludes dates) ---
+    const exportSekaforceFormat = () => {
         if (!songs || songs.length === 0) {
             alert("곡 데이터가 로드되지 않았습니다.");
             return;
         }
 
-        // Fast lookup map for user's play records
         const scoreMap = new Map();
         const scoresToExport = effectiveScores;
         if (scoresToExport && Array.isArray(scoresToExport)) {
@@ -672,13 +747,68 @@ function App() {
             });
         }
 
-        // Helper to convert internal 'none' string to pure null for clean JSON export
         const sanitizeValue = (val) => {
             if (val === undefined || val === null || val === "none" || val === "") return null;
             return val;
         };
 
-        // Construct a structured list containing ALL loaded songs mapped with records
+        const completeScores = songs.map((song) => {
+            const playRecord = scoreMap.get(String(song.id));
+            return {
+                id: String(song.id),
+                title_jp: song.title_jp || song.title_ko || "",
+                easy: playRecord ? sanitizeValue(playRecord.easy) : null,
+                normal: playRecord ? sanitizeValue(playRecord.normal) : null,
+                hard: playRecord ? sanitizeValue(playRecord.hard) : null,
+                expert: playRecord ? sanitizeValue(playRecord.expert) : null,
+                master: playRecord ? sanitizeValue(playRecord.master) : null,
+                append: playRecord ? sanitizeValue(playRecord.append) : null,
+            };
+        });
+
+        const exportData = {
+            version: 2,
+            exportedAt: getKstISOString(),
+            scores: completeScores,
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        const exportUser = effectiveUser;
+        const filename = exportUser
+            ? `${exportUser.nickname || exportUser.username}_sekaforce_scores.json`
+            : "sekaforce_scores.json";
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    // --- Export in sekaitool Proprietary Format (includes dates) ---
+    const exportProprietaryFormat = () => {
+        if (!songs || songs.length === 0) {
+            alert("곡 데이터가 로드되지 않았습니다.");
+            return;
+        }
+
+        const scoreMap = new Map();
+        const scoresToExport = effectiveScores;
+        if (scoresToExport && Array.isArray(scoresToExport)) {
+            scoresToExport.forEach((s) => {
+                if (s && s.id) {
+                    scoreMap.set(String(s.id), s);
+                }
+            });
+        }
+
+        const sanitizeValue = (val) => {
+            if (val === undefined || val === null || val === "none" || val === "") return null;
+            return val;
+        };
+
         const completeScores = songs.map((song) => {
             const playRecord = scoreMap.get(String(song.id));
             return {
@@ -695,6 +825,7 @@ function App() {
         });
 
         const exportData = {
+            format: "sekaitool",
             version: 2,
             exportedAt: getKstISOString(),
             scores: completeScores,
@@ -706,8 +837,8 @@ function App() {
         link.href = url;
         const exportUser = effectiveUser;
         const filename = exportUser
-            ? `${exportUser.nickname || exportUser.username}_sekai_scores.json`
-            : "sekai_scores.json";
+            ? `${exportUser.nickname || exportUser.username}_sekaitool_scores.json`
+            : "sekaitool_scores.json";
         link.download = filename;
         document.body.appendChild(link);
         link.click();
@@ -1625,6 +1756,13 @@ function App() {
                 playerRating={playerRating}
                 playerAppendRating={playerAppendRating}
                 overallStats={overallStats}
+            />
+
+            <ExportModal
+                isOpen={showExportModal}
+                onClose={() => setShowExportModal(false)}
+                onExportSekaforce={exportSekaforceFormat}
+                onExportProprietary={exportProprietaryFormat}
             />
 
             <JacketDetailsModal
