@@ -295,9 +295,11 @@ export const PotentialDashboard = ({
                                 color: "var(--text-muted)",
                             }}
                         >
-                            {subTab === "old"
-                                ? "Old Best 30에 해당하는 기록이 없습니다."
-                                : "New Best 10에 해당하는 신곡 기록이 없습니다."}
+                            {viewedUser && viewedUser.privacyScope?.showDashboardSongs === false
+                                ? "기록이 비공개 설정되어 있습니다."
+                                : subTab === "old"
+                                  ? "Old Best 30에 해당하는 기록이 없습니다."
+                                  : "New Best 10에 해당하는 신곡 기록이 없습니다."}
                         </div>
                     ) : (
                         allItems.map((item, index) => {
@@ -371,30 +373,39 @@ export const PotentialDashboard = ({
                                         </div>
                                         <div className="b39-rating-row">
                                             <span className="b39-constant">{item.constant.toFixed(1)}</span>
-                                            {subTab === "new" && item.song.publishedAt && (() => {
-                                                const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
-                                                const pubAt = Number(item.song.publishedAt);
-                                                const remainingMs = (pubAt + ninetyDaysMs) - Date.now();
-                                                const remainingDays = Math.max(0, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
-                                                const isUrgent = remainingDays <= 14;
-                                                return (
-                                                    <span
-                                                        className="b39-dday"
-                                                        style={{
-                                                            fontSize: "0.68rem",
-                                                            fontWeight: 800,
-                                                            color: isUrgent ? "var(--color-hard)" : "var(--text-muted)",
-                                                            background: isUrgent ? "rgba(245, 158, 11, 0.1)" : "rgba(255, 255, 255, 0.05)",
-                                                            padding: "0.08rem 0.3rem",
-                                                            borderRadius: "4px",
-                                                            marginLeft: "0.5rem"
-                                                        }}
-                                                        title={`구곡 전환까지 ${remainingDays}일 남음`}
-                                                    >
-                                                        D-{remainingDays}
-                                                    </span>
-                                                );
-                                            })()}
+                                            {subTab === "new" &&
+                                                item.song.publishedAt &&
+                                                (() => {
+                                                    const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+                                                    const pubAt = Number(item.song.publishedAt);
+                                                    const remainingMs = pubAt + ninetyDaysMs - Date.now();
+                                                    const remainingDays = Math.max(
+                                                        0,
+                                                        Math.ceil(remainingMs / (24 * 60 * 60 * 1000)),
+                                                    );
+                                                    const isUrgent = remainingDays <= 14;
+                                                    return (
+                                                        <span
+                                                            className="b39-dday"
+                                                            style={{
+                                                                fontSize: "0.68rem",
+                                                                fontWeight: 800,
+                                                                color: isUrgent
+                                                                    ? "var(--color-hard)"
+                                                                    : "var(--text-muted)",
+                                                                background: isUrgent
+                                                                    ? "rgba(245, 158, 11, 0.1)"
+                                                                    : "rgba(255, 255, 255, 0.05)",
+                                                                padding: "0.08rem 0.3rem",
+                                                                borderRadius: "4px",
+                                                                marginLeft: "0.5rem",
+                                                            }}
+                                                            title={`구곡 전환까지 ${remainingDays}일 남음`}
+                                                        >
+                                                            D-{remainingDays}
+                                                        </span>
+                                                    );
+                                                })()}
                                             <span
                                                 className="b39-rating-value"
                                                 style={{
@@ -402,7 +413,7 @@ export const PotentialDashboard = ({
                                                     WebkitBackgroundClip: "text",
                                                     backgroundClip: "text",
                                                     WebkitTextFillColor: "transparent",
-                                                    marginLeft: "auto"
+                                                    marginLeft: "auto",
                                                 }}
                                             >
                                                 {item.potential.toFixed(1)}

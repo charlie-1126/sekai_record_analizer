@@ -50,6 +50,7 @@ import { Compare } from "./components/Compare/Compare";
 import { Ranking } from "./components/Ranking/Ranking";
 import Distributions from "./components/Distributions/Distributions";
 import SettingsTab from "./components/Settings/Settings";
+import PrivacySettingsModal from "./components/Settings/PrivacySettingsModal";
 import Admin from "./components/Admin/Admin";
 import { Recommend } from "./components/Recommend/Recommend";
 import AuthModal from "./components/Auth/AuthModal";
@@ -179,6 +180,7 @@ function App() {
     const effectiveScores = viewedScores ? viewedScores : scores;
     const effectiveUser = viewedUser ? viewedUser : currentUser;
     const [showAuthModal, setShowAuthModal] = useState(false);
+    const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
     // --- Friends & Settings States ---
     const [friendsList, setFriendsList] = useState([]);
@@ -498,12 +500,26 @@ function App() {
     };
 
     // --- Profile & Settings Saver Handler ---
-    const handleSaveSettings = async (newNickname, newTitleLang, newRatingMode, newShowUnreleased, newTrainerSpeed) => {
+    const handleSaveSettings = async (
+        newNickname,
+        newTitleLang,
+        newRatingMode,
+        newShowUnreleased,
+        newTrainerSpeed,
+        newPrivacyTarget,
+        newPrivacyScope
+    ) => {
         const nicknameToSave = newNickname !== undefined ? newNickname : settingsNickname;
         const langToSave = newTitleLang !== undefined ? newTitleLang : settingsTitleLang;
         const ratingModeToSave = newRatingMode !== undefined ? newRatingMode : ratingMode;
         const showUnreleasedToSave = newShowUnreleased !== undefined ? newShowUnreleased : showUnreleased;
         const trainerSpeedToSave = newTrainerSpeed !== undefined ? newTrainerSpeed : trainerSpeed;
+
+        const privacyTargetToSave = newPrivacyTarget !== undefined ? newPrivacyTarget : (currentUser?.settings?.privacyTarget || "public");
+        const privacyScopeToSave = newPrivacyScope !== undefined ? newPrivacyScope : (currentUser?.settings?.privacyScope || {
+            publicScope: { showDashboardSongs: true, showDetailedScores: false, showTimeline: false },
+            friendsScope: { showDashboardSongs: true, showDetailedScores: true, showTimeline: true }
+        });
 
         if (newTrainerSpeed !== undefined) {
             setTrainerSpeed(newTrainerSpeed);
@@ -529,6 +545,8 @@ function App() {
                 ratingMode: ratingModeToSave,
                 showUnreleased: showUnreleasedToSave,
                 trainerSpeed: trainerSpeedToSave,
+                privacyTarget: privacyTargetToSave,
+                privacyScope: privacyScopeToSave,
             };
             const res = await fetch("/api/user/settings", {
                 method: "POST",
@@ -834,17 +852,27 @@ function App() {
                 setIsViewedDashboardLoading(true);
                 setViewedDashboardError("");
                 try {
-                    const res = await fetch(`/api/scores/user/${routeUsername}`);
+                    const headers = {};
+                    if (currentUser && currentUser.token) {
+                        headers["Authorization"] = `Bearer ${currentUser.token}`;
+                    }
+                    const res = await fetch(`/api/scores/user/${routeUsername}`, { headers });
                     if (res.ok) {
                         const data = await res.json();
                         setViewedUser({
                             username: data.username,
                             nickname: data.nickname,
                             rating_history: data.rating_history || {},
+                            privacyScope: data.privacyScope || 'all',
+                            ratings: data.ratings,
+                            overallStats: data.overallStats,
                         });
                         setViewedScores(data.scores || []);
                     } else if (res.status === 404) {
                         setViewedDashboardError("해당 유저를 찾을 수 없습니다.");
+                    } else if (res.status === 403) {
+                        const data = await res.json();
+                        setViewedDashboardError(data.error || "비공개 프로필입니다.");
                     } else {
                         setViewedDashboardError("유저 정보를 불러오는 중 에러가 발생했습니다.");
                     }
@@ -928,14 +956,25 @@ function App() {
     }, [allRatings]);
 
     const playerRating = useMemo(() => {
+        if (viewedUser && viewedUser.privacyScope?.showDashboardSongs === false) {
+            return viewedUser.ratings?.normal || 0;
+        }
         const sum = b39List.reduce((acc, curr) => acc + curr.rating, 0);
         return Math.round(sum);
-    }, [b39List]);
+    }, [b39List, viewedUser]);
 
     // --- Potential Rating ---
     const potentialData = useMemo(() => {
+        if (viewedUser && viewedUser.privacyScope?.showDashboardSongs === false) {
+            return {
+                potential4: viewedUser.ratings?.potential || 0.0,
+                potential2: viewedUser.ratings?.potential || 0.0,
+                oldBest30: [],
+                newBest10: [],
+            };
+        }
         return computePotentialRating(songs, userScoresMap);
-    }, [songs, userScoresMap]);
+    }, [songs, userScoresMap, viewedUser]);
 
     // --- Compute Append Ratings (B15 - ONLY APPEND!) ---
     const appendRatings = useMemo(() => {
@@ -980,12 +1019,19 @@ function App() {
 
     // Append R = sum(B15) * 2.6
     const playerAppendRating = useMemo(() => {
+        if (viewedUser && viewedUser.privacyScope?.showDashboardSongs === false) {
+            return viewedUser.ratings?.append || 0;
+        }
         const sum = appendB15List.reduce((acc, curr) => acc + curr.rating, 0);
         return Math.round(sum * 2.6);
-    }, [appendB15List]);
+    }, [appendB15List, viewedUser]);
 
     // --- Overall stats ---
     const overallStats = useMemo(() => {
+        if (viewedUser && viewedUser.overallStats) {
+            return viewedUser.overallStats;
+        }
+
         let totalPlayed = 0;
         let apCount = 0;
         let fcCount = 0;
@@ -1009,7 +1055,7 @@ function App() {
             fcCount,
             clearCount,
         };
-    }, [effectiveScores]);
+    }, [effectiveScores, viewedUser]);
 
     return (
         <div className="app-wrapper">
@@ -1603,68 +1649,138 @@ function App() {
 
             <UpdateNotesModal isOpen={showUpdateNotesModal} onClose={handleCloseUpdateNotes} />
 
+            <PrivacySettingsModal
+                isOpen={showPrivacyModal}
+                onClose={() => setShowPrivacyModal(false)}
+                currentUser={currentUser}
+                handleSaveSettings={handleSaveSettings}
+                settingsNickname={settingsNickname}
+                settingsTitleLang={settingsTitleLang}
+                ratingMode={ratingMode}
+                showUnreleased={showUnreleased}
+                trainerSpeed={trainerSpeed}
+            />
+
             <main className={`container ${activeTab === "pattern" ? "pattern-full-width" : ""}`} style={{ flex: 1 }}>
-                {activeTab === "dashboard" &&
-                    (ratingMode === "potential" ? (
-                        <PotentialDashboard
-                            effectiveUser={effectiveUser}
-                            potentialRating={potentialData.potential4}
-                            oldBest30={potentialData.oldBest30}
-                            newBest10={potentialData.newBest10}
-                            isViewedDashboardLoading={isViewedDashboardLoading}
-                            viewedDashboardError={viewedDashboardError}
-                            viewedUser={viewedUser}
-                            settingsTitleLang={settingsTitleLang}
-                        />
-                    ) : (
-                        <Dashboard
-                            effectiveUser={effectiveUser}
-                            playerRating={playerRating}
-                            playerAppendRating={playerAppendRating}
-                            b39List={b39List}
-                            appendB15List={appendB15List}
-                            overallStats={overallStats}
-                            isViewedDashboardLoading={isViewedDashboardLoading}
-                            viewedDashboardError={viewedDashboardError}
-                            viewedUser={viewedUser}
-                            settingsTitleLang={settingsTitleLang}
-                        />
-                    ))}
+                {isViewedDashboardLoading && ["dashboard", "records", "history"].includes(activeTab) ? (
+                    <div style={{ textAlign: "center", padding: "5rem 0", color: "var(--text-muted)" }}>
+                        <div
+                            className="loading-spinner"
+                            style={{
+                                display: "inline-block",
+                                width: "40px",
+                                height: "40px",
+                                border: "4px solid rgba(255,255,255,0.1)",
+                                borderRadius: "50%",
+                                borderTopColor: "var(--color-cyan)",
+                                animation: "spin 1s linear infinite",
+                                marginBottom: "1rem",
+                            }}
+                        ></div>
+                        <style>{`
+                            @keyframes spin {
+                                to { transform: rotate(360deg); }
+                            }
+                        `}</style>
+                        <div style={{ fontWeight: "700" }}>유저 정보를 불러오는 중입니다...</div>
+                    </div>
+                ) : !isViewedDashboardLoading && viewedDashboardError && ["dashboard", "records", "history"].includes(activeTab) ? (
+                    <div
+                        className="glass-panel"
+                        style={{
+                            textAlign: "center",
+                            padding: "4rem 2rem",
+                            margin: "2rem auto",
+                            maxWidth: "500px",
+                            border: "1px solid rgba(220,53,69,0.2)",
+                        }}
+                    >
+                        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>⚠️</div>
+                        <h3
+                            style={{
+                                fontSize: "1.2rem",
+                                marginBottom: "1.5rem",
+                                fontWeight: "700",
+                                color: "var(--color-danger)",
+                            }}
+                        >
+                            {viewedDashboardError}
+                        </h3>
+                        <button className="btn btn-primary animate-glow" onClick={() => {
+                            setViewedUser(null);
+                            setViewedScores(null);
+                            setViewedDashboardError("");
+                            navigate("/dashboard");
+                        }}>
+                            내 대시보드로 돌아가기
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        {activeTab === "dashboard" &&
+                            (ratingMode === "potential" ? (
+                                <PotentialDashboard
+                                    effectiveUser={effectiveUser}
+                                    potentialRating={potentialData.potential4}
+                                    oldBest30={potentialData.oldBest30}
+                                    newBest10={potentialData.newBest10}
+                                    isViewedDashboardLoading={isViewedDashboardLoading}
+                                    viewedDashboardError={viewedDashboardError}
+                                    viewedUser={viewedUser}
+                                    settingsTitleLang={settingsTitleLang}
+                                />
+                            ) : (
+                                <Dashboard
+                                    effectiveUser={effectiveUser}
+                                    playerRating={playerRating}
+                                    playerAppendRating={playerAppendRating}
+                                    b39List={b39List}
+                                    appendB15List={appendB15List}
+                                    overallStats={overallStats}
+                                    isViewedDashboardLoading={isViewedDashboardLoading}
+                                    viewedDashboardError={viewedDashboardError}
+                                    viewedUser={viewedUser}
+                                    settingsTitleLang={settingsTitleLang}
+                                />
+                            ))}
 
-                {activeTab === "ranking" && (
-                    <Ranking
-                        currentUser={effectiveUser}
-                        ratingMode={ratingMode}
-                        myNormalRating={playerRating}
-                        myAppendRating={playerAppendRating}
-                        myPotentialRating={potentialData.potential4}
-                        myApCount={overallStats.apCount}
-                        myFcCount={overallStats.fcCount}
-                        myClearCount={overallStats.clearCount}
-                    />
-                )}
+                        {activeTab === "ranking" && (
+                            <Ranking
+                                currentUser={effectiveUser}
+                                ratingMode={ratingMode}
+                                myNormalRating={playerRating}
+                                myAppendRating={playerAppendRating}
+                                myPotentialRating={potentialData.potential4}
+                                myApCount={overallStats.apCount}
+                                myFcCount={overallStats.fcCount}
+                                myClearCount={overallStats.clearCount}
+                            />
+                        )}
 
-                {activeTab === "records" && (
-                    <Records
-                        songs={visibleSongs}
-                        scores={effectiveScores}
-                        updateScores={updateScores}
-                        settingsTitleLang={settingsTitleLang}
-                        ratingMode={ratingMode}
-                        isLoggedIn={!viewedUser && !!currentUser}
-                        onJacketClick={handleJacketClick}
-                        viewedUser={viewedUser}
-                    />
-                )}
+                        {activeTab === "records" && (
+                            <Records
+                                songs={visibleSongs}
+                                scores={effectiveScores}
+                                updateScores={updateScores}
+                                settingsTitleLang={settingsTitleLang}
+                                ratingMode={ratingMode}
+                                isLoggedIn={!viewedUser && !!currentUser}
+                                onJacketClick={handleJacketClick}
+                                viewedUser={viewedUser}
+                            />
+                        )}
 
-                {activeTab === "history" && (
-                    <History
-                        songs={visibleSongs}
-                        scores={effectiveScores}
-                        settingsTitleLang={settingsTitleLang}
-                        setSelectedJacketSong={setSelectedJacketSong}
-                        setActiveTab={setActiveTab}
-                    />
+                        {activeTab === "history" && (
+                            <History
+                                songs={visibleSongs}
+                                scores={effectiveScores}
+                                settingsTitleLang={settingsTitleLang}
+                                setSelectedJacketSong={setSelectedJacketSong}
+                                setActiveTab={setActiveTab}
+                                viewedUser={viewedUser}
+                            />
+                        )}
+                    </>
                 )}
 
                 {activeTab === "constants" && (
@@ -1743,6 +1859,8 @@ function App() {
                         toggleShowUnreleased={toggleShowUnreleased}
                         trainerSpeed={trainerSpeed}
                         setTrainerSpeed={setTrainerSpeed}
+                        showPrivacyModal={showPrivacyModal}
+                        setShowPrivacyModal={setShowPrivacyModal}
                     />
                 )}
 

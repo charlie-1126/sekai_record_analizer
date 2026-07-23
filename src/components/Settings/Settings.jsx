@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { User, Lock, LogOut } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { User, Lock, LogOut, X } from "lucide-react";
 import ChangePasswordModal from "../Auth/ChangePasswordModal";
 
 export default function Settings({
@@ -21,6 +21,8 @@ export default function Settings({
     toggleShowUnreleased,
     trainerSpeed,
     setTrainerSpeed,
+    showPrivacyModal,
+    setShowPrivacyModal,
 }) {
     const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
@@ -288,6 +290,34 @@ export default function Settings({
                                 한국어 번역제목 우선
                             </label>
                         </div>
+                    </div>
+
+                    <div style={{ margin: "0.5rem 0", borderTop: "1px solid var(--border-color)" }} />
+
+                    {/* Detailed Privacy Settings Button */}
+                    <div className="filter-group" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                        <label className="filter-label" style={{ fontWeight: 700 }}>
+                            공개 범위 설정
+                        </label>
+                        <button
+                            type="button"
+                            className="btn btn-outline"
+                            style={{
+                                width: "100%",
+                                padding: "0.75rem",
+                                borderColor: "rgba(0, 242, 254, 0.4)",
+                                color: "#00f2fe",
+                                background: "rgba(0, 242, 254, 0.05)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "0.5rem",
+                                fontWeight: "600",
+                            }}
+                            onClick={() => setShowPrivacyModal(true)}
+                        >
+                            공개 범위 세부 설정
+                        </button>
                     </div>
 
                     {/* Status message feedback */}

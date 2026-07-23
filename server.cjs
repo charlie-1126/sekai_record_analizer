@@ -1680,20 +1680,211 @@ app.get('/api/jackets/:songId', async (req, res) => {
   }
 });
 
+function getDashboardSongIds(scoresArray, songsMap) {
+  const allRatings = [];
+  const appendRatings = [];
+  const potentialRatings = [];
+
+  scoresArray.forEach(score => {
+    const songId = String(score.id);
+    const song = songsMap.get(songId);
+    if (!song) return;
+
+    const difficulties = ['easy', 'normal', 'hard', 'expert', 'master'];
+    difficulties.forEach(diff => {
+      const status = score[diff];
+      if (status && status !== 'none') {
+        const rating = calculateRatingServer(song, diff, status);
+        if (rating > 0) {
+          allRatings.push({ songId, rating, isAppend: false });
+        }
+        const newRating = calculateNewRatingServer(song, diff, status);
+        if (newRating > 0) {
+          potentialRatings.push({ songId, rating: newRating, isNew: isNewSongServer(song) });
+        }
+      }
+    });
+
+    const appendStatus = score.append;
+    if (appendStatus && appendStatus !== 'none') {
+      const rating = calculateRatingServer(song, 'append', appendStatus);
+      if (rating > 0) {
+        appendRatings.push({ songId, rating, isAppend: true });
+      }
+      const newRating = calculateNewRatingServer(song, 'append', appendStatus);
+      if (newRating > 0) {
+        potentialRatings.push({ songId, rating: newRating, isNew: isNewSongServer(song) });
+      }
+    }
+  });
+
+  allRatings.sort((a, b) => b.rating - a.rating);
+  appendRatings.sort((a, b) => b.rating - a.rating);
+
+  const top39Ids = new Set(allRatings.slice(0, 39).map(item => item.songId));
+  const top15Ids = new Set(appendRatings.slice(0, 15).map(item => item.songId));
+
+  const newList = potentialRatings.filter(item => item.isNew).sort((a, b) => b.rating - a.rating).slice(0, 10);
+  const oldList = potentialRatings.filter(item => !item.isNew).sort((a, b) => b.rating - a.rating).slice(0, 30);
+  const potentialIds = new Set([...newList, ...oldList].map(item => item.songId));
+
+  return new Set([...top39Ids, ...top15Ids, ...potentialIds]);
+}
+
 // 3. User Scores APIs
 app.get('/api/scores/user/:username', async (req, res) => {
   const { username } = req.params;
   try {
-    const user = await dbQuery.get('SELECT username, nickname, scores, rating_history FROM users WHERE LOWER(username) = LOWER(?)', [username]);
+    const user = await dbQuery.get(
+      'SELECT username, nickname, scores, settings, friends, rating_history FROM users WHERE LOWER(username) = LOWER(?)',
+      [username]
+    );
     if (!user) {
       return res.status(404).json({ error: '해당 유저를 찾을 수 없습니다.' });
     }
+
+    // Parse token optionally
+    let requesterUsername = null;
+    let token = req.headers.authorization;
+    if (token && token.startsWith('Bearer ')) {
+      token = token.slice(7);
+    } else {
+      token = req.query.token;
+    }
+    if (token) {
+      try {
+        const requester = await dbQuery.get(
+          'SELECT username FROM users WHERE token = ? OR token LIKE ?',
+          [token, '%,' + token + ',%']
+        );
+        if (requester) {
+          requesterUsername = requester.username;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    let settingsObj = {};
+    try {
+      settingsObj = JSON.parse(user.settings || '{}');
+    } catch (err) {
+      settingsObj = {};
+    }
+
+    let friendsList = [];
+    try {
+      friendsList = JSON.parse(user.friends || '[]');
+    } catch (err) {
+      friendsList = [];
+    }
+
+    const isOwner = requesterUsername && requesterUsername.toLowerCase() === user.username.toLowerCase();
+    const isFriend = requesterUsername && friendsList.some(f => f.toLowerCase() === requesterUsername.toLowerCase());
+
+    const privacyTarget = settingsObj.privacyTarget || 'public'; // 'public', 'private', 'friends'
+    
+    const publicScopeRaw = settingsObj.privacyScope?.publicScope || {};
+    const friendsScopeRaw = settingsObj.privacyScope?.friendsScope || {};
+
+    const publicScope = {
+      showDashboardSongs: publicScopeRaw.showDashboardSongs !== false,
+      showDetailedScores: publicScopeRaw.showDetailedScores === true,
+      showTimeline: publicScopeRaw.showTimeline === true
+    };
+
+    const friendsScope = {
+      showDashboardSongs: friendsScopeRaw.showDashboardSongs !== false,
+      showDetailedScores: friendsScopeRaw.showDetailedScores !== false,
+      showTimeline: friendsScopeRaw.showTimeline !== false
+    };
+
+    const activeScope = isFriend ? friendsScope : publicScope;
+
+    const showDashboardSongs = activeScope.showDashboardSongs;
+    const showDetailedScores = activeScope.showDetailedScores;
+    const showTimeline = activeScope.showTimeline;
+
+
+
+
+
     const updatedHistory = await updateUserRatingHistoryIfNeeded(user.username, user);
+
+    let scoresArray = [];
+    try {
+      scoresArray = JSON.parse(user.scores || '[]');
+    } catch (err) {
+      scoresArray = [];
+    }
+
+    const songsList = dbSongs.read();
+    const songsMap = new Map(songsList.map(s => [String(s.id), s]));
+    const computed = calculateRatingsOnServer(scoresArray, songsMap);
+    const ratings = {
+      normal: computed.normal,
+      append: computed.append,
+      potential: Math.floor(computed.potential * 10000) / 10000
+    };
+
+    let scoresToSend = scoresArray;
+    if (!isOwner) {
+      if (!showDetailedScores && !showDashboardSongs) {
+        scoresToSend = [];
+      } else if (!showDetailedScores && showDashboardSongs) {
+        // Return only scores that make up B39, B15, or Potential
+        const dashboardSongIds = getDashboardSongIds(scoresArray, songsMap);
+        scoresToSend = scoresArray.filter(s => dashboardSongIds.has(String(s.id)));
+      }
+
+      if (!showTimeline) {
+        scoresToSend = scoresToSend.map(s => {
+          const sanitized = { ...s };
+          delete sanitized.dates; // Remove dates
+          return sanitized;
+        });
+      }
+    }
+
+    let serverTotalPlayed = 0;
+    let serverApCount = 0;
+    let serverFcCount = 0;
+    let serverClearCount = 0;
+    scoresArray.forEach((score) => {
+      const difficulties = ['easy', 'normal', 'hard', 'expert', 'master', 'append'];
+      difficulties.forEach((diff) => {
+        const status = score[diff];
+        if (status && status !== 'none') {
+          serverTotalPlayed++;
+          if (status === 'full_perfect') {
+            serverApCount++;
+          } else if (status === 'full_combo') {
+            serverFcCount++;
+          } else if (status === 'clear') {
+            serverClearCount++;
+          }
+        }
+      });
+    });
+    const overallStats = {
+      totalPlayed: serverTotalPlayed,
+      apCount: serverApCount,
+      fcCount: serverFcCount,
+      clearCount: serverClearCount
+    };
+
     res.json({
       username: user.username,
       nickname: user.nickname,
-      scores: JSON.parse(user.scores || '[]'),
-      rating_history: updatedHistory || JSON.parse(user.rating_history || '{}')
+      scores: scoresToSend,
+      rating_history: updatedHistory || JSON.parse(user.rating_history || '{}'),
+      privacyScope: {
+        showDashboardSongs: isOwner ? true : showDashboardSongs,
+        showDetailedScores: isOwner ? true : showDetailedScores,
+        showTimeline: isOwner ? true : showTimeline
+      },
+      ratings: ratings,
+      overallStats
     });
   } catch (err) {
     console.error(err);

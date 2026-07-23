@@ -274,7 +274,9 @@ export const Dashboard = ({
                                     color: "var(--text-muted)",
                                 }}
                             >
-                                등록된 일반 셐포스 B39 성과 기록이 없습니다.
+                                {viewedUser && viewedUser.privacyScope?.showDashboardSongs === false
+                                    ? "기록이 비공개 설정되어 있습니다."
+                                    : "등록된 일반 셐포스 B39 성과 기록이 없습니다."}
                             </div>
                         ) : (
                             b39List.map((item, index) => {
@@ -333,7 +335,9 @@ export const Dashboard = ({
                                 color: "var(--text-muted)",
                             }}
                         >
-                            등록된 어펜드 B15 성과 기록이 없습니다.
+                            {viewedUser && viewedUser.privacyScope?.showDashboardSongs === false
+                                ? "기록이 비공개 설정되어 있습니다."
+                                : "등록된 어펜드 B15 성과 기록이 없습니다."}
                         </div>
                     ) : (
                         appendB15List.map((item, index) => (

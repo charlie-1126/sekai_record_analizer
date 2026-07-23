@@ -21,6 +21,7 @@ export default function History({
     settingsTitleLang = "jp",
     setSelectedJacketSong = null,
     setActiveTab = null,
+    viewedUser = null,
 }) {
     // --- State & Filters ---
     const [searchQuery, setSearchQuery] = useState("");
@@ -205,6 +206,33 @@ export default function History({
     // Stats
     const totalFcCount = useMemo(() => rawHistoryList.filter((e) => e.type === "fc").length, [rawHistoryList]);
     const totalApCount = useMemo(() => rawHistoryList.filter((e) => e.type === "ap").length, [rawHistoryList]);
+
+    if (viewedUser && viewedUser.privacyScope?.showTimeline === false) {
+        return (
+            <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: "400px",
+                padding: "2rem",
+                textAlign: "center",
+                color: "var(--text-muted)",
+            }}>
+                <h3
+                    style={{
+                        fontSize: "1.25rem",
+                        fontWeight: "bold",
+                        color: "var(--text-primary)",
+                        marginBottom: "0.5rem",
+                    }}
+                >
+                    타임라인 비공개
+                </h3>
+                <p style={{ fontSize: "0.9rem" }}>해당 유저가 타임라인을 비공개로 설정해 두었습니다.</p>
+            </div>
+        );
+    }
 
     return (
         <div className="history-tab-container animate-fade-in" style={{ paddingBottom: "2rem" }}>

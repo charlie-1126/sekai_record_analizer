@@ -5,7 +5,12 @@ import { calculateRating, getConstant, hasExplicitConstant } from "../../utils/r
 import { isNewSong, calculateSongPotential } from "../../utils/potentialUtils";
 import { useSessionState } from "../../utils/useSessionState";
 import { defaultSort } from "../../utils/scoreUtils";
-import { computeUpdatedDatesOnStatusChange, updateDatesForDiff, getFcApDates, getTodayString } from "../../utils/dateUtils";
+import {
+    computeUpdatedDatesOnStatusChange,
+    updateDatesForDiff,
+    getFcApDates,
+    getTodayString,
+} from "../../utils/dateUtils";
 
 export const Records = ({
     songs,
@@ -182,7 +187,9 @@ export const Records = ({
                 dates: finalDates,
             });
         }
-        updateScores(newScores, previousScores, [{ id: String(songId), diff, status: sanitizeStatus(newStatus), dates: finalDates }]);
+        updateScores(newScores, previousScores, [
+            { id: String(songId), diff, status: sanitizeStatus(newStatus), dates: finalDates },
+        ]);
     };
 
     const handleDateChange = (songId, diff, dateType, dateValue) => {
@@ -211,7 +218,9 @@ export const Records = ({
                 dates: finalDates,
             });
         }
-        updateScores(newScores, previousScores, [{ id: String(songId), diff, status: currentStatus, dates: finalDates }]);
+        updateScores(newScores, previousScores, [
+            { id: String(songId), diff, status: currentStatus, dates: finalDates },
+        ]);
     };
 
     // --- Bulk Score Update Handlers ---
@@ -411,6 +420,33 @@ export const Records = ({
         return filteredAndSortedRecords.slice(0, recordVisibleCount);
     }, [filteredAndSortedRecords, recordVisibleCount]);
 
+    if (viewedUser && viewedUser.privacyScope?.showDetailedScores === false) {
+        return (
+            <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: "400px",
+                padding: "2rem",
+                textAlign: "center",
+                color: "var(--text-muted)",
+            }}>
+                <h3
+                    style={{
+                        fontSize: "1.25rem",
+                        fontWeight: "bold",
+                        color: "var(--text-primary)",
+                        marginBottom: "0.5rem",
+                    }}
+                >
+                    세부기록 비공개
+                </h3>
+                <p style={{ fontSize: "0.9rem" }}>해당 유저가 전체 플레이 세부 기록을 비공개로 설정해 두었습니다.</p>
+            </div>
+        );
+    }
+
     return (
         <section className="glass-panel" style={{ padding: "2rem" }}>
             {!viewedUser && !isLoggedIn && (
@@ -574,7 +610,6 @@ export const Records = ({
                                 />
                             </div>
                         </div>
-
                     </div>
 
                     {/* Row 2: Difficulties Checkboxes */}
@@ -734,43 +769,44 @@ export const Records = ({
                     <div className="record-grid-header">
                         <span>순위</span>
                         <span>자켓</span>
-                        <span 
+                        <span
                             style={{ textAlign: "left", cursor: "pointer", userSelect: "none" }}
                             onClick={() => handleRecordSort("title")}
                         >
                             곡명{renderSortIndicator("title")}
                         </span>
-                        <span 
+                        <span
                             style={{ cursor: "pointer", userSelect: "none" }}
                             onClick={() => handleRecordSort("diff")}
                         >
                             난이도{renderSortIndicator("diff")}
                         </span>
-                        <span 
+                        <span
                             style={{ cursor: "pointer", userSelect: "none" }}
                             onClick={() => handleRecordSort("level")}
                         >
                             레벨{renderSortIndicator("level")}
                         </span>
-                        <span 
+                        <span
                             style={{ cursor: "pointer", userSelect: "none" }}
                             onClick={() => handleRecordSort("fc_constant")}
                         >
                             FC 상수{renderSortIndicator("fc_constant")}
                         </span>
-                        <span 
+                        <span
                             style={{ cursor: "pointer", userSelect: "none" }}
                             onClick={() => handleRecordSort("ap_constant")}
                         >
                             AP 상수{renderSortIndicator("ap_constant")}
                         </span>
-                        <span 
+                        <span
                             style={{ cursor: "pointer", userSelect: "none" }}
                             onClick={() => handleRecordSort("rating")}
                         >
-                            {ratingMode === "potential" ? "Potential" : "Music R"}{renderSortIndicator("rating")}
+                            {ratingMode === "potential" ? "Potential" : "Music R"}
+                            {renderSortIndicator("rating")}
                         </span>
-                        <span 
+                        <span
                             style={{ cursor: "pointer", userSelect: "none" }}
                             onClick={() => handleRecordSort("status")}
                         >
@@ -914,9 +950,18 @@ export const Records = ({
                                     </div>
 
                                     {/* 성과 Display Badge */}
-                                    <div className="record-status-col" style={{ display: "flex", justifyContent: "center" }}>
+                                    <div
+                                        className="record-status-col"
+                                        style={{ display: "flex", justifyContent: "center" }}
+                                    >
                                         <span className={`record-status-badge status-${item.status}`}>
-                                            {item.status === "full_perfect" ? "AP" : item.status === "full_combo" ? "FC" : item.status === "clear" ? "C" : "NC"}
+                                            {item.status === "full_perfect"
+                                                ? "AP"
+                                                : item.status === "full_combo"
+                                                  ? "FC"
+                                                  : item.status === "clear"
+                                                    ? "C"
+                                                    : "NC"}
                                         </span>
                                     </div>
                                 </div>
