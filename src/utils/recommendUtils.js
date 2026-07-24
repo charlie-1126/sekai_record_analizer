@@ -116,9 +116,19 @@ export function computeUserMu(songs, userScoresMap) {
     let muFC = mu_top40;
     if (fcCount > 0) {
         // 유저 최대 상수
-        const maxFcConstant = Math.max(...fcAllEntries.map(e => e.fcEvaluated));
-        // 가용 고레벨 Pool 크기 계산: (maxFcConstant - 1) <= 상수 <= maxFcConstant
-        const fcPoolSize = fcAllEntries.filter(e => e.fcEvaluated >= (maxFcConstant - 1.0) && e.fcEvaluated <= maxFcConstant).length;
+        const maxFcConstant = Math.max(...fcAllEntries.map((e) => e.fcEvaluated));
+        // 전체 곡(모든 일반 난이도) 중 (maxFcConstant - 1) <= 상수 <= maxFcConstant 범위에 해당하는 채보 개수 계산
+        let fcPoolSize = 0;
+        const diffs = ["easy", "normal", "hard", "expert", "master"];
+        for (const song of songs) {
+            for (const diff of diffs) {
+                const raw = getConstant(song, diff, "fc");
+                if (raw >= maxFcConstant - 1.0 && raw <= maxFcConstant) {
+                    fcPoolSize++;
+                }
+            }
+            if (fcPoolSize >= 20) break; // 20개 도달 시 조기 중단
+        }
         const K_FC = Math.min(20, Math.max(1, fcPoolSize));
 
         const fcTopK = fcAllEntries.slice(0, K_FC);
@@ -136,13 +146,20 @@ export function computeUserMu(songs, userScoresMap) {
     let muAP = mu_top40;
     if (apCount > 0) {
         // AP 순수 곡 상수의 최댓값
-        const apConstants = apAllEntries.map(e => e.converted - 2.0);
+        const apConstants = apAllEntries.map((e) => e.converted - 2.0);
         const maxApConstant = Math.max(...apConstants);
-        // 가용 고레벨 Pool 크기 계산: (maxApConstant - 1) <= 상수 <= maxApConstant
-        const apPoolSize = apAllEntries.filter(e => {
-            const raw = e.converted - 2.0;
-            return raw >= (maxApConstant - 1.0) && raw <= maxApConstant;
-        }).length;
+        // 전체 곡(모든 일반 난이도) 중 (maxApConstant - 1) <= 상수 <= maxApConstant 범위에 해당하는 채보 개수 계산
+        let apPoolSize = 0;
+        const diffs = ["easy", "normal", "hard", "expert", "master"];
+        for (const song of songs) {
+            for (const diff of diffs) {
+                const raw = getConstant(song, diff, "fc");
+                if (raw >= maxApConstant - 1.0 && raw <= maxApConstant) {
+                    apPoolSize++;
+                }
+            }
+            if (apPoolSize >= 20) break; // 20개 도달 시 조기 중단
+        }
         const K_AP = Math.min(20, Math.max(1, apPoolSize));
 
         const apTopK = apAllEntries.slice(0, K_AP);
@@ -208,7 +225,7 @@ export function getSongDiffTags(song, diff) {
 }
 
 /**
- * TF-IDF를 사용해 분석 대상 채보들에 대한 태그 IDF 맵을 계산한다.
+ *
  *
  * @param {Array}    candidateCharts - 분석 대상 채보 목록 [{song, diff}]
  * @param {string[]} allTags         - 전체 태그 목록
@@ -491,8 +508,9 @@ export function computeApdMu(songs, userScoresMap, fallbackMu) {
 
     // 어펜드 상위 10개 곡 평균 계산 (패딩용 유저평균)
     const apdTop10 = apdEntries.slice(0, 10);
-    const mu_apd_top10 = apdTop10.length > 0 ? apdTop10.reduce((acc, e) => acc + e.converted, 0) / apdTop10.length : fallbackMu;
-    
+    const mu_apd_top10 =
+        apdTop10.length > 0 ? apdTop10.reduce((acc, e) => acc + e.converted, 0) / apdTop10.length : fallbackMu;
+
     // 어펜드 FC인 곡 (FC + AP) 전체 추출 후, AP인 곡은 2.0을 감산하여 순수 FC 수준으로 평가
     const fcEntriesAll = apdEntries
         .filter((e) => e.status === "full_combo" || e.status === "full_perfect")
@@ -501,12 +519,21 @@ export function computeApdMu(songs, userScoresMap, fallbackMu) {
             return { ...e, fcEvaluated };
         });
     fcEntriesAll.sort((a, b) => b.fcEvaluated - a.fcEvaluated);
-    
+
     const apdFcCount = fcEntriesAll.length;
     let muFC_apd = mu_apd_top10;
     if (apdFcCount > 0) {
-        const maxFcConstantApd = Math.max(...fcEntriesAll.map(e => e.fcEvaluated));
-        const fcPoolSizeApd = fcEntriesAll.filter(e => e.fcEvaluated >= (maxFcConstantApd - 1.0) && e.fcEvaluated <= maxFcConstantApd).length;
+        const maxFcConstantApd = Math.max(...fcEntriesAll.map((e) => e.fcEvaluated));
+        // 전체 어펜드 채보 중 (maxFcConstantApd - 1) <= 상수 <= maxFcConstantApd 범위에 해당하는 채보 개수 계산
+        let fcPoolSizeApd = 0;
+        for (const song of songs) {
+            if (!song.levels?.append) continue;
+            const raw = getConstant(song, "append", "fc");
+            if (raw >= maxFcConstantApd - 1.0 && raw <= maxFcConstantApd) {
+                fcPoolSizeApd++;
+            }
+            if (fcPoolSizeApd >= 5) break; // 5개 도달 시 조기 중단
+        }
         const K_FC_apd = Math.min(5, Math.max(1, fcPoolSizeApd));
 
         const fcEntriesTopK = fcEntriesAll.slice(0, K_FC_apd);
@@ -523,12 +550,18 @@ export function computeApdMu(songs, userScoresMap, fallbackMu) {
     const apdApCount = apEntriesAll.length;
     let muAP_apd = mu_apd_top10;
     if (apdApCount > 0) {
-        const apConstantsApd = apEntriesAll.map(e => e.converted - 2.0);
+        const apConstantsApd = apEntriesAll.map((e) => e.converted - 2.0);
         const maxApConstantApd = Math.max(...apConstantsApd);
-        const apPoolSizeApd = apEntriesAll.filter(e => {
-            const raw = e.converted - 2.0;
-            return raw >= (maxApConstantApd - 1.0) && raw <= maxApConstantApd;
-        }).length;
+        // 전체 어펜드 채보 중 (maxApConstantApd - 1) <= 상수 <= maxApConstantApd 범위에 해당하는 채보 개수 계산
+        let apPoolSizeApd = 0;
+        for (const song of songs) {
+            if (!song.levels?.append) continue;
+            const raw = getConstant(song, "append", "fc");
+            if (raw >= maxApConstantApd - 1.0 && raw <= maxApConstantApd) {
+                apPoolSizeApd++;
+            }
+            if (apPoolSizeApd >= 5) break; // 5개 도달 시 조기 중단
+        }
         const K_AP_apd = Math.min(5, Math.max(1, apPoolSizeApd));
 
         const apEntriesTopK = apEntriesAll.slice(0, K_AP_apd);
