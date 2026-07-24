@@ -95,10 +95,10 @@ export function computeUserMu(songs, userScoresMap) {
     // 내림차순 정렬
     allEntries.sort((a, b) => b.converted - a.converted);
 
-    const top40 = allEntries.slice(0, 40);
+    const top39 = allEntries.slice(0, 39);
 
-    // 전체 평균 (상위 40개 기준)
-    const mu = top40.length > 0 ? top40.reduce((acc, e) => acc + e.converted, 0) / top40.length : 0;
+    // 전체 평균 (상위 39개 기준)
+    const mu = top39.length > 0 ? top39.reduce((acc, e) => acc + e.converted, 0) / top39.length : 0;
 
     // 최고 변환상수 구하기 (allEntries는 내림차순 정렬됨)
     const maxConverted = allEntries.length > 0 ? allEntries[0].converted : 0;
@@ -201,7 +201,7 @@ export function computeUserMu(songs, userScoresMap) {
         }
     }
 
-    return { mu, muFC, muAP, mu_topM, top39Entries: top40, allConverted: allEntries };
+    return { mu, muFC, muAP, mu_topM, top39Entries: top39, allConverted: allEntries };
 }
 
 // ─────────────────────────────────────────
