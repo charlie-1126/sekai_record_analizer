@@ -102,7 +102,7 @@ export default function PrivacySettingsModal({
                         style={{
                             fontSize: "1.5rem",
                             margin: 0,
-                            background: "linear-gradient(135deg, var(--color-cyan) 0%, var(--color-pink) 100%)",
+                            background: "linear-gradient(135deg, var(--color-cyan) 0%, var(--color-cyan) 100%)",
                             WebkitBackgroundClip: "text",
                             backgroundClip: "text",
                             WebkitTextFillColor: "transparent",
