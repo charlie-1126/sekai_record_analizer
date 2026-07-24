@@ -4,6 +4,18 @@ import { X, ChevronRight } from "lucide-react";
 
 export const UPDATE_NOTES = [
     {
+        version: "v1.6.0",
+        date: "2026-07-24",
+        title: "공개 범위 설정",
+        categories: [
+            {
+                name: "신규 기능",
+                type: "new",
+                items: ["공개 범위 설정 기능 추가", "내보내기 모듈에 sekaitool 전용 규격 추가"],
+            },
+        ],
+    },
+    {
         version: "v1.5.0",
         date: "2026-07-23",
         title: "곡 추천 탭 추가",
