@@ -116,26 +116,26 @@ export function computeUserMu(songs, userScoresMap) {
     const fcCount = fcAllEntries.length;
     let muFC = mu_top40;
     if (fcCount > 0) {
-        const fcTop10 = fcAllEntries.slice(0, 10);
-        const fcSum = fcTop10.reduce((acc, e) => acc + e.fcEvaluated, 0);
-        if (fcCount < 10) {
-            muFC = (fcSum + (10 - fcCount) * mu_top40) / 10;
+        const fcTop20 = fcAllEntries.slice(0, 20);
+        const fcSum = fcTop20.reduce((acc, e) => acc + e.fcEvaluated, 0);
+        if (fcCount < 20) {
+            muFC = (fcSum + (20 - fcCount) * mu_top40) / 20;
         } else {
-            muFC = fcSum / 10;
+            muFC = fcSum / 20;
         }
     }
 
-    // AP인 곡 전체 추출 후 상위 10개 평균 (10개 미만 시 유저평균 mu_top40 로 패딩)
+    // AP인 곡 전체 추출 후 상위 20개 평균 (20개 미만 시 유저평균 mu_top40 로 패딩)
     const apAllEntries = allEntries.filter((e) => e.status === "full_perfect");
     const apCount = apAllEntries.length;
     let muAP = mu_top40;
     if (apCount > 0) {
-        const apTop10 = apAllEntries.slice(0, 10);
-        const apSum = apTop10.reduce((acc, e) => acc + e.converted, 0);
-        if (apCount < 10) {
-            muAP = (apSum + (10 - apCount) * mu_top40) / 10;
+        const apTop20 = apAllEntries.slice(0, 20);
+        const apSum = apTop20.reduce((acc, e) => acc + e.converted, 0);
+        if (apCount < 20) {
+            muAP = (apSum + (20 - apCount) * mu_top40) / 20;
         } else {
-            muAP = apSum / 10;
+            muAP = apSum / 20;
         }
     }
 
