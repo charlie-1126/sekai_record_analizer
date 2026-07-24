@@ -26,12 +26,13 @@ export default function PrivacySettingsModal({
 
     useEffect(() => {
         if (currentUser?.settings) {
-            const pubScope = currentUser.settings.publicScope || {};
+            const privacyScope = currentUser.settings.privacyScope || {};
+            const pubScope = privacyScope.publicScope || {};
             setPubDashboard(pubScope.showDashboardSongs !== false);
             setPubDetailed(pubScope.showDetailedScores === true);
             setPubTimeline(pubScope.showTimeline === true);
 
-            const frScope = currentUser.settings.friendsScope || {};
+            const frScope = privacyScope.friendsScope || {};
             setFrDashboard(frScope.showDashboardSongs !== false);
             setFrDetailed(frScope.showDetailedScores !== false);
             setFrTimeline(frScope.showTimeline !== false);

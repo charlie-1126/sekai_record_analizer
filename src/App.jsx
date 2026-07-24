@@ -528,14 +528,28 @@ function App() {
         newPrivacyTarget,
         newPrivacyScope
     ) => {
+        // [Fix Race Condition] Read directly from storage to ensure we use the absolute latest settings object
+        let currentStoredSettings = {};
+        try {
+            const raw = localStorage.getItem("pjsk_auth") || sessionStorage.getItem("pjsk_auth");
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && parsed.settings) {
+                    currentStoredSettings = parsed.settings;
+                }
+            }
+        } catch (e) {
+            console.error("Failed to parse stored settings for saving:", e);
+        }
+
         const nicknameToSave = newNickname !== undefined ? newNickname : settingsNickname;
         const langToSave = newTitleLang !== undefined ? newTitleLang : settingsTitleLang;
         const ratingModeToSave = newRatingMode !== undefined ? newRatingMode : ratingMode;
         const showUnreleasedToSave = newShowUnreleased !== undefined ? newShowUnreleased : showUnreleased;
         const trainerSpeedToSave = newTrainerSpeed !== undefined ? newTrainerSpeed : trainerSpeed;
 
-        const privacyTargetToSave = newPrivacyTarget !== undefined ? newPrivacyTarget : (currentUser?.settings?.privacyTarget || "public");
-        const privacyScopeToSave = newPrivacyScope !== undefined ? newPrivacyScope : (currentUser?.settings?.privacyScope || {
+        const privacyTargetToSave = newPrivacyTarget !== undefined ? newPrivacyTarget : (currentStoredSettings.privacyTarget || currentUser?.settings?.privacyTarget || "public");
+        const privacyScopeToSave = newPrivacyScope !== undefined ? newPrivacyScope : (currentStoredSettings.privacyScope || currentUser?.settings?.privacyScope || {
             publicScope: { showDashboardSongs: true, showDetailedScores: false, showTimeline: false },
             friendsScope: { showDashboardSongs: true, showDetailedScores: true, showTimeline: true }
         });
