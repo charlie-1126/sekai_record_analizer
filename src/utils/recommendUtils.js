@@ -100,6 +100,10 @@ export function computeUserMu(songs, userScoresMap) {
     // 전체 평균
     const mu = top39.length > 0 ? top39.reduce((acc, e) => acc + e.converted, 0) / top39.length : 0;
 
+    // 일반 상위 10개 곡 평균 계산 (패딩용 유저평균)
+    const top10 = allEntries.slice(0, 10);
+    const mu_top10 = top10.length > 0 ? top10.reduce((acc, e) => acc + e.converted, 0) / top10.length : mu;
+
     // FC인 곡 (FC + AP) 전체 추출 후, AP인 곡은 변환상수에서 2.0을 감산하여 순수 FC 수준으로 평가
     const fcAllEntries = allEntries
         .filter((e) => e.status === "full_combo" || e.status === "full_perfect")
@@ -110,28 +114,28 @@ export function computeUserMu(songs, userScoresMap) {
     fcAllEntries.sort((a, b) => b.fcEvaluated - a.fcEvaluated);
     
     const fcCount = fcAllEntries.length;
-    let muFC = mu;
+    let muFC = mu_top10;
     if (fcCount > 0) {
-        const fcTop20 = fcAllEntries.slice(0, 20);
-        const fcSum = fcTop20.reduce((acc, e) => acc + e.fcEvaluated, 0);
-        if (fcCount < 20) {
-            muFC = (fcSum + (20 - fcCount) * mu) / 20;
+        const fcTop5 = fcAllEntries.slice(0, 5);
+        const fcSum = fcTop5.reduce((acc, e) => acc + e.fcEvaluated, 0);
+        if (fcCount < 5) {
+            muFC = (fcSum + (5 - fcCount) * mu_top10) / 5;
         } else {
-            muFC = fcSum / 20;
+            muFC = fcSum / 5;
         }
     }
 
-    // AP인 곡 전체 추출 후 상위 20개 평균 (20개 미만 시 유저평균 mu 로 패딩)
+    // AP인 곡 전체 추출 후 상위 5개 평균 (5개 미만 시 유저평균 mu_top10 로 패딩)
     const apAllEntries = allEntries.filter((e) => e.status === "full_perfect");
     const apCount = apAllEntries.length;
-    let muAP = mu;
+    let muAP = mu_top10;
     if (apCount > 0) {
-        const apTop20 = apAllEntries.slice(0, 20);
-        const apSum = apTop20.reduce((acc, e) => acc + e.converted, 0);
-        if (apCount < 20) {
-            muAP = (apSum + (20 - apCount) * mu) / 20;
+        const apTop5 = apAllEntries.slice(0, 5);
+        const apSum = apTop5.reduce((acc, e) => acc + e.converted, 0);
+        if (apCount < 5) {
+            muAP = (apSum + (5 - apCount) * mu_top10) / 5;
         } else {
-            muAP = apSum / 20;
+            muAP = apSum / 5;
         }
     }
 
