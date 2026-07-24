@@ -112,30 +112,45 @@ export function computeUserMu(songs, userScoresMap) {
             return { ...e, fcEvaluated };
         });
     fcAllEntries.sort((a, b) => b.fcEvaluated - a.fcEvaluated);
-    
     const fcCount = fcAllEntries.length;
     let muFC = mu_top40;
     if (fcCount > 0) {
-        const fcTop20 = fcAllEntries.slice(0, 20);
-        const fcSum = fcTop20.reduce((acc, e) => acc + e.fcEvaluated, 0);
-        if (fcCount < 20) {
-            muFC = (fcSum + (20 - fcCount) * mu_top40) / 20;
+        // 유저 최대 상수
+        const maxFcConstant = Math.max(...fcAllEntries.map(e => e.fcEvaluated));
+        // 가용 고레벨 Pool 크기 계산: (maxFcConstant - 1) <= 상수 <= maxFcConstant
+        const fcPoolSize = fcAllEntries.filter(e => e.fcEvaluated >= (maxFcConstant - 1.0) && e.fcEvaluated <= maxFcConstant).length;
+        const K_FC = Math.min(20, Math.max(1, fcPoolSize));
+
+        const fcTopK = fcAllEntries.slice(0, K_FC);
+        const fcSum = fcTopK.reduce((acc, e) => acc + e.fcEvaluated, 0);
+        if (fcCount < K_FC) {
+            muFC = (fcSum + (K_FC - fcCount) * mu_top40) / K_FC;
         } else {
-            muFC = fcSum / 20;
+            muFC = fcSum / K_FC;
         }
     }
 
-    // AP인 곡 전체 추출 후 상위 20개 평균 (20개 미만 시 유저평균 mu_top40 로 패딩)
+    // AP인 곡 전체 추출 후 상위 K개 평균 (K 미만 시 유저평균 mu_top40 로 패딩)
     const apAllEntries = allEntries.filter((e) => e.status === "full_perfect");
     const apCount = apAllEntries.length;
     let muAP = mu_top40;
     if (apCount > 0) {
-        const apTop20 = apAllEntries.slice(0, 20);
-        const apSum = apTop20.reduce((acc, e) => acc + e.converted, 0);
-        if (apCount < 20) {
-            muAP = (apSum + (20 - apCount) * mu_top40) / 20;
+        // AP 순수 곡 상수의 최댓값
+        const apConstants = apAllEntries.map(e => e.converted - 2.0);
+        const maxApConstant = Math.max(...apConstants);
+        // 가용 고레벨 Pool 크기 계산: (maxApConstant - 1) <= 상수 <= maxApConstant
+        const apPoolSize = apAllEntries.filter(e => {
+            const raw = e.converted - 2.0;
+            return raw >= (maxApConstant - 1.0) && raw <= maxApConstant;
+        }).length;
+        const K_AP = Math.min(20, Math.max(1, apPoolSize));
+
+        const apTopK = apAllEntries.slice(0, K_AP);
+        const apSum = apTopK.reduce((acc, e) => acc + e.converted, 0);
+        if (apCount < K_AP) {
+            muAP = (apSum + (K_AP - apCount) * mu_top40) / K_AP;
         } else {
-            muAP = apSum / 20;
+            muAP = apSum / K_AP;
         }
     }
 
@@ -489,26 +504,38 @@ export function computeApdMu(songs, userScoresMap, fallbackMu) {
     const apdFcCount = fcEntriesAll.length;
     let muFC_apd = mu_apd_top10;
     if (apdFcCount > 0) {
-        const fcEntriesTop5 = fcEntriesAll.slice(0, 5);
-        const fcSum = fcEntriesTop5.reduce((acc, e) => acc + e.fcEvaluated, 0);
-        if (apdFcCount < 5) {
-            muFC_apd = (fcSum + (5 - apdFcCount) * mu_apd_top10) / 5;
+        const maxFcConstantApd = Math.max(...fcEntriesAll.map(e => e.fcEvaluated));
+        const fcPoolSizeApd = fcEntriesAll.filter(e => e.fcEvaluated >= (maxFcConstantApd - 1.0) && e.fcEvaluated <= maxFcConstantApd).length;
+        const K_FC_apd = Math.min(5, Math.max(1, fcPoolSizeApd));
+
+        const fcEntriesTopK = fcEntriesAll.slice(0, K_FC_apd);
+        const fcSum = fcEntriesTopK.reduce((acc, e) => acc + e.fcEvaluated, 0);
+        if (apdFcCount < K_FC_apd) {
+            muFC_apd = (fcSum + (K_FC_apd - apdFcCount) * mu_apd_top10) / K_FC_apd;
         } else {
-            muFC_apd = fcSum / 5;
+            muFC_apd = fcSum / K_FC_apd;
         }
     }
 
-    // 어펜드 AP인 곡 전체 추출 후 상위 5개 평균
+    // 어펜드 AP인 곡 전체 추출 후 상위 K개 평균
     const apEntriesAll = apdEntries.filter((e) => e.status === "full_perfect");
     const apdApCount = apEntriesAll.length;
     let muAP_apd = mu_apd_top10;
     if (apdApCount > 0) {
-        const apEntriesTop5 = apEntriesAll.slice(0, 5);
-        const apSum = apEntriesTop5.reduce((acc, e) => acc + e.converted, 0);
-        if (apdApCount < 5) {
-            muAP_apd = (apSum + (5 - apdApCount) * mu_apd_top10) / 5;
+        const apConstantsApd = apEntriesAll.map(e => e.converted - 2.0);
+        const maxApConstantApd = Math.max(...apConstantsApd);
+        const apPoolSizeApd = apEntriesAll.filter(e => {
+            const raw = e.converted - 2.0;
+            return raw >= (maxApConstantApd - 1.0) && raw <= maxApConstantApd;
+        }).length;
+        const K_AP_apd = Math.min(5, Math.max(1, apPoolSizeApd));
+
+        const apEntriesTopK = apEntriesAll.slice(0, K_AP_apd);
+        const apSum = apEntriesTopK.reduce((acc, e) => acc + e.converted, 0);
+        if (apdApCount < K_AP_apd) {
+            muAP_apd = (apSum + (K_AP_apd - apdApCount) * mu_apd_top10) / K_AP_apd;
         } else {
-            muAP_apd = apSum / 5;
+            muAP_apd = apSum / K_AP_apd;
         }
     }
 
