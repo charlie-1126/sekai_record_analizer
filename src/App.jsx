@@ -264,7 +264,24 @@ function App() {
     // --- Fetch User Scores from Server ---
     const fetchScoresFromServer = async (username) => {
         try {
-            const res = await fetch(`/api/scores/user/${username}`);
+            const headers = {};
+            if (currentUser && currentUser.token) {
+                headers["Authorization"] = `Bearer ${currentUser.token}`;
+            } else {
+                // Fallback to localStorage if state is not updated yet
+                const raw = localStorage.getItem("pjsk_auth") || sessionStorage.getItem("pjsk_auth");
+                if (raw) {
+                    try {
+                        const saved = JSON.parse(raw);
+                        if (saved && saved.token) {
+                            headers["Authorization"] = `Bearer ${saved.token}`;
+                        }
+                    } catch (err) {
+                        console.error("Failed to parse token for fetching scores:", err);
+                    }
+                }
+            }
+            const res = await fetch(`/api/scores/user/${username}`, { headers });
             if (res.ok) {
                 const data = await res.json();
                 if (data.scores) {
