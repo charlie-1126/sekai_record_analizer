@@ -1247,6 +1247,8 @@ function App() {
                                     cursor: "pointer",
                                     userSelect: "none",
                                     transition: "all 0.2s",
+                                    maxWidth: "150px",
+                                    minWidth: 0,
                                 }}
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -1262,7 +1264,16 @@ function App() {
                                     e.currentTarget.style.borderColor = "rgba(0, 242, 254, 0.25)";
                                 }}
                             >
-                                <span>{viewedUser.nickname || viewedUser.username}</span>
+                                <span
+                                    style={{
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                        flex: 1,
+                                    }}
+                                >
+                                    {viewedUser.nickname || viewedUser.username}
+                                </span>
                                 <span
                                     style={{
                                         marginLeft: "0.25rem",
@@ -1276,6 +1287,7 @@ function App() {
                                         alignItems: "center",
                                         justifyContent: "center",
                                         fontWeight: "normal",
+                                        flexShrink: 0,
                                     }}
                                 >
                                     ✕

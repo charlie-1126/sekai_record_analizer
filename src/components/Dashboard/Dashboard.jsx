@@ -102,6 +102,8 @@ export const Dashboard = ({
                         border: viewedUser ? "1px solid rgba(0, 242, 254, 0.3)" : "1px solid var(--border-color)",
                         background: viewedUser ? "rgba(0, 242, 254, 0.03)" : "",
                         marginBottom: "0.5rem",
+                        minWidth: 0,
+                        overflow: "hidden",
                     }}
                 >
                     <div
@@ -113,6 +115,8 @@ export const Dashboard = ({
                             alignItems: "center",
                             justifyContent: "space-between",
                             gap: "0.5rem",
+                            width: "100%",
+                            minWidth: 0,
                         }}
                     >
                         <span
@@ -121,6 +125,7 @@ export const Dashboard = ({
                                 textOverflow: "ellipsis",
                                 whiteSpace: "nowrap",
                                 flex: 1,
+                                minWidth: 0,
                             }}
                         >
                             {effectiveUserDisplayName}
@@ -140,7 +145,18 @@ export const Dashboard = ({
                             </button>
                         )}
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>@{effectiveUserUsername}</div>
+                    <div
+                        style={{
+                            fontSize: "0.75rem",
+                            color: "var(--text-muted)",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            width: "100%",
+                        }}
+                    >
+                        @{effectiveUserUsername}
+                    </div>
                 </div>
 
                 {/* 일반 셐포스 B39 */}

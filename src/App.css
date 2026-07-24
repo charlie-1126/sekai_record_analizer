@@ -1458,6 +1458,15 @@ input[type="number"] {
     font-weight: 700;
     font-size: 1.05rem;
     color: var(--color-cyan);
+    max-width: 100%;
+}
+
+.drawer-user-info .user-name span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
 }
 
 .drawer-user-info .user-ratings {
