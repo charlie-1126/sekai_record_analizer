@@ -4,7 +4,7 @@
  * 레이팅 상승 효율 기반 곡 추천 알고리즘
  *
  * 핵심 공식:
- *   Final Score = (Δ × P(x)) × (1 + α × sim(U, Sw)) × (1.0 - max(0, (4 - count) * 0.24)) × (1 + γ × append_weight)
+ *   Final Score = (Δ × P(x)) × (1 + α × sim(U, Sw)) × (1.0 - max(0, (3 - count) * 0.25)) × (1 + γ × append_weight)
  *
  * 모드:
  *   - b39: 일반 B39 + APD B15 분리 추천
@@ -100,13 +100,40 @@ export function computeUserMu(songs, userScoresMap) {
     // 전체 평균
     const mu = top39.length > 0 ? top39.reduce((acc, e) => acc + e.converted, 0) / top39.length : 0;
 
-    // FC 기준체급: 상위 39개 중 FC(full_combo)인 것들
-    const fcEntries = top39.filter((e) => e.status === "full_combo");
-    const muFC = fcEntries.length > 0 ? fcEntries.reduce((acc, e) => acc + e.converted, 0) / fcEntries.length : mu;
+    // FC인 곡 (FC + AP) 전체 추출 후, AP인 곡은 변환상수에서 2.0을 감산하여 순수 FC 수준으로 평가
+    const fcAllEntries = allEntries
+        .filter((e) => e.status === "full_combo" || e.status === "full_perfect")
+        .map((e) => {
+            const fcEvaluated = e.status === "full_perfect" ? e.converted - 2.0 : e.converted;
+            return { ...e, fcEvaluated };
+        });
+    fcAllEntries.sort((a, b) => b.fcEvaluated - a.fcEvaluated);
+    
+    const fcCount = fcAllEntries.length;
+    let muFC = mu;
+    if (fcCount > 0) {
+        const fcTop20 = fcAllEntries.slice(0, 20);
+        const fcSum = fcTop20.reduce((acc, e) => acc + e.fcEvaluated, 0);
+        if (fcCount < 20) {
+            muFC = (fcSum + (20 - fcCount) * mu) / 20;
+        } else {
+            muFC = fcSum / 20;
+        }
+    }
 
-    // AP 기준체급: 상위 39개 중 AP(full_perfect)인 것들
-    const apEntries = top39.filter((e) => e.status === "full_perfect");
-    const muAP = apEntries.length > 0 ? apEntries.reduce((acc, e) => acc + e.converted, 0) / apEntries.length : mu;
+    // AP인 곡 전체 추출 후 상위 20개 평균 (20개 미만 시 유저평균 mu 로 패딩)
+    const apAllEntries = allEntries.filter((e) => e.status === "full_perfect");
+    const apCount = apAllEntries.length;
+    let muAP = mu;
+    if (apCount > 0) {
+        const apTop20 = apAllEntries.slice(0, 20);
+        const apSum = apTop20.reduce((acc, e) => acc + e.converted, 0);
+        if (apCount < 20) {
+            muAP = (apSum + (20 - apCount) * mu) / 20;
+        } else {
+            muAP = apSum / 20;
+        }
+    }
 
     return { mu, muFC, muAP, top39Entries: top39, allConverted: allEntries };
 }
@@ -335,7 +362,7 @@ export function recommendB39Normal({ songs, userScoresMap, b39List, goalStatus =
     const fcCount = b39List.filter((item) => item.status === "full_combo").length;
     const apCount = b39List.filter((item) => item.status === "full_perfect").length;
     const count = goalStatus === "full_perfect" ? apCount : fcCount;
-    const confidenceWeight = 1.0 - Math.max(0, (4 - count) * 0.24);
+    const confidenceWeight = 1.0 - Math.max(0, (3 - count) * 0.25);
 
     // 유저 체급 계산
     const { mu, muFC, muAP, top39Entries } = computeUserMu(songs, userScoresMap);
@@ -448,14 +475,40 @@ export function computeApdMu(songs, userScoresMap, fallbackMu) {
     apdEntries.sort((a, b) => b.converted - a.converted);
     const apdTop15 = apdEntries.slice(0, 15);
 
-    const fcEntries = apdTop15.filter((e) => e.status === "full_combo");
-    const apEntries = apdTop15.filter((e) => e.status === "full_perfect");
+    // 어펜드 FC인 곡 (FC + AP) 전체 추출 후, AP인 곡은 2.0을 감산하여 순수 FC 수준으로 평가
+    const fcEntriesAll = apdEntries
+        .filter((e) => e.status === "full_combo" || e.status === "full_perfect")
+        .map((e) => {
+            const fcEvaluated = e.status === "full_perfect" ? e.converted - 2.0 : e.converted;
+            return { ...e, fcEvaluated };
+        });
+    fcEntriesAll.sort((a, b) => b.fcEvaluated - a.fcEvaluated);
+    
+    const apdFcCount = fcEntriesAll.length;
+    let muFC_apd = fallbackMu;
+    if (apdFcCount > 0) {
+        const fcEntriesTop10 = fcEntriesAll.slice(0, 10);
+        const fcSum = fcEntriesTop10.reduce((acc, e) => acc + e.fcEvaluated, 0);
+        if (apdFcCount < 10) {
+            muFC_apd = (fcSum + (10 - apdFcCount) * fallbackMu) / 10;
+        } else {
+            muFC_apd = fcSum / 10;
+        }
+    }
 
-    const muFC_apd =
-        fcEntries.length > 0 ? fcEntries.reduce((acc, e) => acc + e.converted, 0) / fcEntries.length : fallbackMu;
-
-    const muAP_apd =
-        apEntries.length > 0 ? apEntries.reduce((acc, e) => acc + e.converted, 0) / apEntries.length : fallbackMu;
+    // 어펜드 AP인 곡 전체 추출 후 상위 10개 평균
+    const apEntriesAll = apdEntries.filter((e) => e.status === "full_perfect");
+    const apdApCount = apEntriesAll.length;
+    let muAP_apd = fallbackMu;
+    if (apdApCount > 0) {
+        const apEntriesTop10 = apEntriesAll.slice(0, 10);
+        const apSum = apEntriesTop10.reduce((acc, e) => acc + e.converted, 0);
+        if (apdApCount < 10) {
+            muAP_apd = (apSum + (10 - apdApCount) * fallbackMu) / 10;
+        } else {
+            muAP_apd = apSum / 10;
+        }
+    }
 
     const mu_apd =
         apdTop15.length > 0 ? apdTop15.reduce((acc, e) => acc + e.converted, 0) / apdTop15.length : fallbackMu;
@@ -485,7 +538,7 @@ export function recommendB39Append({ songs, userScoresMap, appendB15List, goalSt
     const fcCount = appendB15List.filter((item) => item.status === "full_combo").length;
     const apCount = appendB15List.filter((item) => item.status === "full_perfect").length;
     const count = goalStatus === "full_perfect" ? apCount : fcCount;
-    const confidenceWeight = 1.0 - Math.max(0, (4 - count) * 0.24);
+    const confidenceWeight = 1.0 - Math.max(0, (3 - count) * 0.25);
 
     // 전체 체급 (태그 벡터 및 폴백용)
     const { mu, top39Entries } = computeUserMu(songs, userScoresMap);
@@ -592,9 +645,12 @@ export function recommendPotential({
     const T_old = potentialOldBest30.length >= 30 ? potentialOldBest30[29].potential : 0;
     const T_new = potentialNewBest10.length >= 10 ? potentialNewBest10[9].potential : 0;
 
-    // 포텐셜 상위 40곡 중 어펜드 비율
+    // 포텐셜 상위 40곡 중 어펜드 곡 수와 일반 곡 수 기반 가중치 계산 (0.25씩 3번 감소)
     const allTop40 = [...potentialOldBest30, ...potentialNewBest10];
-    const W_apd = allTop40.length > 0 ? allTop40.filter((e) => e.diff === "append").length / allTop40.length : 0;
+    const apdCountInPotential = allTop40.filter((e) => e.diff === "append").length;
+    const genCountInPotential = allTop40.filter((e) => e.diff !== "append").length;
+    const W_apd = 1.0 - Math.max(0, (3 - apdCountInPotential) * 0.25);
+    const W_gen = 1.0 - Math.max(0, (3 - genCountInPotential) * 0.25);
 
     // 일반 채보 체급 (전체 상위 39개 기반)
     const { mu, muFC, muAP, top39Entries } = computeUserMu(songs, userScoresMap);
@@ -688,7 +744,7 @@ export function recommendPotential({
             const sim = vecIsZero ? 0 : cosineSimilarity(vec, computeSongVector(song, diff, allTags));
 
             // 어펜드 가중치 성분
-            const appendTerm = GAMMA * (isAppendChart ? W_apd : 1 - W_apd);
+            const appendTerm = GAMMA * (isAppendChart ? W_apd : W_gen);
 
             // 성과 신뢰도 가중치 성분 계산
             const count = isAppendChart
@@ -698,7 +754,7 @@ export function recommendPotential({
                 : goalStatus === "full_perfect"
                   ? normApCount
                   : normFcCount;
-            const confidenceWeight = 1.0 - Math.max(0, (4 - count) * 0.24);
+            const confidenceWeight = 1.0 - Math.max(0, (3 - count) * 0.25);
 
             // 곱연산 가중치 결합
             const combinedWeight = (1 + ALPHA * sim) * (1 + appendTerm) * confidenceWeight;
