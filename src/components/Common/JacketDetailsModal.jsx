@@ -3,7 +3,7 @@ import { JacketImage } from "./JacketImage";
 import { getSongTitle, getConstant, hasExplicitConstant } from "../../utils/ratingUtils";
 import { isNewSong, formatPublishedDate } from "../../utils/potentialUtils";
 import { getFcApDates, getTodayString } from "../../utils/dateUtils";
-import { ExternalLink, Calculator, Calendar, CalendarCheck } from "lucide-react";
+import { ExternalLink, Calculator, Calendar, CalendarCheck, Trash2 } from "lucide-react";
 
 export default function JacketDetailsModal({
     selectedJacketSong,
@@ -321,6 +321,25 @@ export default function JacketDetailsModal({
                                         >
                                             <CalendarCheck size={14} />
                                         </button>
+                                        <button
+                                            className="btn"
+                                            type="button"
+                                            title="날짜 삭제"
+                                            onClick={() =>
+                                                handleDateChange &&
+                                                handleDateChange(song.id, diff, "fc", "")
+                                            }
+                                            style={{
+                                                padding: "0.35rem 0.5rem",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                borderColor: "rgba(239, 68, 68, 0.3)",
+                                                color: "#fca5a5",
+                                            }}
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
                                     </div>
                                 </div>
 
@@ -366,6 +385,25 @@ export default function JacketDetailsModal({
                                             }}
                                         >
                                             <CalendarCheck size={14} />
+                                        </button>
+                                        <button
+                                            className="btn"
+                                            type="button"
+                                            title="날짜 삭제"
+                                            onClick={() =>
+                                                handleDateChange &&
+                                                handleDateChange(song.id, diff, "ap", "")
+                                            }
+                                            style={{
+                                                padding: "0.35rem 0.5rem",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                borderColor: "rgba(239, 68, 68, 0.3)",
+                                                color: "#fca5a5",
+                                            }}
+                                        >
+                                            <Trash2 size={14} />
                                         </button>
                                     </div>
                                 </div>

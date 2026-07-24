@@ -67,7 +67,7 @@ export default function History({
                 if (lvl === 0) return;
 
                 // FC Event
-                if (dates.fc) {
+                if (dates.fc && (userScore[diff] === "full_combo" || userScore[diff] === "full_perfect")) {
                     const fcConstVal = getConstant(song, diff, "fc");
                     const finalFcConst = typeof fcConstVal === "number" && !isNaN(fcConstVal) ? fcConstVal : lvl;
                     events.push({
@@ -83,7 +83,7 @@ export default function History({
                 }
 
                 // AP Event
-                if (dates.ap) {
+                if (dates.ap && userScore[diff] === "full_perfect") {
                     const apConstVal = getConstant(song, diff, "ap");
                     const finalApConst = typeof apConstVal === "number" && !isNaN(apConstVal) ? apConstVal : lvl;
                     events.push({
