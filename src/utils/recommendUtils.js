@@ -95,14 +95,42 @@ export function computeUserMu(songs, userScoresMap) {
     // 내림차순 정렬
     allEntries.sort((a, b) => b.converted - a.converted);
 
-    const top39 = allEntries.slice(0, 39);
-
-    // 전체 평균
-    const mu = top39.length > 0 ? top39.reduce((acc, e) => acc + e.converted, 0) / top39.length : 0;
-
-    // 일반 상위 40개 곡 평균 계산 (패딩용 유저평균)
     const top40 = allEntries.slice(0, 40);
-    const mu_top40 = top40.length > 0 ? top40.reduce((acc, e) => acc + e.converted, 0) / top40.length : mu;
+
+    // 전체 평균 (상위 40개 기준)
+    const mu = top40.length > 0 ? top40.reduce((acc, e) => acc + e.converted, 0) / top40.length : 0;
+
+    // 최고 변환상수 구하기 (allEntries는 내림차순 정렬됨)
+    const maxConverted = allEntries.length > 0 ? allEntries[0].converted : 0;
+    const poolMin = maxConverted - 2.0;
+    const poolMax = maxConverted;
+
+    // 일반 곡 가용 고레벨 풀(Pool) 스캔: 최고 변환상수 - 2.0 <= 상수(FC 또는 AP+2) <= 최고 변환상수
+    let poolSize = 0;
+    const poolDiffs = ["easy", "normal", "hard", "expert", "master"];
+    for (const song of songs) {
+        let isPoolSong = false;
+        for (const diff of poolDiffs) {
+            const raw = getConstant(song, diff, "fc");
+            if (raw <= 0) continue;
+
+            const valFC = raw;
+            const valAP = raw + 2.0;
+            if ((valFC >= poolMin && valFC <= poolMax) || (valAP >= poolMin && valAP <= poolMax)) {
+                isPoolSong = true;
+                break;
+            }
+        }
+        if (isPoolSong) {
+            poolSize++;
+        }
+        if (poolSize >= 40) break; // 40개 도달 시 조기 중단
+    }
+
+    // 동적 M 결정 및 패딩용 유저평균 mu_topM 계산
+    const M = Math.min(40, Math.max(1, poolSize));
+    const topM = allEntries.slice(0, M);
+    const mu_topM = topM.length > 0 ? topM.reduce((acc, e) => acc + e.converted, 0) / topM.length : mu;
 
     // FC인 곡 (FC + AP) 전체 추출 후, AP인 곡은 변환상수에서 2.0을 감산하여 순수 FC 수준으로 평가
     const fcAllEntries = allEntries
@@ -112,8 +140,9 @@ export function computeUserMu(songs, userScoresMap) {
             return { ...e, fcEvaluated };
         });
     fcAllEntries.sort((a, b) => b.fcEvaluated - a.fcEvaluated);
+    
     const fcCount = fcAllEntries.length;
-    let muFC = mu_top40;
+    let muFC = mu_topM;
     if (fcCount > 0) {
         // 유저 최대 상수
         const maxFcConstant = Math.max(...fcAllEntries.map((e) => e.fcEvaluated));
@@ -134,16 +163,16 @@ export function computeUserMu(songs, userScoresMap) {
         const fcTopK = fcAllEntries.slice(0, K_FC);
         const fcSum = fcTopK.reduce((acc, e) => acc + e.fcEvaluated, 0);
         if (fcCount < K_FC) {
-            muFC = (fcSum + (K_FC - fcCount) * mu_top40) / K_FC;
+            muFC = (fcSum + (K_FC - fcCount) * mu_topM) / K_FC;
         } else {
             muFC = fcSum / K_FC;
         }
     }
 
-    // AP인 곡 전체 추출 후 상위 K개 평균 (K 미만 시 유저평균 mu_top40 로 패딩)
+    // AP인 곡 전체 추출 후 상위 K개 평균 (K 미만 시 유저평균 mu_topM 로 패딩)
     const apAllEntries = allEntries.filter((e) => e.status === "full_perfect");
     const apCount = apAllEntries.length;
-    let muAP = mu_top40;
+    let muAP = mu_topM;
     if (apCount > 0) {
         // AP 순수 곡 상수의 최댓값
         const apConstants = apAllEntries.map((e) => e.converted - 2.0);
@@ -166,13 +195,13 @@ export function computeUserMu(songs, userScoresMap) {
         // 합산 평균 시에는 변환상수 e.converted (+2.0 포함)를 사용
         const apSum = apTopK.reduce((acc, e) => acc + e.converted, 0);
         if (apCount < K_AP) {
-            muAP = (apSum + (K_AP - apCount) * mu_top40) / K_AP;
+            muAP = (apSum + (K_AP - apCount) * mu_topM) / K_AP;
         } else {
             muAP = apSum / K_AP;
         }
     }
 
-    return { mu, muFC, muAP, top39Entries: top39, allConverted: allEntries };
+    return { mu, muFC, muAP, mu_topM, top39Entries: top40, allConverted: allEntries };
 }
 
 // ─────────────────────────────────────────
@@ -475,10 +504,31 @@ export function computeApdMu(songs, userScoresMap, fallbackMu) {
     apdEntries.sort((a, b) => b.converted - a.converted);
     const apdTop15 = apdEntries.slice(0, 15);
 
-    // 어펜드 상위 10개 곡 평균 계산 (패딩용 유저평균)
-    const apdTop10 = apdEntries.slice(0, 10);
-    const mu_apd_top10 =
-        apdTop10.length > 0 ? apdTop10.reduce((acc, e) => acc + e.converted, 0) / apdTop10.length : fallbackMu;
+    // 어펜드 최고 변환상수 구하기 (apdEntries는 내림차순 정렬됨)
+    const maxConvertedApd = apdEntries.length > 0 ? apdEntries[0].converted : 0;
+    const poolMinApd = maxConvertedApd - 2.0;
+    const poolMaxApd = maxConvertedApd;
+
+    // 어펜드 가용 고레벨 풀(Pool) 스캔
+    let poolSizeApd = 0;
+    for (const song of songs) {
+        if (!song.levels?.append) continue;
+        const raw = getConstant(song, "append", "fc");
+        if (raw <= 0) continue;
+
+        const valFC = raw;
+        const valAP = raw + 2.0;
+        if ((valFC >= poolMinApd && valFC <= poolMaxApd) || (valAP >= poolMinApd && valAP <= poolMaxApd)) {
+            poolSizeApd++;
+        }
+        if (poolSizeApd >= 10) break; // 10개 도달 시 조기 중단
+    }
+
+    // 동적 M_apd 결정 및 패딩용 유저평균 mu_apd_topM 계산
+    const M_apd = Math.min(10, Math.max(1, poolSizeApd));
+    const apdTopM = apdEntries.slice(0, M_apd);
+    const mu_apd_topM =
+        apdTopM.length > 0 ? apdTopM.reduce((acc, e) => acc + e.converted, 0) / apdTopM.length : fallbackMu;
 
     // 어펜드 FC인 곡 (FC + AP) 전체 추출 후, AP인 곡은 2.0을 감산하여 순수 FC 수준으로 평가
     const fcEntriesAll = apdEntries
@@ -490,7 +540,7 @@ export function computeApdMu(songs, userScoresMap, fallbackMu) {
     fcEntriesAll.sort((a, b) => b.fcEvaluated - a.fcEvaluated);
 
     const apdFcCount = fcEntriesAll.length;
-    let muFC_apd = mu_apd_top10;
+    let muFC_apd = mu_apd_topM;
     if (apdFcCount > 0) {
         const maxFcConstantApd = Math.max(...fcEntriesAll.map((e) => e.fcEvaluated));
         // 전체 어펜드 채보 중 (maxFcConstantApd - 1) <= 상수 <= maxFcConstantApd 범위에 해당하는 채보 개수 계산
@@ -508,7 +558,7 @@ export function computeApdMu(songs, userScoresMap, fallbackMu) {
         const fcEntriesTopK = fcEntriesAll.slice(0, K_FC_apd);
         const fcSum = fcEntriesTopK.reduce((acc, e) => acc + e.fcEvaluated, 0);
         if (apdFcCount < K_FC_apd) {
-            muFC_apd = (fcSum + (K_FC_apd - apdFcCount) * mu_apd_top10) / K_FC_apd;
+            muFC_apd = (fcSum + (K_FC_apd - apdFcCount) * mu_apd_topM) / K_FC_apd;
         } else {
             muFC_apd = fcSum / K_FC_apd;
         }
@@ -517,7 +567,7 @@ export function computeApdMu(songs, userScoresMap, fallbackMu) {
     // 어펜드 AP인 곡 전체 추출 후 상위 K개 평균
     const apEntriesAll = apdEntries.filter((e) => e.status === "full_perfect");
     const apdApCount = apEntriesAll.length;
-    let muAP_apd = mu_apd_top10;
+    let muAP_apd = mu_apd_topM;
     if (apdApCount > 0) {
         const apConstantsApd = apEntriesAll.map((e) => e.converted - 2.0);
         const maxApConstantApd = Math.max(...apConstantsApd);
@@ -537,7 +587,7 @@ export function computeApdMu(songs, userScoresMap, fallbackMu) {
         // 합산 평균 시에는 변환상수 e.converted (+2.0 포함)를 사용
         const apSum = apEntriesTopK.reduce((acc, e) => acc + e.converted, 0);
         if (apdApCount < K_AP_apd) {
-            muAP_apd = (apSum + (K_AP_apd - apdApCount) * mu_apd_top10) / K_AP_apd;
+            muAP_apd = (apSum + (K_AP_apd - apdApCount) * mu_apd_topM) / K_AP_apd;
         } else {
             muAP_apd = apSum / K_AP_apd;
         }
@@ -546,7 +596,7 @@ export function computeApdMu(songs, userScoresMap, fallbackMu) {
     const mu_apd =
         apdTop15.length > 0 ? apdTop15.reduce((acc, e) => acc + e.converted, 0) / apdTop15.length : fallbackMu;
 
-    return { mu_apd, muFC_apd, muAP_apd, apdTop15Entries: apdTop15 };
+    return { mu_apd, muFC_apd, muAP_apd, mu_apd_topM, apdTop15Entries: apdTop15 };
 }
 
 /**
@@ -896,6 +946,7 @@ export function computeRecommendations({
             mu_apd: apdMuResult.mu_apd,
             muFC_apd: apdMuResult.muFC_apd,
             muAP_apd: apdMuResult.muAP_apd,
+            mu_apd_topM: apdMuResult.mu_apd_topM,
         };
     } else {
         const commonArgs = {
@@ -929,6 +980,7 @@ export function computeRecommendations({
             mu_apd: apdMuResult.mu_apd,
             muFC_apd: apdMuResult.muFC_apd,
             muAP_apd: apdMuResult.muAP_apd,
+            mu_apd_topM: apdMuResult.mu_apd_topM,
         };
     }
 }

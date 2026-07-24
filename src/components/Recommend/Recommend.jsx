@@ -195,7 +195,7 @@ export function Recommend({
         });
     }, [songs, userScoresMap, b39List, appendB15List, potentialData, ratingMode, filterGoal, topN]);
 
-    const { b39Normal, b39Append, potentialAll, mu, muFC, muAP, mu_apd, muFC_apd, muAP_apd } = recommendations;
+    const { b39Normal, b39Append, potentialAll, mu, muFC, muAP, mu_apd, muFC_apd, muAP_apd, mu_topM, mu_apd_topM } = recommendations;
 
     // 현재 표시 목록
     const currentList = ratingMode === "b39" ? (activeSection === "append" ? b39Append : b39Normal) : potentialAll;
@@ -226,8 +226,8 @@ export function Recommend({
                 {hasData && (
                     <div className="rec-mu-row">
                         <div className="rec-mu-chip">
-                            <span className="mu-label">{isAppendSection ? "APD AVG" : "AVG"}</span>
-                            <span className="mu-value">{isAppendSection ? fmt2(mu_apd) : fmt2(mu)}</span>
+                            <span className="mu-label">{isAppendSection ? "APD Pot" : "Pot"}</span>
+                            <span className="mu-value">{isAppendSection ? fmt2(mu_apd_topM) : fmt2(mu_topM)}</span>
                         </div>
                         <div className="rec-mu-chip">
                             <span className="mu-label">{isAppendSection ? "APD FC" : "FC"}</span>
