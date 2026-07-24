@@ -146,6 +146,7 @@ export function computeUserMu(songs, userScoresMap) {
         const K_AP = Math.min(20, Math.max(1, apPoolSize));
 
         const apTopK = apAllEntries.slice(0, K_AP);
+        // 합산 평균 시에는 변환상수 e.converted (+2.0 포함)를 사용
         const apSum = apTopK.reduce((acc, e) => acc + e.converted, 0);
         if (apCount < K_AP) {
             muAP = (apSum + (K_AP - apCount) * mu_top40) / K_AP;
@@ -531,6 +532,7 @@ export function computeApdMu(songs, userScoresMap, fallbackMu) {
         const K_AP_apd = Math.min(5, Math.max(1, apPoolSizeApd));
 
         const apEntriesTopK = apEntriesAll.slice(0, K_AP_apd);
+        // 합산 평균 시에는 변환상수 e.converted (+2.0 포함)를 사용
         const apSum = apEntriesTopK.reduce((acc, e) => acc + e.converted, 0);
         if (apdApCount < K_AP_apd) {
             muAP_apd = (apSum + (K_AP_apd - apdApCount) * mu_apd_top10) / K_AP_apd;
