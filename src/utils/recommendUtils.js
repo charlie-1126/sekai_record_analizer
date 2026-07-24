@@ -100,9 +100,9 @@ export function computeUserMu(songs, userScoresMap) {
     // 전체 평균
     const mu = top39.length > 0 ? top39.reduce((acc, e) => acc + e.converted, 0) / top39.length : 0;
 
-    // 일반 상위 10개 곡 평균 계산 (패딩용 유저평균)
-    const top10 = allEntries.slice(0, 10);
-    const mu_top10 = top10.length > 0 ? top10.reduce((acc, e) => acc + e.converted, 0) / top10.length : mu;
+    // 일반 상위 40개 곡 평균 계산 (패딩용 유저평균)
+    const top40 = allEntries.slice(0, 40);
+    const mu_top40 = top40.length > 0 ? top40.reduce((acc, e) => acc + e.converted, 0) / top40.length : mu;
 
     // FC인 곡 (FC + AP) 전체 추출 후, AP인 곡은 변환상수에서 2.0을 감산하여 순수 FC 수준으로 평가
     const fcAllEntries = allEntries
@@ -114,28 +114,28 @@ export function computeUserMu(songs, userScoresMap) {
     fcAllEntries.sort((a, b) => b.fcEvaluated - a.fcEvaluated);
     
     const fcCount = fcAllEntries.length;
-    let muFC = mu_top10;
+    let muFC = mu_top40;
     if (fcCount > 0) {
-        const fcTop5 = fcAllEntries.slice(0, 5);
-        const fcSum = fcTop5.reduce((acc, e) => acc + e.fcEvaluated, 0);
-        if (fcCount < 5) {
-            muFC = (fcSum + (5 - fcCount) * mu_top10) / 5;
+        const fcTop10 = fcAllEntries.slice(0, 10);
+        const fcSum = fcTop10.reduce((acc, e) => acc + e.fcEvaluated, 0);
+        if (fcCount < 10) {
+            muFC = (fcSum + (10 - fcCount) * mu_top40) / 10;
         } else {
-            muFC = fcSum / 5;
+            muFC = fcSum / 10;
         }
     }
 
-    // AP인 곡 전체 추출 후 상위 5개 평균 (5개 미만 시 유저평균 mu_top10 로 패딩)
+    // AP인 곡 전체 추출 후 상위 10개 평균 (10개 미만 시 유저평균 mu_top40 로 패딩)
     const apAllEntries = allEntries.filter((e) => e.status === "full_perfect");
     const apCount = apAllEntries.length;
-    let muAP = mu_top10;
+    let muAP = mu_top40;
     if (apCount > 0) {
-        const apTop5 = apAllEntries.slice(0, 5);
-        const apSum = apTop5.reduce((acc, e) => acc + e.converted, 0);
-        if (apCount < 5) {
-            muAP = (apSum + (5 - apCount) * mu_top10) / 5;
+        const apTop10 = apAllEntries.slice(0, 10);
+        const apSum = apTop10.reduce((acc, e) => acc + e.converted, 0);
+        if (apCount < 10) {
+            muAP = (apSum + (10 - apCount) * mu_top40) / 10;
         } else {
-            muAP = apSum / 5;
+            muAP = apSum / 10;
         }
     }
 
