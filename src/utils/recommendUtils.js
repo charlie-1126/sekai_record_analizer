@@ -192,7 +192,7 @@ export function achieveProbability(x, mu) {
 }
 
 // ─────────────────────────────────────────
-// C. 곡 태그 벡터 생성 (TF-IDF)
+// C. 곡 태그 벡터 생성
 // ─────────────────────────────────────────
 
 /**
@@ -225,39 +225,8 @@ export function getSongDiffTags(song, diff) {
 }
 
 /**
- *
- *
- * @param {Array}    candidateCharts - 분석 대상 채보 목록 [{song, diff}]
- * @param {string[]} allTags         - 전체 태그 목록
- * @returns {Map<string, number>}    태그 → IDF 값
- */
-export function computeIDF(candidateCharts, allTags) {
-    const N = candidateCharts.length;
-    const dfMap = new Map();
-
-    allTags.forEach((t) => dfMap.set(t, 0));
-
-    candidateCharts.forEach(({ song, diff }) => {
-        const tags = getSongDiffTags(song, diff);
-        const seenInChart = new Set(tags);
-        seenInChart.forEach((t) => {
-            dfMap.set(t, (dfMap.get(t) || 0) + 1);
-        });
-    });
-
-    const idfMap = new Map();
-    allTags.forEach((t) => {
-        const df = dfMap.get(t) || 0;
-        // df가 0이면 IDF는 log(N/1)로 처리 (분모 0 방지)
-        idfMap.set(t, Math.log10(N / Math.max(df, 1)));
-    });
-
-    return idfMap;
-}
-
-/**
- * 곡 채보의 TF-IDF 가중 태그 벡터를 계산한다.
- * Sw[t] = 1(태그 보유) × IDF(t)
+ * 곡 채보의 태그 벡터를 계산한다.
+ * Sw[t] = 1 (태그 보유 시)
  *
  * @param {object}           song
  * @param {string}           diff
