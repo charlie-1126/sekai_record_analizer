@@ -326,8 +326,7 @@ export default function JacketDetailsModal({
                                             type="button"
                                             title="날짜 삭제"
                                             onClick={() =>
-                                                handleDateChange &&
-                                                handleDateChange(song.id, diff, "fc", "")
+                                                handleDateChange && handleDateChange(song.id, diff, "fc", "")
                                             }
                                             style={{
                                                 padding: "0.35rem 0.5rem",
@@ -391,8 +390,7 @@ export default function JacketDetailsModal({
                                             type="button"
                                             title="날짜 삭제"
                                             onClick={() =>
-                                                handleDateChange &&
-                                                handleDateChange(song.id, diff, "ap", "")
+                                                handleDateChange && handleDateChange(song.id, diff, "ap", "")
                                             }
                                             style={{
                                                 padding: "0.35rem 0.5rem",
@@ -435,7 +433,7 @@ export default function JacketDetailsModal({
 
                     <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem" }}>
                         <a
-                            href={`https://asset.rilaksekai.com/charts/${String(song.id).padStart(3, "0")}/${diff.toLowerCase()}.html`}
+                            href={`https://chart.rilaksekai.com/${String(song.id).padStart(3, "0")}/${diff.toLowerCase()}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="btn btn-outline"

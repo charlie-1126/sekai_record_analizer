@@ -4,6 +4,18 @@ import { X, ChevronRight } from "lucide-react";
 
 export const UPDATE_NOTES = [
     {
+        version: "v1.6.1",
+        date: "2026-10-08",
+        title: "채보 보기 기능 오류 수정",
+        categories: [
+            {
+                name: "버그 수정",
+                type: "bugfix",
+                items: ["채보 보기 기능이 정상적으로 리다이렉트 되지 않던 오류 수정"],
+            },
+        ],
+    },
+    {
         version: "v1.6.0",
         date: "2026-07-24",
         title: "공개 범위 설정",
