@@ -1002,6 +1002,20 @@ function processAndSaveSongs(songsArray, releaseDates = {}, songTypes = {}, wiki
       tagsVal = tags;
     }
 
+    const notes = {
+        easy: song.easy_note || null,
+        normal: song.normal_note || null,
+        hard: song.hard_note || null,
+        expert: song.ex_note || null,
+        master: song.ma_note || null,
+        append: song.ap_note || null,
+    };
+    for (const key of Object.keys(notes)) {
+      if (notes[key] === "-") {
+        notes[key] = null;
+      }
+    };
+
     const refinedSong = {
       id: song.id,
       title_ko: song.title_ko || '',
@@ -1010,6 +1024,7 @@ function processAndSaveSongs(songsArray, releaseDates = {}, songTypes = {}, wiki
       title_hangul: song.title_hangul || '',
       unit_code: song.unit_code || '',
       bpm: song.bpm || null,
+      notes: notes,
       levels: levels,
       constants: constants,
       composer: song.composer || song.composer_jp || '',
